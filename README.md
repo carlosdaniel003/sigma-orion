@@ -1,6 +1,6 @@
-# Gêmeo Digital
+# ORION
 
-Projeto para automatizar a consolidação e a análise do DPP, separando responsabilidades para priorizar **precisão, baixo custo e rastreabilidade**.
+ORION é o projeto para automatizar a consolidação e a análise do DPP, separando responsabilidades para priorizar **precisão, baixo custo e rastreabilidade**.
 
 ## Princípio da arquitetura
 
@@ -47,7 +47,7 @@ Ainda **não há regras reais do DPP implementadas**. Nenhuma regra de negócio 
 ## Estrutura principal
 
 ```text
-gemeo-digital/
+orion/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
@@ -95,7 +95,7 @@ cd ..
 
 ## Executar tudo em um único terminal
 
-Depois da instalação inicial, a partir de `C:\gemeo-digital`:
+Depois da instalação inicial, execute a partir da raiz do repositório:
 
 ```powershell
 .\scripts\start-dev.ps1
@@ -125,7 +125,7 @@ Outro caminho pode ser informado assim:
 
 ## Provider da LLM
 
-Por padrão o projeto funciona sem API externa:
+Por padrão o ORION funciona sem API externa:
 
 ```text
 LLM_PROVIDER=mock
@@ -206,7 +206,7 @@ Mapear:
 - fontes de evidência;
 - conclusão esperada do analista em casos reais.
 
-Depois, esses fatos alimentarão o endpoint estruturado do agente.
+Depois, esses fatos alimentarão o endpoint estruturado do ORION.
 
 ## Segurança dos dados
 
