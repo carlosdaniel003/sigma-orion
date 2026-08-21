@@ -14,12 +14,12 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 
-APP_NAME = "Gêmeo Digital API"
+APP_NAME = "ORION API"
 APP_VERSION = "0.2.0"
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    f"sqlite:///{(DATA_DIR / 'gemeo_digital.db').as_posix()}",
+    f"sqlite:///{(DATA_DIR / 'orion.db').as_posix()}",
 )
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")
