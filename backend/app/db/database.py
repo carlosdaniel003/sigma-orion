@@ -14,6 +14,7 @@ class Base(DeclarativeBase):
 
 
 def init_db() -> None:
+    from app.models.analysis_history import AnalysisHistory  # noqa: F401
     from app.models.analysis_run import AnalysisRun  # noqa: F401
     from app.models.feedback import Feedback  # noqa: F401
 
