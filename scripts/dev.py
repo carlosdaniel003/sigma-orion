@@ -36,7 +36,7 @@ def main() -> int:
         return 1
 
     print("=" * 64)
-    print("GEMEO DIGITAL - AMBIENTE DE DESENVOLVIMENTO")
+    print("ORION - AMBIENTE DE DESENVOLVIMENTO")
     print("=" * 64)
     print(f"Python : {python_exe}")
     print(f"Node   : {node_exe}")
