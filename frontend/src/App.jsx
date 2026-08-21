@@ -113,7 +113,7 @@ function App() {
       <aside className="sidebar">
         <div>
           <span className="eyebrow">MVP LOCAL</span>
-          <h1>Gêmeo Digital</h1>
+          <h1>ORION</h1>
           <p>Assistente de análise do DPP com cálculo determinístico e validação humana.</p>
         </div>
 
@@ -257,7 +257,7 @@ function App() {
             <header className="page-header">
               <div>
                 <span className="eyebrow">HUMAN IN THE LOOP</span>
-                <h2>Agente DPP</h2>
+                <h2>ORION — Agente DPP</h2>
                 <p>
                   O chat já usa o provider configurado. O cenário abaixo continua fictício até recebermos os dados reais.
                 </p>
@@ -348,7 +348,7 @@ function App() {
             <section className="panel">
               <div className="panel-header">
                 <div>
-                  <h3>Converse com o agente</h3>
+                  <h3>Converse com o ORION</h3>
                   <p>Provider, guardrails e recuperação da base de conhecimento passam pelo backend.</p>
                 </div>
               </div>
