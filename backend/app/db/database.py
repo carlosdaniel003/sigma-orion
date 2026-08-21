@@ -15,5 +15,6 @@ class Base(DeclarativeBase):
 
 def init_db() -> None:
     from app.models.analysis_run import AnalysisRun  # noqa: F401
+    from app.models.feedback import Feedback  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
