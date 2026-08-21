@@ -7,11 +7,11 @@ $NpmCli = Join-Path $NodeHome "node_modules\npm\bin\npm-cli.js"
 $NpxCli = Join-Path $NodeHome "node_modules\npm\bin\npx-cli.js"
 
 if (-not (Test-Path $NodeExe)) {
-    throw "Node.js portátil não encontrado em: $NodeExe"
+    throw "Node.js portatil nao encontrado em: $NodeExe"
 }
 
 if (-not (Test-Path $NpmCli)) {
-    throw "npm-cli.js não encontrado em: $NpmCli"
+    throw "npm-cli.js nao encontrado em: $NpmCli"
 }
 
 $env:PATH = "$NodeHome;$env:PATH"
@@ -24,6 +24,6 @@ function global:npx {
     & $NodeExe $NpxCli @args
 }
 
-Write-Host "Ambiente Node portátil carregado para esta sessão do PowerShell."
+Write-Host "Ambiente Node portatil carregado para esta sessao do PowerShell."
 Write-Host "Node: $(& $NodeExe -v)"
-Write-Host "Use 'npm' normalmente nesta sessão."
+Write-Host "Use 'npm' normalmente nesta sessao."
