@@ -1,4 +1,12 @@
-from app.schemas.agent import AgentAnalysis, ChatResponse
+import json
+from uuid import uuid4
+
+from pydantic import ValidationError
+
+from app.llm.provider import MockProvider, get_llm_provider
+from app.schemas.agent import AgentAnalysis, AgentAnalysisRequest, ChatResponse
+from app.services.history_service import save_analysis_history
+from app.services.knowledge_service import load_guardrails, retrieve_context
 
 
 DEMO_NOTICE = (
@@ -6,11 +14,41 @@ DEMO_NOTICE = (
 )
 
 
+BASE_AGENT_RULES = """Você é um agente de apoio à análise do DPP.
+
+Regras obrigatórias:
+- Os fatos e cálculos recebidos do backend são a fonte numérica da análise.
+- Não refaça nem substitua cálculos determinísticos do Python.
+- Não invente valores, materiais, datas, regras ou evidências ausentes.
+- Diferencie fato, interpretação e recomendação.
+- Quando os dados forem insuficientes, declare explicitamente a insuficiência.
+- Toda ação sugerida depende de validação humana.
+- Nunca afirme que uma ação foi executada ou aprovada sem evidência explícita.
+"""
+
+
+def provider_status() -> dict:
+    provider = get_llm_provider()
+    status = provider.status()
+    status.update(
+        {
+            "mode": "live" if provider.configured and provider.name != "mock" else "demo",
+            "message": (
+                "Provider configurado e pronto para chamadas reais."
+                if provider.configured and provider.name != "mock"
+                else "Provider mock ativo. Configure LLM_PROVIDER=groq e GROQ_API_KEY no .env para usar a LLM real."
+            ),
+        }
+    )
+    return status
+
+
 def build_demo_analysis() -> AgentAnalysis:
     return AgentAnalysis.model_validate(
         {
             "analysis_id": "demo-2026-08-21-001",
             "provider": "mock",
+            "model": "mock-local",
             "is_demo": True,
             "demo_notice": DEMO_NOTICE,
             "summary": (
@@ -60,9 +98,7 @@ def build_demo_analysis() -> AgentAnalysis:
                 {
                     "id": "rec-demo-001",
                     "title": "Revisar o item MAT-DEMO-001 com o analista",
-                    "reason": (
-                        "A recomendação é fictícia e serve para validar o fluxo de aprovação humana."
-                    ),
+                    "reason": "A recomendação é fictícia e serve para validar o fluxo de aprovação humana.",
                     "requires_human_validation": True,
                 },
                 {
@@ -75,6 +111,7 @@ def build_demo_analysis() -> AgentAnalysis:
                     "requires_human_validation": True,
                 },
             ],
+            "knowledge_sources": ["guardrails.md"],
         }
     )
 
@@ -90,14 +127,171 @@ def answer_demo_question(question: str) -> ChatResponse:
         )
     elif "ação" in normalized or "acao" in normalized or "recomend" in normalized:
         answer = (
-            "As ações exibidas nesta etapa são mocks. O fluxo definitivo será: Python calcula os fatos, "
+            "As ações exibidas nesta etapa são mocks. O fluxo definitivo é: Python calcula os fatos, "
             "o RAG fornece conhecimento, a LLM sugere ações e o analista aprova, rejeita ou corrige."
         )
     else:
         answer = (
-            "O agente ainda está em modo mock. Esta resposta confirma que a interface de chat está pronta. "
-            "Quando o provider real for conectado, a mesma interface enviará a pergunta para a LLM com "
-            "dados estruturados, regras e contexto recuperado pelo RAG."
+            "O agente está em modo mock. A pergunta atravessará o mesmo contrato usado pela LLM real, "
+            "mas nenhuma API externa é chamada enquanto LLM_PROVIDER=mock."
         )
 
-    return ChatResponse(provider="mock", is_demo=True, answer=answer)
+    chunks = retrieve_context(question)
+    return ChatResponse(
+        provider="mock",
+        model="mock-local",
+        is_demo=True,
+        answer=answer,
+        knowledge_sources=_unique_sources(chunks),
+    )
+
+
+def answer_agent_question(question: str) -> ChatResponse:
+    provider = get_llm_provider()
+    chunks = retrieve_context(question)
+
+    if isinstance(provider, MockProvider):
+        return answer_demo_question(question)
+
+    system_prompt = _build_system_prompt(chunks)
+    user_prompt = (
+        "Responda à pergunta do analista usando apenas o conhecimento fornecido. "
+        "Se a base não possuir informação suficiente, informe isso.\n\n"
+        f"Pergunta: {question}"
+    )
+    answer = provider.complete(system_prompt, user_prompt)
+
+    return ChatResponse(
+        provider=provider.name,
+        model=provider.model,
+        is_demo=False,
+        answer=answer.strip(),
+        knowledge_sources=_unique_sources(chunks),
+    )
+
+
+def analyze_structured(payload: AgentAnalysisRequest) -> AgentAnalysis:
+    provider = get_llm_provider()
+    query = f"{payload.objective}\n{json.dumps(payload.facts, ensure_ascii=False, default=str)}"
+    chunks = retrieve_context(query)
+    sources = _unique_sources(chunks)
+    analysis_id = f"analysis-{uuid4().hex[:12]}"
+
+    if isinstance(provider, MockProvider):
+        analysis = AgentAnalysis(
+            analysis_id=analysis_id,
+            provider=provider.name,
+            model=provider.model,
+            is_demo=True,
+            demo_notice=(
+                "Execução registrada com provider mock. Os fatos chegaram ao pipeline, mas não foram "
+                "interpretados por uma LLM externa."
+            ),
+            summary=(
+                "Pipeline estruturado executado em modo mock. Configure a Groq para testar a etapa "
+                "de interpretação mantendo os cálculos no Python."
+            ),
+            metrics=payload.metrics,
+            risks=[],
+            recommendations=[],
+            knowledge_sources=sources,
+        )
+        save_analysis_history(analysis)
+        return analysis
+
+    system_prompt = _build_system_prompt(chunks) + """
+
+Para esta tarefa, devolva SOMENTE um objeto JSON válido, sem Markdown, com este formato:
+{
+  "summary": "texto",
+  "risks": [
+    {
+      "id": "risk-001",
+      "material": "código ou N/A",
+      "severity": "high|medium|low",
+      "title": "texto",
+      "explanation": "texto",
+      "evidence": [
+        {"label": "campo", "value": "valor", "source": "fonte recebida"}
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "rec-001",
+      "title": "texto",
+      "reason": "texto",
+      "requires_human_validation": true
+    }
+  ]
+}
+Não crie métricas: elas já foram calculadas pelo Python e serão anexadas pelo backend.
+"""
+
+    user_prompt = (
+        f"Objetivo:\n{payload.objective}\n\n"
+        f"Métricas calculadas pelo Python (somente contexto):\n{payload.metrics.model_dump_json()}\n\n"
+        f"Fatos estruturados calculados/validados pelo backend:\n"
+        f"{json.dumps(payload.facts, ensure_ascii=False, indent=2, default=str)}"
+    )
+
+    raw = provider.complete(system_prompt, user_prompt)
+    parsed = _parse_json_object(raw)
+
+    try:
+        analysis = AgentAnalysis.model_validate(
+            {
+                "analysis_id": analysis_id,
+                "provider": provider.name,
+                "model": provider.model,
+                "is_demo": False,
+                "demo_notice": "",
+                "summary": parsed.get("summary", ""),
+                "metrics": payload.metrics.model_dump(),
+                "risks": parsed.get("risks", []),
+                "recommendations": parsed.get("recommendations", []),
+                "knowledge_sources": sources,
+            }
+        )
+    except ValidationError as exc:
+        raise RuntimeError("A LLM retornou JSON, mas fora do contrato estruturado esperado.") from exc
+
+    save_analysis_history(analysis)
+    return analysis
+
+
+def _build_system_prompt(chunks: list) -> str:
+    guardrails = load_guardrails()
+    context_parts = [
+        f"FONTE: {chunk.source}\n{chunk.content}"
+        for chunk in chunks
+    ]
+    retrieved = "\n\n---\n\n".join(context_parts) or "Nenhum contexto adicional foi recuperado."
+
+    return (
+        f"{BASE_AGENT_RULES}\n\n"
+        f"GUARDRAILS VERSIONADOS:\n{guardrails or 'Nenhum guardrail encontrado.'}\n\n"
+        f"CONHECIMENTO RECUPERADO PELO RAG:\n{retrieved}"
+    )
+
+
+def _parse_json_object(raw: str) -> dict:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("A LLM não retornou um JSON válido para a análise estruturada.") from exc
+
+    if not isinstance(parsed, dict):
+        raise RuntimeError("A resposta estruturada da LLM precisa ser um objeto JSON.")
+    return parsed
+
+
+def _unique_sources(chunks: list) -> list[str]:
+    return list(dict.fromkeys(chunk.source for chunk in chunks))
