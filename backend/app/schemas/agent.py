@@ -1,0 +1,65 @@
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class Evidence(BaseModel):
+    label: str
+    value: str
+    source: str
+
+
+class RiskItem(BaseModel):
+    id: str
+    material: str
+    severity: Literal["high", "medium", "low"]
+    title: str
+    explanation: str
+    evidence: list[Evidence]
+
+
+class Recommendation(BaseModel):
+    id: str
+    title: str
+    reason: str
+    requires_human_validation: bool = True
+
+
+class AgentMetrics(BaseModel):
+    total_materials: int
+    critical: int
+    attention: int
+    ok: int
+
+
+class AgentAnalysis(BaseModel):
+    analysis_id: str
+    provider: str
+    is_demo: bool
+    demo_notice: str
+    summary: str
+    metrics: AgentMetrics
+    risks: list[RiskItem]
+    recommendations: list[Recommendation]
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=2, max_length=2000)
+
+
+class ChatResponse(BaseModel):
+    provider: str
+    is_demo: bool
+    answer: str
+
+
+class FeedbackCreate(BaseModel):
+    analysis_id: str
+    recommendation_id: str
+    decision: Literal["approved", "rejected"]
+    comment: str | None = Field(default=None, max_length=4000)
+
+
+class FeedbackResponse(BaseModel):
+    id: int
+    saved: bool = True
