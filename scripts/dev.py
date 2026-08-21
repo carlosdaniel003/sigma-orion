@@ -11,7 +11,11 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT / "backend"
 FRONTEND_DIR = ROOT / "frontend"
+BACKEND_REQUIREMENTS = BACKEND_DIR / "requirements.txt"
 VITE_JS = FRONTEND_DIR / "node_modules" / "vite" / "bin" / "vite.js"
+BACKEND_IMPORT_CHECK = (
+    "import fastapi, uvicorn, pandas, openpyxl, sqlalchemy, dotenv, httpx"
+)
 
 
 def main() -> int:
@@ -21,6 +25,9 @@ def main() -> int:
     if node_exe is None:
         print("[ERRO] Node.js nao encontrado no PATH desta sessao.")
         print("Execute o launcher PowerShell: .\\scripts\\start-dev.ps1")
+        return 1
+
+    if not _ensure_backend_dependencies(python_exe):
         return 1
 
     if not VITE_JS.exists():
@@ -75,6 +82,62 @@ def main() -> int:
     finally:
         for process in processes:
             _stop_process_tree(process)
+
+
+def _ensure_backend_dependencies(python_exe: Path) -> bool:
+    check = subprocess.run(
+        [str(python_exe), "-c", BACKEND_IMPORT_CHECK],
+        cwd=BACKEND_DIR,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+    if check.returncode == 0:
+        return True
+
+    if not BACKEND_REQUIREMENTS.exists():
+        print(f"[ERRO] requirements.txt nao encontrado em: {BACKEND_REQUIREMENTS}")
+        return False
+
+    print("Dependencias Python ausentes ou desatualizadas.")
+    print("Atualizando automaticamente o ambiente virtual...")
+
+    install = subprocess.run(
+        [
+            str(python_exe),
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            str(BACKEND_REQUIREMENTS),
+        ],
+        cwd=BACKEND_DIR,
+        check=False,
+    )
+
+    if install.returncode != 0:
+        print("[ERRO] Nao foi possivel instalar as dependencias do backend.")
+        print(
+            "Tente manualmente: .\\.venv\\Scripts\\python.exe -m pip install "
+            "-r .\\backend\\requirements.txt"
+        )
+        return False
+
+    verify = subprocess.run(
+        [str(python_exe), "-c", BACKEND_IMPORT_CHECK],
+        cwd=BACKEND_DIR,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+    if verify.returncode != 0:
+        print("[ERRO] As dependencias foram instaladas, mas o backend ainda nao consegue importa-las.")
+        return False
+
+    print("Dependencias Python prontas.")
+    return True
 
 
 def _stop_process_tree(process: subprocess.Popen) -> None:
