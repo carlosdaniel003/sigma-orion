@@ -12,7 +12,7 @@ Projeto para automatizar a consolidação e a análise do DPP, separando respons
 - **Humano**: validação e decisão final.
 - **n8n**: será integrado posteriormente como camada de orquestração do sistema maior.
 
-Nesta primeira etapa, o desenvolvimento será totalmente local e não dependerá de n8n, PostgreSQL, Docker ou uma LLM instalada na máquina.
+Nesta primeira etapa, o desenvolvimento é local e não depende de n8n, PostgreSQL, Docker ou LLM instalada na máquina.
 
 ## Stack do MVP local
 
@@ -21,20 +21,23 @@ Nesta primeira etapa, o desenvolvimento será totalmente local e não dependerá
 - Planilhas: Pandas + OpenPyXL
 - Banco: SQLite + SQLAlchemy
 - Conhecimento: arquivos Markdown versionados em `knowledge/`
-- LLM: desacoplada nesta etapa; será conectada depois por um provider externo ou corporativo
+- Agente atual: provider `mock`
+- LLM futura: provider externo/corporativo desacoplado da interface
 
 ## O que já funciona
 
-O primeiro incremento permite:
+1. Seleção de múltiplos arquivos `.xlsx` ou `.csv`.
+2. Envio das planilhas para o FastAPI.
+3. Leitura com Pandas/OpenPyXL.
+4. Identificação de abas, linhas e colunas.
+5. Banco SQLite inicializado automaticamente.
+6. Interface administrativa com visão geral, arquivos e agente.
+7. Contrato estruturado para análise do agente: resumo, métricas, riscos, evidências e recomendações.
+8. Chat demonstrativo preparado para troca futura por LLM real.
+9. Aprovação/rejeição de recomendações com feedback salvo no SQLite.
+10. Dados de demonstração claramente marcados como fictícios.
 
-1. selecionar múltiplos arquivos `.xlsx` ou `.csv` pela interface;
-2. enviá-los para o backend FastAPI;
-3. ler as planilhas com Pandas/OpenPyXL;
-4. identificar abas, quantidade de linhas e colunas;
-5. devolver a estrutura detectada para o frontend;
-6. inicializar um banco SQLite local para o histórico futuro do sistema.
-
-Ainda **não há regras do DPP implementadas** porque os arquivos reais e o procedimento do analista ainda serão levantados. Isso é intencional: nenhuma regra de negócio será presumida.
+Ainda **não há regras reais do DPP implementadas**. Nenhuma regra de negócio será presumida antes do levantamento das planilhas e do processo do analista.
 
 ## Estrutura
 
@@ -46,8 +49,10 @@ gemeo-digital/
 │   │   ├── core/
 │   │   ├── db/
 │   │   ├── models/
+│   │   ├── schemas/
 │   │   ├── services/
 │   │   └── main.py
+│   ├── tests/
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
@@ -62,15 +67,14 @@ gemeo-digital/
 └── data/                # gerada localmente e ignorada pelo Git
 ```
 
-## Executar o backend no Windows sem instalação global
+## Executar o backend
 
-A partir da raiz do repositório:
+A partir da raiz do repositório, usando a `.venv` criada na raiz:
 
 ```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+cd C:\gemeo-digital\backend
+..\.venv\Scripts\python.exe -m pip install -r requirements.txt
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 Backend:
@@ -79,51 +83,36 @@ Backend:
 http://localhost:8000
 ```
 
-Documentação automática da API:
+Documentação automática:
 
 ```text
 http://localhost:8000/docs
 ```
 
-O ambiente virtual e as bibliotecas ficam dentro da pasta do projeto, sem instalação global do Python package.
+## Executar o frontend no notebook corporativo
 
-## Executar o frontend
+A política de grupo bloqueia `npm.cmd` e alguns executáveis `.cmd`. O projeto inclui um script que usa diretamente o Node portátil e o `npm-cli.js`.
 
-### Ambiente comum
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-### Notebook corporativo com Node portátil
-
-A política de grupo pode bloquear `npm.cmd` e os executáveis `.cmd` criados em `node_modules/.bin`. O projeto inclui um script temporário para carregar o Node portátil e expor `npm`/`npx` como funções somente na sessão atual do PowerShell.
-
-A partir da raiz do repositório:
+Em outro PowerShell, a partir da raiz:
 
 ```powershell
 . .\scripts\dev-env.ps1
 cd frontend
-npm install
 npm run dev
 ```
 
-O ponto antes do caminho é obrigatório: ele faz *dot-source* do script, mantendo as funções `npm` e `npx` disponíveis no terminal atual.
+Na primeira execução ou após mudança de dependências:
 
-O `package.json` também chama o Vite diretamente pelo `node`, evitando depender de `vite.cmd`.
+```powershell
+npm install
+```
 
-Caminho padrão configurado no script:
+O ponto antes do caminho é obrigatório para manter as funções temporárias `npm` e `npx` na sessão atual.
+
+Caminho Node padrão:
 
 ```text
 C:\nodejs\node-v20.19.6-win-x64
-```
-
-Para usar outro diretório:
-
-```powershell
-. .\scripts\dev-env.ps1 -NodeHome "C:\caminho\do\node"
 ```
 
 Frontend:
@@ -132,54 +121,65 @@ Frontend:
 http://localhost:5173
 ```
 
-## Primeiro fluxo
+## Endpoints atuais
 
 ```text
-Usuário seleciona planilhas
-        ↓
-React
-        ↓
-FastAPI
-        ↓
-Pandas / OpenPyXL
-        ↓
-Inspeção da estrutura dos arquivos
-        ↓
-JSON estruturado
-        ↓
-React exibe o resultado
+GET  /api/health
+GET  /api/agent/status
+GET  /api/agent/demo
+POST /api/agent/chat-demo
+POST /api/feedback
+POST /api/files/inspect
 ```
 
-Quando os arquivos reais forem recebidos, a próxima etapa será mapear:
+## Fluxo atual
+
+```text
+Planilhas
+   ↓
+React
+   ↓
+FastAPI
+   ↓
+Pandas / OpenPyXL
+   ↓
+Inspeção dos arquivos
+```
+
+Paralelamente, a interface do agente já valida o desenho futuro:
+
+```text
+Dados estruturados
+   ↓
+Regras + RAG
+   ↓
+LLM
+   ↓
+Resumo / riscos / evidências / ações
+   ↓
+Aprovar / rejeitar / corrigir
+   ↓
+SQLite
+```
+
+Hoje essa segunda parte usa somente dados fictícios e `MockProvider`.
+
+## Quando os arquivos reais chegarem
+
+Mapear:
 
 - nome e finalidade de cada arquivo;
-- chave usada para relacionar as planilhas;
+- abas relevantes;
+- significado das colunas;
+- chave utilizada para relacionar planilhas;
 - equivalentes aos PROC-V atuais;
 - tabelas dinâmicas e agrupamentos;
-- regras determinísticas;
+- cálculos determinísticos;
+- regras do processo;
 - exceções;
+- fontes de evidência;
 - conclusão esperada do analista em casos reais.
-
-## Evolução planejada
-
-```text
-Arquivos
-   ↓
-Python / FastAPI
-   ↓
-DPP consolidado
-   ↓
-Regras determinísticas
-   ↓
-RAG + LLM
-   ↓
-Insights e ações sugeridas
-   ↓
-Validação humana
-```
-
-Depois, o módulo será integrado ao sistema maior por meio do n8n.
 
 ## Segurança dos dados
 
-Este repositório é público. **Não versionar planilhas corporativas reais, segredos, tokens, chaves de API ou dados sensíveis.** Arquivos de entrada devem permanecer fora do Git; a pasta local de uploads está ignorada por `.gitignore`.
+Este repositório é público. **Não versionar planilhas corporativas reais, segredos, tokens, chaves de API ou dados sensíveis.** Arquivos `.xlsx`, `.xls`, `.xlsm`, `.csv`, bancos locais e `.env` estão ignorados pelo Git.
