@@ -41,8 +41,27 @@ Nesta etapa o desenvolvimento é local e não depende de n8n, PostgreSQL, Docker
 11. Aprovação/rejeição das recomendações com feedback salvo em SQLite.
 12. Histórico completo das análises estruturadas salvo em SQLite.
 13. Um único launcher inicia backend e frontend no mesmo terminal.
+14. Primeiro parser específico do DPP real implementado no backend.
+15. Recalculo determinístico de NEC, STK TTL, SALDO e Amount em Python.
+16. Comparação automática entre os resultados Python e os valores já consolidados no DPP.
+17. Saldos negativos classificados inicialmente como `INVESTIGAR`, sem recomendar compra automática.
 
-Ainda **não há regras reais do DPP implementadas**. Nenhuma regra de negócio será presumida antes do levantamento das planilhas e do processo do analista.
+## Escopo atual do DPP
+
+Nesta fase, o ORION trabalha **somente com um DPP já preenchido**.
+
+As informações de WIU, EXPLOSÃO, PGD, BOM e outras fontes externas podem chegar ao DPP por fórmulas, mas ainda não são reconstruídas a partir das planilhas de origem. Primeiro será reproduzido e validado o comportamento matemático do DPP existente.
+
+Regras determinísticas já mapeadas:
+
+```text
+NEC     = Σ(REAL do modelo × consumo do material no modelo)
+STK TTL = STK base + EXPLOSÃO + STK OP
+SALDO   = STK TTL - NEC
+Amount  = Preço × SALDO
+```
+
+`OPC` representa um código de material opcional. Um `SALDO` negativo significa apenas que o item precisa ser investigado com os dados atualmente consolidados; não significa automaticamente que a quantidade deve ser comprada.
 
 ## Estrutura principal
 
@@ -57,6 +76,7 @@ orion/
 │   │   ├── models/
 │   │   ├── schemas/
 │   │   ├── services/
+│   │   │   └── dpp_service.py
 │   │   └── main.py
 │   ├── tests/
 │   └── requirements.txt
@@ -186,27 +206,36 @@ GET  /api/analyses/history
 GET  /api/analyses/{analysis_id}
 POST /api/feedback
 POST /api/files/inspect
+POST /api/dpp/analyze
 ```
 
-`POST /api/agent/analyze` já aceita fatos estruturados e métricas calculadas pelo Python, devolve um contrato validado pelo Pydantic e registra a análise no histórico. Enquanto `LLM_PROVIDER=mock`, nenhuma inferência externa é executada.
+### `POST /api/dpp/analyze`
 
-## Quando os arquivos reais chegarem
+Recebe um arquivo `.xlsx` ou `.xlsm` com aba `DPP` e:
 
-Mapear:
+- localiza automaticamente o cabeçalho;
+- identifica o bloco de modelos entre `Grupo Origem` e `Check`;
+- identifica linha `REAL`, linha de `KIT Disponível PGD` e códigos dos modelos;
+- recalcula NEC por material;
+- recalcula STK TTL;
+- recalcula SALDO;
+- recalcula Amount quando houver preço;
+- compara cada cálculo com os valores existentes no DPP;
+- lista os materiais com saldo negativo como `INVESTIGAR`;
+- preserva OPC, STK OP, Check, WIU e comentários como evidências do DPP.
 
-- nome e finalidade de cada arquivo;
-- abas relevantes;
-- significado das colunas;
-- chave utilizada para relacionar planilhas;
-- equivalentes aos PROC-V atuais;
-- tabelas dinâmicas e agrupamentos;
-- cálculos determinísticos;
-- regras do processo;
-- exceções;
-- fontes de evidência;
-- conclusão esperada do analista em casos reais.
+O endpoint ainda não chama a LLM.
 
-Depois, esses fatos alimentarão o endpoint estruturado do ORION.
+## Próximas etapas do DPP
+
+Depois que o cálculo determinístico estiver validado contra diferentes DPPs reais:
+
+- normalizar os materiais e modelos para estruturas internas do ORION;
+- criar uma tela específica para análise do DPP;
+- permitir simulação controlada de valores REAL sem alterar a planilha original;
+- calcular limites de produção por modelo;
+- incorporar regras de investigação validadas pela analista;
+- somente então passar os fatos consolidados para RAG/LLM.
 
 ## Segurança dos dados
 
