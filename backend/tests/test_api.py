@@ -19,6 +19,79 @@ def build_xlsx() -> bytes:
     return buffer.getvalue()
 
 
+def build_dpp_xlsx() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "DPP"
+
+    sheet["E2"] = "OK"
+    sheet["F2"] = "NG"
+
+    sheet["D3"] = "KIT Disponivel PGD (JULHO)"
+    sheet["E3"] = 100
+    sheet["F3"] = 50
+
+    sheet["E4"] = "MODEL-A"
+    sheet["F4"] = "MODEL-B"
+
+    sheet["D5"] = "REAL"
+    sheet["E5"] = 80
+    sheet["F5"] = 50
+
+    sheet["E8"] = "1000-01"
+    sheet["F8"] = "2000-01"
+
+    headers = [
+        "Material",
+        "Descrição",
+        "UM",
+        "Grupo Origem",
+        "MODEL-A",
+        "MODEL-B",
+        "Check",
+        "WIU",
+        "NEC",
+        "STK 01.07",
+        "EXPLOSÃO 01.07",
+        "OPC",
+        "STK OP",
+        "STK TTL",
+        "SALDO",
+        "Preço",
+        "Amount",
+        "Coments",
+    ]
+    for column, value in enumerate(headers, start=1):
+        sheet.cell(9, column, value)
+
+    values = [
+        "MAT-001",
+        "Material de teste",
+        "UN",
+        "Local",
+        2,
+        1,
+        "MODEL-A// MODEL-B",
+        "MODEL-A// MODEL-B",
+        210,
+        100,
+        20,
+        None,
+        0,
+        120,
+        -90,
+        1.5,
+        -135,
+        "Investigar divergência",
+    ]
+    for column, value in enumerate(values, start=1):
+        sheet.cell(10, column, value)
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
 def test_health() -> None:
     with TestClient(app) as client:
         response = client.get("/api/health")
@@ -167,3 +240,36 @@ def test_inspect_xlsx() -> None:
     assert payload["files"][0]["sheets"][0]["name"] == "Estoque"
     assert payload["files"][0]["sheets"][0]["rows"] == 2
     assert payload["files"][0]["sheets"][0]["columns"] == ["material", "quantidade"]
+
+
+def test_dpp_analysis_recalculates_deterministic_fields() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/dpp/analyze?divergence_limit=20",
+            files={
+                "file": (
+                    "DPP_TESTE.xlsx",
+                    build_dpp_xlsx(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["sheet"] == "DPP"
+    assert payload["structure"]["model_count"] == 2
+    assert payload["summary"]["total_materials"] == 1
+    assert payload["summary"]["materials_to_investigate"] == 1
+    assert payload["summary"]["validation"]["nec"]["mismatches"] == 0
+    assert payload["summary"]["validation"]["stk_total"]["mismatches"] == 0
+    assert payload["summary"]["validation"]["saldo"]["mismatches"] == 0
+    assert payload["summary"]["validation"]["amount"]["mismatches"] == 0
+
+    divergence = payload["divergences"][0]
+    assert divergence["material"] == "MAT-001"
+    assert divergence["python"]["nec"] == 210
+    assert divergence["python"]["stock_total"] == 120
+    assert divergence["python"]["balance"] == -90
+    assert divergence["python"]["amount"] == -135
+    assert divergence["python"]["status"] == "INVESTIGAR"
