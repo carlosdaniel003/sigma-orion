@@ -1,4 +1,5 @@
-from typing import Literal
+from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -35,12 +36,24 @@ class AgentMetrics(BaseModel):
 class AgentAnalysis(BaseModel):
     analysis_id: str
     provider: str
+    model: str | None = None
     is_demo: bool
     demo_notice: str
     summary: str
     metrics: AgentMetrics
     risks: list[RiskItem]
     recommendations: list[Recommendation]
+    knowledge_sources: list[str] = Field(default_factory=list)
+
+
+class AgentAnalysisRequest(BaseModel):
+    metrics: AgentMetrics
+    facts: dict[str, Any]
+    objective: str = Field(
+        default="Identificar riscos, explicar evidências e sugerir ações para validação humana.",
+        min_length=5,
+        max_length=2000,
+    )
 
 
 class ChatRequest(BaseModel):
@@ -49,8 +62,10 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     provider: str
+    model: str | None = None
     is_demo: bool
     answer: str
+    knowledge_sources: list[str] = Field(default_factory=list)
 
 
 class FeedbackCreate(BaseModel):
@@ -63,3 +78,17 @@ class FeedbackCreate(BaseModel):
 class FeedbackResponse(BaseModel):
     id: int
     saved: bool = True
+
+
+class AnalysisHistoryItem(BaseModel):
+    id: int
+    analysis_id: str
+    provider: str
+    model: str | None
+    is_demo: bool
+    summary: str
+    created_at: datetime
+
+
+class AnalysisHistoryDetail(AnalysisHistoryItem):
+    payload: AgentAnalysis
