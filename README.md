@@ -10,9 +10,9 @@ Projeto para automatizar a consolidação e a análise do DPP, separando respons
 - **RAG**: conhecimento controlado do processo.
 - **LLM**: interpretação, insights e sugestões de ação.
 - **Humano**: validação e decisão final.
-- **n8n**: será integrado posteriormente como camada de orquestração do sistema maior.
+- **n8n**: será integrado posteriormente como camada mínima de orquestração do sistema maior.
 
-Nesta primeira etapa, o desenvolvimento é local e não depende de n8n, PostgreSQL, Docker ou LLM instalada na máquina.
+Nesta etapa o desenvolvimento é local e não depende de n8n, PostgreSQL, Docker ou uma LLM instalada no notebook.
 
 ## Stack do MVP local
 
@@ -20,26 +20,31 @@ Nesta primeira etapa, o desenvolvimento é local e não depende de n8n, PostgreS
 - Backend: Python + FastAPI
 - Planilhas: Pandas + OpenPyXL
 - Banco: SQLite + SQLAlchemy
-- Conhecimento: arquivos Markdown versionados em `knowledge/`
-- Agente atual: provider `mock`
-- LLM futura: provider externo/corporativo desacoplado da interface
+- Conhecimento: Markdown versionado em `knowledge/`
+- RAG atual: recuperação lexical local, sem serviço externo
+- Provider padrão: `mock`, sem chamada externa
+- Provider real opcional: Groq API
+- Modelo configurável: Qwen via Groq
 
-## O que já funciona
+## Estado atual
 
-1. Seleção de múltiplos arquivos `.xlsx` ou `.csv`.
-2. Envio das planilhas para o FastAPI.
-3. Leitura com Pandas/OpenPyXL.
-4. Identificação de abas, linhas e colunas.
-5. Banco SQLite inicializado automaticamente.
-6. Interface administrativa com visão geral, arquivos e agente.
-7. Contrato estruturado para análise do agente: resumo, métricas, riscos, evidências e recomendações.
-8. Chat demonstrativo preparado para troca futura por LLM real.
-9. Aprovação/rejeição de recomendações com feedback salvo no SQLite.
-10. Dados de demonstração claramente marcados como fictícios.
+1. Seleção e inspeção de múltiplos `.xlsx` e `.csv`.
+2. Leitura de abas, linhas e colunas com Pandas/OpenPyXL.
+3. Interface administrativa com Visão geral, Arquivos, Agente e Histórico.
+4. Provider de LLM desacoplado da aplicação.
+5. `MockProvider` para desenvolvimento sem custo e sem envio de dados.
+6. `GroqProvider` preparado para uso via `.env`.
+7. Base inicial de RAG carregando os arquivos Markdown de `knowledge/`.
+8. Guardrails versionados injetados no prompt do agente.
+9. Contrato estruturado para resumo, riscos, evidências e recomendações.
+10. Métricas continuam sendo fornecidas pelo Python; a LLM não deve recalculá-las.
+11. Aprovação/rejeição das recomendações com feedback salvo em SQLite.
+12. Histórico completo das análises estruturadas salvo em SQLite.
+13. Um único launcher inicia backend e frontend no mesmo terminal.
 
 Ainda **não há regras reais do DPP implementadas**. Nenhuma regra de negócio será presumida antes do levantamento das planilhas e do processo do analista.
 
-## Estrutura
+## Estrutura principal
 
 ```text
 gemeo-digital/
@@ -48,6 +53,7 @@ gemeo-digital/
 │   │   ├── api/
 │   │   ├── core/
 │   │   ├── db/
+│   │   ├── llm/
 │   │   ├── models/
 │   │   ├── schemas/
 │   │   ├── services/
@@ -63,106 +69,126 @@ gemeo-digital/
 │   ├── guardrails.md
 │   └── regras-globais.md
 ├── scripts/
-│   └── dev-env.ps1
+│   ├── dev-env.ps1
+│   ├── dev.py
+│   └── start-dev.ps1
 └── data/                # gerada localmente e ignorada pelo Git
 ```
 
-## Executar o backend
+## Instalação inicial
 
-A partir da raiz do repositório, usando a `.venv` criada na raiz:
+Na raiz do repositório, crie a `.venv` apenas uma vez e instale as dependências:
 
 ```powershell
-cd C:\gemeo-digital\backend
-..\.venv\Scripts\python.exe -m pip install -r requirements.txt
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r .\backend\requirements.txt
 ```
 
-Backend:
-
-```text
-http://localhost:8000
-```
-
-Documentação automática:
-
-```text
-http://localhost:8000/docs
-```
-
-## Executar o frontend no notebook corporativo
-
-A política de grupo bloqueia `npm.cmd` e alguns executáveis `.cmd`. O projeto inclui um script que usa diretamente o Node portátil e o `npm-cli.js`.
-
-Em outro PowerShell, a partir da raiz:
+No notebook corporativo, carregue o Node portátil e instale o frontend uma vez:
 
 ```powershell
 . .\scripts\dev-env.ps1
 cd frontend
-npm run dev
+npm install
+cd ..
 ```
 
-Na primeira execução ou após mudança de dependências:
+## Executar tudo em um único terminal
+
+Depois da instalação inicial, a partir de `C:\gemeo-digital`:
 
 ```powershell
-npm install
+.\scripts\start-dev.ps1
 ```
 
-O ponto antes do caminho é obrigatório para manter as funções temporárias `npm` e `npx` na sessão atual.
+O launcher inicia e mantém no mesmo terminal:
 
-Caminho Node padrão:
+```text
+FastAPI  → http://localhost:8000
+Docs     → http://localhost:8000/docs
+React    → http://localhost:5173
+```
+
+Use `Ctrl+C` para encerrar frontend e backend juntos.
+
+O caminho padrão do Node portátil é:
 
 ```text
 C:\nodejs\node-v20.19.6-win-x64
 ```
 
-Frontend:
+Outro caminho pode ser informado assim:
+
+```powershell
+.\scripts\start-dev.ps1 -NodeHome "C:\outro\caminho\node"
+```
+
+## Provider da LLM
+
+Por padrão o projeto funciona sem API externa:
 
 ```text
-http://localhost:5173
+LLM_PROVIDER=mock
 ```
+
+Para testar Groq/Qwen, copie `.env.example` para `.env` e altere localmente:
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=sua_chave_local
+GROQ_MODEL=qwen/qwen3.6-27b
+```
+
+Nunca envie a chave para o Git. O arquivo `.env` está ignorado.
+
+O restante da aplicação não conhece detalhes da Groq. O backend depende somente do contrato `LLMProvider`, permitindo trocar o provider futuramente por Ollama ou uma infraestrutura corporativa.
+
+## RAG atual
+
+A primeira versão do RAG não instala modelo de embeddings no notebook. Ela usa recuperação lexical local sobre os Markdown em `knowledge/`.
+
+```text
+Pergunta / fatos
+      ↓
+knowledge_service
+      ↓
+trechos relevantes
+      +
+guardrails.md
+      ↓
+LLMProvider
+```
+
+Essa etapa valida estrutura, fontes e guardrails com custo zero. Depois, o retriever poderá ser substituído por embeddings sem mudar o contrato do agente.
+
+## Regra de precisão
+
+```text
+Cálculo objetivo / regra determinística → Python
+Conhecimento do processo              → RAG
+Interpretação / insight               → LLM
+Decisão                               → Humano
+```
+
+A LLM recebe as métricas já calculadas e é instruída a não substituí-las nem inventar fatos ausentes.
 
 ## Endpoints atuais
 
 ```text
 GET  /api/health
 GET  /api/agent/status
+GET  /api/knowledge/status
 GET  /api/agent/demo
 POST /api/agent/chat-demo
+POST /api/agent/chat
+POST /api/agent/analyze
+GET  /api/analyses/history
+GET  /api/analyses/{analysis_id}
 POST /api/feedback
 POST /api/files/inspect
 ```
 
-## Fluxo atual
-
-```text
-Planilhas
-   ↓
-React
-   ↓
-FastAPI
-   ↓
-Pandas / OpenPyXL
-   ↓
-Inspeção dos arquivos
-```
-
-Paralelamente, a interface do agente já valida o desenho futuro:
-
-```text
-Dados estruturados
-   ↓
-Regras + RAG
-   ↓
-LLM
-   ↓
-Resumo / riscos / evidências / ações
-   ↓
-Aprovar / rejeitar / corrigir
-   ↓
-SQLite
-```
-
-Hoje essa segunda parte usa somente dados fictícios e `MockProvider`.
+`POST /api/agent/analyze` já aceita fatos estruturados e métricas calculadas pelo Python, devolve um contrato validado pelo Pydantic e registra a análise no histórico. Enquanto `LLM_PROVIDER=mock`, nenhuma inferência externa é executada.
 
 ## Quando os arquivos reais chegarem
 
@@ -179,6 +205,8 @@ Mapear:
 - exceções;
 - fontes de evidência;
 - conclusão esperada do analista em casos reais.
+
+Depois, esses fatos alimentarão o endpoint estruturado do agente.
 
 ## Segurança dos dados
 
