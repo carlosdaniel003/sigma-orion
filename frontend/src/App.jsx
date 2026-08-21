@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 
 const API_URL = 'http://localhost:8000'
 
+async function fetchJson(path, options) {
+  const response = await fetch(`${API_URL}${path}`, options)
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.detail || `Falha em ${path}`)
+  return data
+}
+
 function App() {
   const [activeView, setActiveView] = useState('overview')
   const [files, setFiles] = useState([])
@@ -9,22 +16,29 @@ function App() {
   const [loadingFiles, setLoadingFiles] = useState(false)
   const [error, setError] = useState('')
   const [agentStatus, setAgentStatus] = useState(null)
+  const [knowledgeStatus, setKnowledgeStatus] = useState(null)
   const [analysis, setAnalysis] = useState(null)
+  const [history, setHistory] = useState([])
   const [question, setQuestion] = useState('')
   const [chatAnswer, setChatAnswer] = useState('')
+  const [chatSources, setChatSources] = useState([])
   const [chatLoading, setChatLoading] = useState(false)
   const [feedbackState, setFeedbackState] = useState({})
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/api/agent/status`).then((response) => response.json()),
-      fetch(`${API_URL}/api/agent/demo`).then((response) => response.json()),
+      fetchJson('/api/agent/status'),
+      fetchJson('/api/knowledge/status'),
+      fetchJson('/api/agent/demo'),
+      fetchJson('/api/analyses/history'),
     ])
-      .then(([statusData, analysisData]) => {
+      .then(([statusData, knowledgeData, analysisData, historyData]) => {
         setAgentStatus(statusData)
+        setKnowledgeStatus(knowledgeData)
         setAnalysis(analysisData)
+        setHistory(historyData)
       })
-      .catch(() => setError('Não foi possível carregar o estado inicial do backend.'))
+      .catch((requestError) => setError(requestError.message || 'Não foi possível carregar o backend.'))
   }, [])
 
   async function inspectFiles() {
@@ -38,14 +52,7 @@ function App() {
     files.forEach((file) => formData.append('files', file))
 
     try {
-      const response = await fetch(`${API_URL}/api/files/inspect`, {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await response.json()
-
-      if (!response.ok) throw new Error(data.detail || 'Falha ao analisar os arquivos.')
-      setFileResult(data)
+      setFileResult(await fetchJson('/api/files/inspect', { method: 'POST', body: formData }))
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -60,23 +67,21 @@ function App() {
       if (comment === null) return
     }
 
-    const response = await fetch(`${API_URL}/api/feedback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        analysis_id: analysis.analysis_id,
-        recommendation_id: recommendation.id,
-        decision,
-        comment,
-      }),
-    })
-
-    if (!response.ok) {
-      setError('Não foi possível registrar o feedback.')
-      return
+    try {
+      await fetchJson('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analysis_id: analysis.analysis_id,
+          recommendation_id: recommendation.id,
+          decision,
+          comment,
+        }),
+      })
+      setFeedbackState((current) => ({ ...current, [recommendation.id]: decision }))
+    } catch (requestError) {
+      setError(requestError.message || 'Não foi possível registrar o feedback.')
     }
-
-    setFeedbackState((current) => ({ ...current, [recommendation.id]: decision }))
   }
 
   async function askAgent(event) {
@@ -85,16 +90,17 @@ function App() {
 
     setChatLoading(true)
     setChatAnswer('')
+    setChatSources([])
+    setError('')
 
     try {
-      const response = await fetch(`${API_URL}/api/agent/chat-demo`, {
+      const data = await fetchJson('/api/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question }),
       })
-      const data = await response.json()
-      if (!response.ok) throw new Error('Falha ao consultar o agente.')
       setChatAnswer(data.answer)
+      setChatSources(data.knowledge_sources || [])
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -121,6 +127,9 @@ function App() {
           <button className={activeView === 'agent' ? 'nav-active' : ''} onClick={() => setActiveView('agent')}>
             Agente
           </button>
+          <button className={activeView === 'history' ? 'nav-active' : ''} onClick={() => setActiveView('history')}>
+            Histórico
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -139,8 +148,33 @@ function App() {
                 <span className="eyebrow">CONTROLE E RASTREABILIDADE</span>
                 <h2>Visão geral</h2>
               </div>
-              <span className="status">Agente: {agentStatus?.provider || 'carregando'}</span>
+              <span className="status">
+                Agente: {agentStatus?.provider || 'carregando'} / {agentStatus?.model || '-'}
+              </span>
             </header>
+
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <h3>Estado da arquitetura</h3>
+                  <p>As camadas estão separadas para permitir trocar LLM e RAG sem alterar o restante da aplicação.</p>
+                </div>
+              </div>
+              <div className="flow-grid">
+                <FlowStep number="01" title="Python" text="Lê, relaciona, valida e calcula." />
+                <FlowStep
+                  number="02"
+                  title="RAG"
+                  text={`${knowledgeStatus?.mode || 'carregando'} · ${knowledgeStatus?.document_count ?? 0} documento(s)`}
+                />
+                <FlowStep
+                  number="03"
+                  title="LLM"
+                  text={`${agentStatus?.provider || 'carregando'} · modo ${agentStatus?.mode || '-'}`}
+                />
+                <FlowStep number="04" title="Humano" text="Valida, corrige e decide." />
+              </div>
+            </section>
 
             {analysis && (
               <>
@@ -150,21 +184,6 @@ function App() {
                   <Metric label="Críticos" value={analysis.metrics.critical} tone="critical" />
                   <Metric label="Atenção" value={analysis.metrics.attention} tone="attention" />
                   <Metric label="Atendidos" value={analysis.metrics.ok} tone="ok" />
-                </section>
-
-                <section className="panel">
-                  <div className="panel-header">
-                    <div>
-                      <h3>Fluxo projetado</h3>
-                      <p>O núcleo já está separado para receber as regras reais quando os arquivos chegarem.</p>
-                    </div>
-                  </div>
-                  <div className="flow-grid">
-                    <FlowStep number="01" title="Python" text="Lê, relaciona, valida e calcula." />
-                    <FlowStep number="02" title="RAG" text="Recupera regras e conhecimento aprovado." />
-                    <FlowStep number="03" title="LLM" text="Interpreta fatos e sugere ações." />
-                    <FlowStep number="04" title="Humano" text="Valida, corrige e decide." />
-                  </div>
                 </section>
               </>
             )}
@@ -239,15 +258,19 @@ function App() {
               <div>
                 <span className="eyebrow">HUMAN IN THE LOOP</span>
                 <h2>Agente DPP</h2>
-                <p>Interface preparada para a futura LLM. Neste momento as respostas são demonstrativas.</p>
+                <p>
+                  O chat já usa o provider configurado. O cenário abaixo continua fictício até recebermos os dados reais.
+                </p>
               </div>
-              <span className="status">Provider: {analysis.provider}</span>
+              <span className="status">
+                {agentStatus?.provider || analysis.provider} / {agentStatus?.model || analysis.model || '-'}
+              </span>
             </header>
 
             <div className="alert demo">{analysis.demo_notice}</div>
 
             <section className="panel">
-              <h3>Resumo da análise</h3>
+              <h3>Resumo da análise demonstrativa</h3>
               <p>{analysis.summary}</p>
             </section>
 
@@ -326,20 +349,72 @@ function App() {
               <div className="panel-header">
                 <div>
                   <h3>Converse com o agente</h3>
-                  <p>O contrato do chat já está pronto para substituir o mock pela LLM.</p>
+                  <p>Provider, guardrails e recuperação da base de conhecimento passam pelo backend.</p>
                 </div>
               </div>
               <form className="chat-form" onSubmit={askAgent}>
                 <input
                   value={question}
                   onChange={(event) => setQuestion(event.target.value)}
-                  placeholder="Ex.: Por que MAT-DEMO-001 está crítico?"
+                  placeholder="Ex.: Quais limites o agente deve respeitar?"
                 />
                 <button className="primary-button" disabled={chatLoading || !question.trim()}>
                   {chatLoading ? 'Consultando...' : 'Perguntar'}
                 </button>
               </form>
-              {chatAnswer && <div className="chat-answer">{chatAnswer}</div>}
+              {chatAnswer && (
+                <div className="chat-answer">
+                  <strong>Resposta</strong>
+                  <p>{chatAnswer}</p>
+                  {chatSources.length > 0 && (
+                    <small>Fontes do RAG: {chatSources.join(' · ')}</small>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="panel">
+              <h3>Base de conhecimento</h3>
+              <p>{knowledgeStatus?.message}</p>
+              <div className="columns">
+                {(knowledgeStatus?.files || []).join(' · ') || 'Nenhum documento carregado.'}
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeView === 'history' && (
+          <>
+            <header className="page-header">
+              <div>
+                <span className="eyebrow">AUDITORIA</span>
+                <h2>Histórico</h2>
+                <p>Análises estruturadas executadas pelo endpoint do agente ficam registradas no SQLite.</p>
+              </div>
+              <span className="status">{history.length} registro(s)</span>
+            </header>
+
+            <section className="panel">
+              {history.length === 0 ? (
+                <p>
+                  Nenhuma análise estruturada registrada ainda. Isso é esperado enquanto não temos os fatos reais do DPP.
+                </p>
+              ) : (
+                <div className="recommendation-list">
+                  {history.map((item) => (
+                    <article className="recommendation" key={item.analysis_id}>
+                      <div>
+                        <h4>{item.analysis_id}</h4>
+                        <p>{item.summary}</p>
+                      </div>
+                      <div className="feedback-actions">
+                        <span className="status">{item.provider} / {item.model || '-'}</span>
+                        <small>{new Date(item.created_at).toLocaleString('pt-BR')}</small>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}
