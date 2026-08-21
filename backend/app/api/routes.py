@@ -19,6 +19,7 @@ from app.services.agent_service import (
     build_demo_analysis,
     provider_status,
 )
+from app.services.dpp_service import analyze_dpp_file
 from app.services.excel_service import inspect_uploaded_file
 from app.services.history_service import get_analysis_history, list_analysis_history
 from app.services.knowledge_service import knowledge_status
@@ -125,3 +126,19 @@ async def inspect_files(files: list[UploadFile] = File(...)) -> dict:
         "files_received": len(results),
         "files": results,
     }
+
+
+@router.post("/dpp/analyze")
+async def analyze_dpp(
+    file: UploadFile = File(...),
+    divergence_limit: int = Query(default=100, ge=1, le=500),
+) -> dict:
+    try:
+        return await analyze_dpp_file(file, divergence_limit=divergence_limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível analisar o DPP '{file.filename}': {exc}",
+        ) from exc
