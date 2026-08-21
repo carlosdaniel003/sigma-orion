@@ -57,6 +57,8 @@ gemeo-digital/
 │   ├── glossario.md
 │   ├── guardrails.md
 │   └── regras-globais.md
+├── scripts/
+│   └── dev-env.ps1
 └── data/                # gerada localmente e ignorada pelo Git
 ```
 
@@ -87,12 +89,41 @@ O ambiente virtual e as bibliotecas ficam dentro da pasta do projeto, sem instal
 
 ## Executar o frontend
 
-Em outro terminal:
+### Ambiente comum
 
 ```powershell
 cd frontend
 npm install
 npm run dev
+```
+
+### Notebook corporativo com Node portátil
+
+A política de grupo pode bloquear `npm.cmd` e os executáveis `.cmd` criados em `node_modules/.bin`. O projeto inclui um script temporário para carregar o Node portátil e expor `npm`/`npx` como funções somente na sessão atual do PowerShell.
+
+A partir da raiz do repositório:
+
+```powershell
+. .\scripts\dev-env.ps1
+cd frontend
+npm install
+npm run dev
+```
+
+O ponto antes do caminho é obrigatório: ele faz *dot-source* do script, mantendo as funções `npm` e `npx` disponíveis no terminal atual.
+
+O `package.json` também chama o Vite diretamente pelo `node`, evitando depender de `vite.cmd`.
+
+Caminho padrão configurado no script:
+
+```text
+C:\nodejs\node-v20.19.6-win-x64
+```
+
+Para usar outro diretório:
+
+```powershell
+. .\scripts\dev-env.ps1 -NodeHome "C:\caminho\do\node"
 ```
 
 Frontend:
