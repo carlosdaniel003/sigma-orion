@@ -82,7 +82,13 @@ def _find_header_row(rows: list[tuple], max_column: int) -> int:
     raise ValueError("Não foi possível localizar a linha de cabeçalho do DPP.")
 
 
-def _find_label_row(rows: list[tuple], max_column: int, header_row: int, label: str, contains: bool = False) -> int | None:
+def _find_label_row(
+    rows: list[tuple],
+    max_column: int,
+    header_row: int,
+    label: str,
+    contains: bool = False,
+) -> int | None:
     target = _normalize(label)
     for row in range(1, header_row):
         for column in range(1, min(max_column, 8) + 1):
@@ -139,7 +145,12 @@ def _looks_like_model_code(value: object) -> bool:
     return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/]*-[A-Za-z0-9._/-]+", text))
 
 
-def _detect_model_code_row(rows: list[tuple], header_row: int, model_start: int, model_end: int) -> int | None:
+def _detect_model_code_row(
+    rows: list[tuple],
+    header_row: int,
+    model_start: int,
+    model_end: int,
+) -> int | None:
     candidates = range(max(1, header_row - 4), header_row)
     best_row = None
     best_score = 0
@@ -267,6 +278,7 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
     optional_material_links = 0
     check_wiu_equal = 0
     check_wiu_different = 0
+    materials: list[dict] = []
     divergences: list[dict] = []
 
     for row in range(header_row + 1, len(rows) + 1):
@@ -320,7 +332,28 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
         if optional_material:
             optional_material_links += 1
 
-        if balance_python < -VALIDATION_ABS_TOL:
+        status = "INVESTIGAR" if balance_python < -VALIDATION_ABS_TOL else "OK"
+        validation_ok = all(
+            result is not False
+            for result in (nec_match, stock_total_match, balance_match, amount_match)
+        )
+        materials.append(
+            {
+                "material": material,
+                "description": _as_text(_cell(rows, row, description_col)),
+                "um": _as_text(_cell(rows, row, um_col)),
+                "group_origin": _as_text(_cell(rows, row, origin_col)),
+                "used_models": used_models,
+                "optional_material": optional_material,
+                "nec": necessity_python,
+                "stock_total": stock_total_python,
+                "balance": balance_python,
+                "status": status,
+                "validation_ok": validation_ok,
+            }
+        )
+
+        if status == "INVESTIGAR":
             materials_to_investigate += 1
             divergences.append(
                 {
@@ -359,6 +392,7 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
                 }
             )
 
+    materials.sort(key=lambda item: (item["status"] != "INVESTIGAR", item["material"]))
     divergences.sort(key=lambda item: item["python"]["balance"])
     safe_limit = min(max(divergence_limit, 1), 500)
 
@@ -381,6 +415,7 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
             "explosion_header": headers[explosion_col],
         },
         "models": models,
+        "materials": materials,
         "summary": {
             "total_materials": total_materials,
             "materials_to_investigate": materials_to_investigate,
