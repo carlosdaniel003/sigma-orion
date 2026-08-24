@@ -12,7 +12,7 @@ function App() {
     return (
       <div>
         <div className="legacy-return-bar">
-          <button type="button" onClick={() => setActiveView('consolidation')}>Voltar para Consolidação DPP</button>
+          <button type="button" onClick={() => setActiveView('consolidation')}>Voltar para Novo DPP</button>
           <span>Módulos anteriores do MVP</span>
         </div>
         <LegacyApp />
@@ -26,9 +26,9 @@ function App() {
         <div>
           <span className="eyebrow">FLUXO MENSAL</span>
           <h1>ORION</h1>
-          <p>Consolidação do DPP a partir das fontes mensais, cálculo determinístico e rastreabilidade.</p>
+          <p>Geração do novo DPP a partir da base histórica e das fontes mensais, com cálculo determinístico e rastreabilidade.</p>
           <nav>
-            <button className={activeView === 'consolidation' ? 'nav-active' : ''} onClick={() => setActiveView('consolidation')}>Consolidar DPP</button>
+            <button className={activeView === 'consolidation' ? 'nav-active' : ''} onClick={() => setActiveView('consolidation')}>Gerar novo DPP</button>
             <button className={activeView === 'validation' ? 'nav-active' : ''} onClick={() => setActiveView('validation')}>Validar DPP pronto</button>
             <button onClick={() => setActiveView('legacy')}>Agente, Histórico e Diagnóstico</button>
           </nav>

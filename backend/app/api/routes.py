@@ -1,4 +1,5 @@
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from pydantic import BaseModel
 
 from app.db.database import SessionLocal
 from app.models.feedback import Feedback
@@ -20,12 +21,19 @@ from app.services.agent_service import (
     provider_status,
 )
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
+from app.services.dpp_monthly_service import generate_monthly_dpp
+from app.services.dpp_scenario_service import recalculate_monthly_scenario
 from app.services.dpp_service import analyze_dpp_file
 from app.services.excel_service import inspect_uploaded_file
 from app.services.history_service import get_analysis_history, list_analysis_history
 from app.services.knowledge_service import knowledge_status
 
 router = APIRouter(prefix="/api")
+
+
+class DppMonthlyRecalculateRequest(BaseModel):
+    scenario_id: str
+    real_by_model: dict[str, float]
 
 
 @router.get("/health")
@@ -150,6 +158,46 @@ async def consolidate_dpp(
             status_code=422,
             detail=f"Não foi possível consolidar as fontes mensais do DPP: {exc}",
         ) from exc
+
+
+@router.post("/dpp/monthly/generate")
+async def generate_monthly_dpp_route(
+    base_dpp: UploadFile = File(...),
+    wiu: UploadFile = File(...),
+    explosion: UploadFile = File(...),
+    stock: UploadFile = File(...),
+    pgd: UploadFile = File(...),
+    reference_month: str = Form(...),
+    open_orders: UploadFile | None = File(default=None),
+) -> dict:
+    try:
+        return await generate_monthly_dpp(
+            base_dpp=base_dpp,
+            wiu=wiu,
+            explosion=explosion,
+            stock=stock,
+            pgd=pgd,
+            reference_month=reference_month,
+            open_orders=open_orders,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível gerar o novo DPP mensal: {exc}",
+        ) from exc
+
+
+@router.post("/dpp/monthly/recalculate")
+def recalculate_monthly_dpp(payload: DppMonthlyRecalculateRequest) -> dict:
+    try:
+        return recalculate_monthly_scenario(
+            scenario_id=payload.scenario_id,
+            real_by_model=payload.real_by_model,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/dpp/analyze")

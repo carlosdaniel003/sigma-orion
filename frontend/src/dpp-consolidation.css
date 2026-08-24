@@ -8,6 +8,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.source-workspace-six {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .source-card {
   min-height: 220px;
   padding: 20px;
@@ -81,6 +85,38 @@
   color: #7b867f;
 }
 
+.monthly-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 20px;
+  align-items: end;
+}
+
+.monthly-controls label {
+  display: grid;
+  gap: 7px;
+}
+
+.monthly-controls label span {
+  color: #637068;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.monthly-controls input {
+  width: 100%;
+  border: 1px solid #cfd8d2;
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: #fff;
+}
+
+.monthly-controls p {
+  margin: 5px 0 0;
+}
+
 .consolidation-action-panel {
   display: flex;
   align-items: center;
@@ -98,6 +134,10 @@
 
 .consolidation-metrics {
   margin-top: 18px;
+}
+
+.monthly-metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .consolidation-tabs {
@@ -377,16 +417,19 @@
   margin-top: 10px;
 }
 
-.open-entry-list article {
+.open-entry-list article,
+.open-entry-card {
   display: grid;
   gap: 4px;
   padding: 10px;
+  margin-top: 7px;
   border-radius: 10px;
   background: #fff;
   border: 1px solid #dde5e0;
 }
 
-.open-entry-list article span {
+.open-entry-list article span,
+.open-entry-card span {
   color: #657169;
   font-size: 0.78rem;
 }
@@ -453,16 +496,36 @@
   min-width: 220px;
 }
 
+.real-table input {
+  width: 120px;
+  border: 1px solid #cfd8d2;
+  border-radius: 8px;
+  padding: 8px 9px;
+  text-align: right;
+  background: #fff;
+}
+
+.row-warning td {
+  background: #fffaf0;
+}
+
 @media (max-width: 1450px) {
-  .source-workspace-four {
+  .source-workspace-four,
+  .source-workspace-six {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .monthly-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 1100px) {
   .source-workspace,
   .source-workspace-four,
-  .consolidation-grid-two {
+  .source-workspace-six,
+  .consolidation-grid-two,
+  .monthly-controls {
     grid-template-columns: 1fr;
   }
 
@@ -484,7 +547,8 @@
 
   .consolidation-filters,
   .capability-list,
-  .detail-kpis {
+  .detail-kpis,
+  .monthly-metrics {
     grid-template-columns: 1fr;
   }
 }

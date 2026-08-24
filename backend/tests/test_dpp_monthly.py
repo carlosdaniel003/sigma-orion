@@ -1,0 +1,193 @@
+from datetime import datetime
+from io import BytesIO
+
+from fastapi.testclient import TestClient
+from openpyxl import Workbook
+
+from app.main import app
+
+MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _save(workbook: Workbook) -> bytes:
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def build_base_dpp() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "DPP"
+    sheet["A3"] = "KIT Disponivel PGD (JULHO)"
+    sheet["E3"] = 8
+    sheet["F3"] = 3
+    sheet["A5"] = "REAL"
+    sheet["E5"] = 8
+    sheet["F5"] = 3
+    sheet["E8"] = "1000-01"
+    sheet["F8"] = "2000-01"
+    headers = [
+        "Material", "Descrição", "UM", "Grupo Origem", "MODEL-A", "MODEL-B",
+        "Check", "WIU", "NEC", "STK 01.07", "EXPLOSÃO 01.07", "OPC",
+        "STK OP", "STK TTL", "SALDO", "Preço", "Amount", "Coments",
+    ]
+    for col, value in enumerate(headers, start=1):
+        sheet.cell(9, col).value = value
+    sheet.append(["MAT-001", "Material atual", "UN", "Importado", 2.5, 1, "", "", 0, 0, 0, "ALT-001", 0, 0, 0, 0, 0, ""])
+    sheet.append(["OLD-001", "Material histórico", "UN", "Importado", 0, 0, "", "", 0, 0, 0, None, 0, 0, 0, 0, 0, ""])
+    return _save(workbook)
+
+
+def build_wiu() -> bytes:
+    workbook = Workbook()
+    power = workbook.active
+    power.title = "POWER"
+    power.append([
+        "Código", "Modelo", "Nível", "Componente", "Descrição", "Uso BOM",
+        "Unidade de Medida", "Centro", "Grupo Origem", "Total preço médio móvel", "LT alternativa",
+    ])
+    power.append(["1000-01", "MODEL-A", 1, "MAT-001", "Material atual", 2.5, "UN", 1063, "Importado", 0, 1])
+    power.append(["2000-01", "MODEL-B", 1, "MAT-001", "Material atual", 1, "UN", 1063, "Importado", 0, 1])
+    power.append(["1000-01", "MODEL-A", 1, "NEW-001", "Material novo", 1, "UN", 1063, "Importado", 0, 1])
+    matrix = workbook.create_sheet("WIU JULHO")
+    matrix["E1"] = "1000-01"
+    matrix["F1"] = "2000-01"
+    matrix["E2"] = "MODEL-A"
+    matrix["F2"] = "MODEL-B"
+    return _save(workbook)
+
+
+def build_explosion() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "CONSOLIDADO"
+    sheet.append(["Material", "Descrição", "UM", "EXPLOSÃO (01.07.2026)"])
+    sheet.append(["MAT-001", "Material atual", "UN", 20])
+    sheet.append(["NEW-001", "Material novo", "UN", 5])
+    return _save(workbook)
+
+
+def build_stock() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "CONSOLIDADO"
+    sheet.append(["Material", "Descrição", "UOM", "Controle qualidade", "Utilização livre", "STK TTL (01.07.2026)"])
+    sheet.append(["MAT-001", "Material atual", "UN", 0, 100, 100])
+    sheet.append(["ALT-001", "Alternativo", "UN", 0, 30, 30])
+    sheet.append(["OLD-001", "Material histórico", "UN", 0, 50, 50])
+    sheet.append(["NEW-001", "Material novo", "UN", 0, 10, 10])
+    return _save(workbook)
+
+
+def build_pgd() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "PGD TESTE"
+    sheet["B7"] = "PRODUCTION"
+    sheet["C7"] = datetime(2026, 6, 1)
+    sheet["D7"] = datetime(2026, 7, 1)
+    sheet["A9"] = "1000-01"
+    sheet["B9"] = "MODEL-A"
+    sheet["B13"] = "KIT DISPONÍVEL"
+    sheet["D13"] = 10
+    sheet["A22"] = "2000-01"
+    sheet["B22"] = "MODEL-B"
+    sheet["B26"] = "KIT DISPONÍVEL"
+    sheet["D26"] = 4
+    return _save(workbook)
+
+
+def build_open() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "OPEN JULHO"
+    sheet.append(["STATUS", "PO", "PI", "LOTE", "MODELO", "Material", "Texto breve", "Qtd.do pedido", "UOM"])
+    sheet.append(["EM - Pendente", "PO-1", "PI-1", "43", "MODEL-A", "MAT-001", "Material atual", 40, "UN"])
+    return _save(workbook)
+
+
+def test_monthly_generation_uses_history_pgd_and_opc_stock() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/dpp/monthly/generate",
+            data={"reference_month": "2026-07"},
+            files={
+                "base_dpp": ("DPP_JUNHO.xlsx", build_base_dpp(), MIME),
+                "wiu": ("WIU_JULHO.xlsx", build_wiu(), MIME),
+                "explosion": ("EXPLOSAO_JULHO.xlsm", build_explosion(), MIME),
+                "stock": ("STK_JULHO.xlsx", build_stock(), MIME),
+                "pgd": ("PGD.xlsx", build_pgd(), MIME),
+                "open_orders": ("OPEN.xlsx", build_open(), MIME),
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "monthly_dpp"
+    assert payload["summary"]["materials"] == 3
+    assert payload["summary"]["historical_materials"] == 2
+    assert payload["summary"]["historical_outside_wiu"] == 1
+    assert payload["summary"]["new_materials_from_wiu"] == 1
+    assert payload["summary"]["inherited_optional_materials"] == 1
+    assert payload["summary"]["optional_materials_with_stock"] == 1
+    assert payload["summary"]["pgd_unresolved_positive"] == 0
+
+    model_by_name = {item["name"]: item for item in payload["models"]}
+    assert model_by_name["MODEL-A"]["kit_pgd"] == 10
+    assert model_by_name["MODEL-A"]["real"] == 10
+    assert model_by_name["MODEL-B"]["kit_pgd"] == 4
+
+    material_by_code = {item["material"]: item for item in payload["materials"]}
+    current = material_by_code["MAT-001"]
+    assert current["stock_sap"] == 100
+    assert current["explosion"] == 20
+    assert current["stock_op"] == 30
+    assert current["stock_total"] == 150
+    assert current["nec"] == 29
+    assert current["balance"] == 121
+    assert current["open_investigation"]["pending_records"] == 1
+
+    historical = material_by_code["OLD-001"]
+    assert historical["from_history"] is True
+    assert historical["in_current_wiu"] is False
+    assert historical["nec"] == 0
+    assert historical["balance"] == 50
+
+
+def test_monthly_real_can_be_recalculated_without_reuploading_files() -> None:
+    with TestClient(app) as client:
+        generated = client.post(
+            "/api/dpp/monthly/generate",
+            data={"reference_month": "2026-07"},
+            files={
+                "base_dpp": ("DPP_JUNHO.xlsx", build_base_dpp(), MIME),
+                "wiu": ("WIU_JULHO.xlsx", build_wiu(), MIME),
+                "explosion": ("EXPLOSAO_JULHO.xlsm", build_explosion(), MIME),
+                "stock": ("STK_JULHO.xlsx", build_stock(), MIME),
+                "pgd": ("PGD.xlsx", build_pgd(), MIME),
+            },
+        )
+        assert generated.status_code == 200
+        scenario_id = generated.json()["scenario_id"]
+
+        recalculated = client.post(
+            "/api/dpp/monthly/recalculate",
+            json={
+                "scenario_id": scenario_id,
+                "real_by_model": {"MODEL-A": 50, "MODEL-B": 4},
+            },
+        )
+
+    assert recalculated.status_code == 200
+    payload = recalculated.json()
+    assert payload["summary"]["models_above_kit"] == 1
+    model_by_name = {item["name"]: item for item in payload["models"]}
+    assert model_by_name["MODEL-A"]["real"] == 50
+
+    material_by_code = {item["material"]: item for item in payload["materials"]}
+    assert material_by_code["MAT-001"]["nec"] == 129
+    assert material_by_code["MAT-001"]["balance"] == 21
+    assert material_by_code["NEW-001"]["nec"] == 50
+    assert material_by_code["NEW-001"]["balance"] == -35
+    assert material_by_code["NEW-001"]["status"] == "INVESTIGAR"
