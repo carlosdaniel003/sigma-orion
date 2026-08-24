@@ -107,6 +107,31 @@ def build_open() -> bytes:
     return _save(workbook)
 
 
+def build_expected_dpp() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "DPP"
+    sheet["A3"] = "KIT Disponivel PGD (JULHO)"
+    sheet["E3"] = 10
+    sheet["F3"] = 4
+    sheet["A5"] = "REAL"
+    sheet["E5"] = 8
+    sheet["F5"] = 3
+    sheet["E8"] = "1000-01"
+    sheet["F8"] = "2000-01"
+    headers = [
+        "Material", "Descrição", "UM", "Grupo Origem", "MODEL-A", "MODEL-B",
+        "Check", "WIU", "NEC", "STK 01.07", "EXPLOSÃO 01.07", "OPC",
+        "STK OP", "STK TTL", "SALDO", "Preço", "Amount", "Coments",
+    ]
+    for col, value in enumerate(headers, start=1):
+        sheet.cell(9, col).value = value
+    sheet.append(["MAT-001", "Material atual", "UN", "Importado", 2.5, 1, "", "", 23, 100, 20, "ALT-001", 30, 150, 127, 0, 0, ""])
+    sheet.append(["OLD-001", "Material histórico", "UN", "Importado", 0, 0, "", "", 0, 50, 0, None, 0, 50, 50, 0, 0, ""])
+    sheet.append(["NEW-001", "Material novo", "UN", "Importado", 1, 0, "", "", 8, 10, 5, None, 0, 15, 7, 0, 0, ""])
+    return _save(workbook)
+
+
 def test_monthly_generation_uses_history_pgd_and_opc_stock() -> None:
     with TestClient(app) as client:
         response = client.post(
@@ -191,3 +216,36 @@ def test_monthly_real_can_be_recalculated_without_reuploading_files() -> None:
     assert material_by_code["NEW-001"]["nec"] == 50
     assert material_by_code["NEW-001"]["balance"] == -35
     assert material_by_code["NEW-001"]["status"] == "INVESTIGAR"
+
+
+def test_monthly_reconstruction_test_matches_known_consolidated_dpp() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/dpp/monthly/test",
+            data={"reference_month": "2026-07"},
+            files={
+                "base_dpp": ("DPP_JUNHO.xlsx", build_base_dpp(), MIME),
+                "expected_dpp": ("DPP_JULHO_CONSOLIDADO.xlsx", build_expected_dpp(), MIME),
+                "wiu": ("WIU_JULHO.xlsx", build_wiu(), MIME),
+                "explosion": ("EXPLOSAO_JULHO.xlsm", build_explosion(), MIME),
+                "stock": ("STK_JULHO.xlsx", build_stock(), MIME),
+                "pgd": ("PGD.xlsx", build_pgd(), MIME),
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "monthly_dpp_reconstruction_test"
+    assert payload["pass"] is True
+    assert payload["status"] == "APROVADO"
+    assert payload["summary"]["reference_real_models_applied"] == 2
+    assert payload["checks"]["materials"]["mismatches"] == 0
+    assert payload["checks"]["matrix"]["checked"] == 6
+    assert payload["checks"]["matrix"]["mismatches"] == 0
+    assert payload["checks"]["kit_pgd"]["mismatches"] == 0
+    assert payload["checks"]["stock_sap"]["mismatches"] == 0
+    assert payload["checks"]["explosion"]["mismatches"] == 0
+    assert payload["checks"]["stock_op"]["mismatches"] == 0
+    assert payload["checks"]["nec"]["mismatches"] == 0
+    assert payload["checks"]["balance"]["mismatches"] == 0
+    assert payload["mismatches"] == []

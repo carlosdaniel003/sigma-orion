@@ -1,0 +1,227 @@
+import { useMemo, useState } from 'react'
+import './dpp-consolidation.css'
+
+const CHECK_LABELS = {
+  materials: 'Materiais',
+  models: 'Modelos',
+  matrix: 'Matriz Material × Modelo',
+  description: 'Descrição',
+  um: 'UM',
+  origin: 'Origem',
+  optional_material: 'OPC',
+  kit_pgd: 'KIT PGD',
+  real_reference: 'REAL de referência',
+  stock_sap: 'STK SAP',
+  explosion: 'Explosão',
+  stock_op: 'STK OP',
+  stock_total: 'STK TTL',
+  nec: 'NEC',
+  balance: 'SALDO',
+}
+
+function DppTest({ apiUrl }) {
+  const [baseDpp, setBaseDpp] = useState(null)
+  const [expectedDpp, setExpectedDpp] = useState(null)
+  const [wiu, setWiu] = useState(null)
+  const [explosion, setExplosion] = useState(null)
+  const [stock, setStock] = useState(null)
+  const [pgd, setPgd] = useState(null)
+  const [openFile, setOpenFile] = useState(null)
+  const [referenceMonth, setReferenceMonth] = useState('')
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const requiredReady = baseDpp && expectedDpp && wiu && explosion && stock && pgd && referenceMonth
+
+  const failedChecks = useMemo(
+    () => Object.entries(result?.checks || {}).filter(([, check]) => check.mismatches > 0),
+    [result],
+  )
+
+  async function runTest() {
+    if (!requiredReady) return
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    const form = new FormData()
+    form.append('base_dpp', baseDpp)
+    form.append('expected_dpp', expectedDpp)
+    form.append('wiu', wiu)
+    form.append('explosion', explosion)
+    form.append('stock', stock)
+    form.append('pgd', pgd)
+    form.append('reference_month', referenceMonth)
+    if (openFile) form.append('open_orders', openFile)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/test`, { method: 'POST', body: form })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Não foi possível executar o teste do DPP.')
+      setResult(data)
+    } catch (requestError) {
+      setError(requestError.message || 'Falha no teste de reconstrução.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <header className="page-header consolidation-header">
+        <div>
+          <span className="eyebrow">VALIDAÇÃO DE RECONSTRUÇÃO</span>
+          <h2>Testes do DPP</h2>
+          <p>Reconstrua um mês já conhecido e compare o resultado do ORION campo a campo contra o DPP consolidado real.</p>
+        </div>
+        <span className="status">Fontes do mês → ORION → DPP esperado</span>
+      </header>
+
+      {error && <div className="alert error">{error}</div>}
+
+      <section className="monthly-controls panel">
+        <label>
+          <span>Mês que será reconstruído</span>
+          <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} />
+        </label>
+        <div>
+          <strong>Critério do teste</strong>
+          <p>O DPP anterior é necessário porque materiais e OPCs são acumulativos. O DPP consolidado do mês testado é usado somente como gabarito.</p>
+        </div>
+      </section>
+
+      <section className="source-workspace source-workspace-six">
+        <TestSource title="DPP mês anterior" subtitle="Base histórica usada para gerar o mês testado" file={baseDpp} onChange={setBaseDpp} />
+        <TestSource title="DPP consolidado esperado" subtitle="Gabarito real do mês que o ORION deve reproduzir" file={expectedDpp} onChange={setExpectedDpp} />
+        <TestSource title="WIU" subtitle="Material × Modelo e consumo BOM do mês" file={wiu} onChange={setWiu} />
+        <TestSource title="Explosão" subtitle="Explosão de Placas do mês" file={explosion} onChange={setExplosion} />
+        <TestSource title="STK SAP" subtitle="Snapshot do dia 1º do mês" file={stock} onChange={setStock} />
+        <TestSource title="PGD" subtitle="KIT DISPONÍVEL do mês" file={pgd} onChange={setPgd} />
+        <TestSource title="OPEN" subtitle="Opcional; apenas evidência de investigação" file={openFile} onChange={setOpenFile} optional />
+      </section>
+
+      <section className="panel consolidation-action-panel">
+        <div>
+          <strong>Teste de aceitação</strong>
+          <p>O teste compara base de materiais, modelos, matriz WIU, OPC, KIT PGD, STK, Explosão, STK OP, STK TTL, NEC e SALDO.</p>
+        </div>
+        <button className="primary-button consolidation-button" type="button" onClick={runTest} disabled={!requiredReady || loading}>
+          {loading ? 'Reconstruindo e comparando...' : 'Executar teste de reconstrução'}
+        </button>
+      </section>
+
+      {result && (
+        <>
+          <section className={`panel test-verdict ${result.pass ? 'test-pass' : 'test-fail'}`}>
+            <div>
+              <span className="eyebrow">RESULTADO</span>
+              <h3>{result.status}</h3>
+              <p>{result.pass ? 'Todos os campos críticos comparados ficaram iguais dentro da tolerância numérica.' : `${failedChecks.length} grupo(s) de validação possuem divergências.`}</p>
+            </div>
+            <div className="test-verdict-note">
+              <strong>REAL controlado</strong>
+              <p>{result.note}</p>
+            </div>
+          </section>
+
+          <section className="metrics-grid consolidation-metrics monthly-metrics">
+            <TestMetric label="Materiais" check={result.checks.materials} />
+            <TestMetric label="Matriz" check={result.checks.matrix} />
+            <TestMetric label="KIT PGD" check={result.checks.kit_pgd} />
+            <TestMetric label="STK SAP" check={result.checks.stock_sap} />
+            <TestMetric label="Explosão" check={result.checks.explosion} />
+            <TestMetric label="NEC" check={result.checks.nec} />
+            <TestMetric label="SALDO" check={result.checks.balance} />
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h3>Comparação campo a campo</h3>
+                <p>{result.summary.generated_materials.toLocaleString('pt-BR')} materiais gerados × {result.summary.expected_materials.toLocaleString('pt-BR')} materiais no gabarito.</p>
+              </div>
+              <span className={`source-state ${result.pass ? 'ready' : 'required'}`}>{result.status}</span>
+            </div>
+            <div className="table-scroll">
+              <table className="dpp-table">
+                <thead><tr><th>Validação</th><th>Comparados</th><th>Iguais</th><th>Divergências</th><th>Resultado</th></tr></thead>
+                <tbody>
+                  {Object.entries(result.checks).map(([name, check]) => (
+                    <tr key={name}>
+                      <td>{CHECK_LABELS[name] || name}</td>
+                      <td className="number-cell">{check.checked.toLocaleString('pt-BR')}</td>
+                      <td className="number-cell">{check.matches.toLocaleString('pt-BR')}</td>
+                      <td className="number-cell">{check.mismatches.toLocaleString('pt-BR')}</td>
+                      <td><span className={`unit-badge ${check.mismatches ? 'warning' : 'ok'}`}>{check.mismatches ? 'DIVERGE' : 'OK'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div><h3>Divergências encontradas</h3><p>O backend limita a exibição a 200 exemplos para manter a tela utilizável.</p></div>
+              <span className="status">{result.mismatches.length.toLocaleString('pt-BR')} exemplo(s)</span>
+            </div>
+            {!result.mismatches.length ? (
+              <div className="rule-box"><strong>Nenhuma divergência crítica encontrada.</strong><p>Para este conjunto de arquivos, o ORION reproduziu o DPP de referência nos campos testados.</p></div>
+            ) : (
+              <div className="table-scroll">
+                <table className="dpp-table">
+                  <thead><tr><th>Escopo</th><th>Chave</th><th>Campo</th><th>ORION</th><th>DPP esperado</th></tr></thead>
+                  <tbody>
+                    {result.mismatches.map((item, index) => (
+                      <tr key={`${item.scope}-${item.key}-${item.field}-${index}`}>
+                        <td>{item.scope}</td><td className="material-code">{item.key}</td><td>{CHECK_LABELS[item.field] || item.field}</td><td>{displayValue(item.generated)}</td><td>{displayValue(item.expected)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {result.mismatch_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais divergências.</strong><p>A tabela mostra apenas uma amostra. Os contadores acima representam o total encontrado.</p></div>}
+          </section>
+        </>
+      )}
+    </>
+  )
+}
+
+function TestSource({ title, subtitle, file, onChange, optional = false }) {
+  return (
+    <article className={`source-card ${file ? 'source-ready' : ''}`}>
+      <div className="source-card-topline">
+        <span className={`source-state ${file ? 'ready' : optional ? 'optional' : 'required'}`}>{file ? 'Carregado' : optional ? 'Opcional' : 'Obrigatório'}</span>
+        <small>{optional ? 'Investigação' : 'Teste'}</small>
+      </div>
+      <h3>{title}</h3><p>{subtitle}</p>
+      <label className="source-file-control">
+        <input type="file" accept=".xlsx,.xlsm" onChange={(event) => onChange(event.target.files?.[0] || null)} />
+        <span>{file ? file.name : 'Selecionar arquivo'}</span>
+      </label>
+    </article>
+  )
+}
+
+function TestMetric({ label, check }) {
+  const ok = check && check.mismatches === 0
+  return (
+    <div className={`metric-card ${ok ? 'metric-ok' : 'metric-attention'}`}>
+      <span>{label}</span>
+      <strong>{check ? `${check.matches.toLocaleString('pt-BR')}/${check.checked.toLocaleString('pt-BR')}` : '—'}</strong>
+      <small>{ok ? 'Iguais' : `${check?.mismatches || 0} divergência(s)`}</small>
+    </div>
+  )
+}
+
+function displayValue(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'number') return value.toLocaleString('pt-BR', { maximumFractionDigits: 6 })
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não'
+  return String(value)
+}
+
+export default DppTest

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import DppAnalysis from './DppAnalysis'
 import DppConsolidation from './DppConsolidation'
+import DppTest from './DppTest'
 import LegacyApp from './LegacyApp'
 
 const API_URL = 'http://localhost:8000'
@@ -29,6 +30,7 @@ function App() {
           <p>Geração do novo DPP a partir da base histórica e das fontes mensais, com cálculo determinístico e rastreabilidade.</p>
           <nav>
             <button className={activeView === 'consolidation' ? 'nav-active' : ''} onClick={() => setActiveView('consolidation')}>Gerar novo DPP</button>
+            <button className={activeView === 'test' ? 'nav-active' : ''} onClick={() => setActiveView('test')}>Testes do DPP</button>
             <button className={activeView === 'validation' ? 'nav-active' : ''} onClick={() => setActiveView('validation')}>Validar DPP pronto</button>
             <button onClick={() => setActiveView('legacy')}>Agente, Histórico e Diagnóstico</button>
           </nav>
@@ -38,6 +40,7 @@ function App() {
 
       <main className="content">
         {activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
+        {activeView === 'test' && <DppTest apiUrl={API_URL} />}
         {activeView === 'validation' && <DppAnalysis apiUrl={API_URL} />}
       </main>
     </div>

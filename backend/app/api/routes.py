@@ -24,6 +24,7 @@ from app.services.dpp_consolidation_service import consolidate_dpp_sources
 from app.services.dpp_monthly_service import generate_monthly_dpp
 from app.services.dpp_scenario_service import recalculate_monthly_scenario
 from app.services.dpp_service import analyze_dpp_file
+from app.services.dpp_test_service import test_monthly_dpp_reconstruction
 from app.services.excel_service import inspect_uploaded_file
 from app.services.history_service import get_analysis_history, list_analysis_history
 from app.services.knowledge_service import knowledge_status
@@ -198,6 +199,37 @@ def recalculate_monthly_dpp(payload: DppMonthlyRecalculateRequest) -> dict:
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/dpp/monthly/test")
+async def test_monthly_dpp_route(
+    base_dpp: UploadFile = File(...),
+    expected_dpp: UploadFile = File(...),
+    wiu: UploadFile = File(...),
+    explosion: UploadFile = File(...),
+    stock: UploadFile = File(...),
+    pgd: UploadFile = File(...),
+    reference_month: str = Form(...),
+    open_orders: UploadFile | None = File(default=None),
+) -> dict:
+    try:
+        return await test_monthly_dpp_reconstruction(
+            base_dpp=base_dpp,
+            expected_dpp=expected_dpp,
+            wiu=wiu,
+            explosion=explosion,
+            stock=stock,
+            pgd=pgd,
+            reference_month=reference_month,
+            open_orders=open_orders,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível executar o teste de reconstrução do DPP: {exc}",
+        ) from exc
 
 
 @router.post("/dpp/analyze")
