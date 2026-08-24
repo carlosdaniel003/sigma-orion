@@ -13,6 +13,7 @@ from openpyxl.utils import get_column_letter
 SUPPORTED_DPP_EXTENSIONS = {".xlsx", ".xlsm"}
 VALIDATION_REL_TOL = 1e-9
 VALIDATION_ABS_TOL = 1e-4
+SOURCE_SHEET = "DPP"
 
 
 def _normalize(value: object) -> str:
@@ -189,6 +190,16 @@ def _register_validation(counter: dict[str, int], result: bool | None) -> None:
         counter["mismatches"] += 1
 
 
+def _source_reference(row: int, material_col: int) -> dict:
+    material_cell = f"{get_column_letter(material_col)}{row}"
+    return {
+        "sheet": SOURCE_SHEET,
+        "row": row,
+        "material_cell": material_cell,
+        "reference": f"{SOURCE_SHEET}!{material_cell}",
+    }
+
+
 async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dict:
     filename = file.filename or "dpp.xlsx"
     extension = Path(filename).suffix.lower()
@@ -200,11 +211,11 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
         raise ValueError("O arquivo do DPP está vazio.")
 
     workbook = load_workbook(BytesIO(content), data_only=True, read_only=True)
-    if "DPP" not in workbook.sheetnames:
+    if SOURCE_SHEET not in workbook.sheetnames:
         workbook.close()
         raise ValueError("A aba 'DPP' não foi encontrada no arquivo enviado.")
 
-    sheet = workbook["DPP"]
+    sheet = workbook[SOURCE_SHEET]
     rows = list(sheet.iter_rows(values_only=True))
     workbook.close()
     if not rows:
@@ -337,6 +348,7 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
             result is not False
             for result in (nec_match, stock_total_match, balance_match, amount_match)
         )
+        source = _source_reference(row, material_col)
         materials.append(
             {
                 "material": material,
@@ -350,6 +362,7 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
                 "balance": balance_python,
                 "status": status,
                 "validation_ok": validation_ok,
+                "source": source,
             }
         )
 
@@ -366,6 +379,7 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
                     "wiu": wiu_value,
                     "optional_material": optional_material,
                     "comments": _as_text(_cell(rows, row, comments_col)) if comments_col else None,
+                    "source": source,
                     "excel": {
                         "nec": nec_excel,
                         "stock": stock,
@@ -398,7 +412,7 @@ async def analyze_dpp_file(file: UploadFile, divergence_limit: int = 100) -> dic
 
     return {
         "filename": filename,
-        "sheet": "DPP",
+        "sheet": SOURCE_SHEET,
         "scope": (
             "Análise determinística somente do DPP já preenchido. WIU, explosão, PGD e BOM "
             "são tratados nesta etapa apenas como valores já consolidados no próprio DPP."
