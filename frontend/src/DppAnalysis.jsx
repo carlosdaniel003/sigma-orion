@@ -14,10 +14,16 @@ function formatNumber(value, maximumFractionDigits = 3) {
   })
 }
 
+function sourceLabel(item) {
+  if (item?.source?.reference) return item.source.reference
+  if (item?.source?.sheet && item?.source?.row) return `${item.source.sheet} · linha ${item.source.row}`
+  return '—'
+}
+
 function matchesFilters(item, filters) {
   const search = normalizeText(filters.search)
   if (search) {
-    const searchable = `${item.material || ''} ${item.description || ''}`.toLowerCase()
+    const searchable = `${item.material || ''} ${item.description || ''} ${item.source?.reference || ''} ${item.source?.row || ''}`.toLowerCase()
     if (!searchable.includes(search)) return false
   }
   if (filters.model && !(item.used_models || []).includes(filters.model)) return false
@@ -168,17 +174,17 @@ function DppAnalysis({ apiUrl }) {
             <div className="panel-header">
               <div>
                 <h3>Filtros da análise</h3>
-                <p>Os mesmos filtros controlam a tabela de materiais e a lista de divergências.</p>
+                <p>Os mesmos filtros controlam a tabela de materiais e a lista de divergências. A busca também aceita linha ou referência do Excel, como DPP!A10.</p>
               </div>
               <button className="secondary-button" type="button" onClick={clearFilters}>Limpar filtros</button>
             </div>
             <div className="dpp-filters">
               <label>
-                <span>Material / descrição</span>
+                <span>Material / descrição / linha</span>
                 <input
                   value={filters.search}
                   onChange={(event) => changeFilter('search', event.target.value)}
-                  placeholder="Buscar código ou descrição"
+                  placeholder="Código, descrição, linha ou DPP!A10"
                 />
               </label>
               <label>
@@ -230,6 +236,7 @@ function DppAnalysis({ apiUrl }) {
                 <thead>
                   <tr>
                     <th>Material</th>
+                    <th>Fonte Excel</th>
                     <th>Descrição</th>
                     <th>UM</th>
                     <th>Origem</th>
@@ -244,8 +251,9 @@ function DppAnalysis({ apiUrl }) {
                 </thead>
                 <tbody>
                   {visibleMaterials.map((item) => (
-                    <tr key={item.material} className={item.status === 'INVESTIGAR' ? 'row-investigate' : ''}>
+                    <tr key={`${item.material}-${item.source?.row || ''}`} className={item.status === 'INVESTIGAR' ? 'row-investigate' : ''}>
                       <td className="material-code">{item.material}</td>
+                      <td className="material-code" title={`Aba ${item.source?.sheet || '—'}, linha ${item.source?.row || '—'}`}>{sourceLabel(item)}</td>
                       <td>{item.description || '—'}</td>
                       <td>{item.um || '—'}</td>
                       <td>{item.group_origin || '—'}</td>
@@ -261,7 +269,7 @@ function DppAnalysis({ apiUrl }) {
                     </tr>
                   ))}
                   {visibleMaterials.length === 0 && (
-                    <tr><td colSpan="11" className="empty-table">Nenhum material encontrado com os filtros atuais.</td></tr>
+                    <tr><td colSpan="12" className="empty-table">Nenhum material encontrado com os filtros atuais.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -290,6 +298,7 @@ function DppAnalysis({ apiUrl }) {
                 <thead>
                   <tr>
                     <th>Material</th>
+                    <th>Fonte Excel</th>
                     <th>Descrição</th>
                     <th>UM</th>
                     <th>Origem</th>
@@ -300,8 +309,9 @@ function DppAnalysis({ apiUrl }) {
                 </thead>
                 <tbody>
                   {filteredDivergences.map((item) => (
-                    <tr key={item.material} className={selectedMaterial === item.material ? 'selected-row' : ''}>
+                    <tr key={`${item.material}-${item.source?.row || ''}`} className={selectedMaterial === item.material ? 'selected-row' : ''}>
                       <td className="material-code">{item.material}</td>
+                      <td className="material-code">{sourceLabel(item)}</td>
                       <td>{item.description || '—'}</td>
                       <td>{item.um || '—'}</td>
                       <td>{item.group_origin || '—'}</td>
@@ -315,7 +325,7 @@ function DppAnalysis({ apiUrl }) {
                     </tr>
                   ))}
                   {filteredDivergences.length === 0 && (
-                    <tr><td colSpan="7" className="empty-table">Nenhuma divergência encontrada com os filtros atuais.</td></tr>
+                    <tr><td colSpan="8" className="empty-table">Nenhuma divergência encontrada com os filtros atuais.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -389,6 +399,7 @@ function DivergenceDetail({ item }) {
           <span className="eyebrow">DETALHE DA DIVERGÊNCIA</span>
           <h3>{item.material} — {item.description}</h3>
           <p>{item.um || 'UM não informada'} · {item.group_origin || 'Origem não informada'}</p>
+          <p><strong>Fonte Excel:</strong> {sourceLabel(item)}</p>
         </div>
         <StatusBadge status="INVESTIGAR" />
       </div>
@@ -401,6 +412,13 @@ function DivergenceDetail({ item }) {
       </div>
 
       <div className="detail-grid">
+        <div className="detail-block">
+          <small>Rastreabilidade Excel</small>
+          <p>Aba: <strong>{item.source?.sheet || '—'}</strong></p>
+          <p>Linha original: <strong>{item.source?.row || '—'}</strong></p>
+          <p>Célula do material: <strong>{item.source?.material_cell || '—'}</strong></p>
+          <p>Referência: <strong>{item.source?.reference || '—'}</strong></p>
+        </div>
         <div className="detail-block">
           <small>Composição do estoque</small>
           <p>STK: <strong>{formatNumber(item.excel.stock)}</strong></p>
