@@ -19,6 +19,7 @@ from app.services.agent_service import (
     build_demo_analysis,
     provider_status,
 )
+from app.services.dpp_consolidation_service import consolidate_dpp_sources
 from app.services.dpp_service import analyze_dpp_file
 from app.services.excel_service import inspect_uploaded_file
 from app.services.history_service import get_analysis_history, list_analysis_history
@@ -126,6 +127,23 @@ async def inspect_files(files: list[UploadFile] = File(...)) -> dict:
         "files_received": len(results),
         "files": results,
     }
+
+
+@router.post("/dpp/consolidate")
+async def consolidate_dpp(
+    wiu: UploadFile = File(...),
+    explosion: UploadFile = File(...),
+    stock: UploadFile | None = File(default=None),
+) -> dict:
+    try:
+        return await consolidate_dpp_sources(wiu=wiu, explosion=explosion, stock=stock)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível consolidar as fontes mensais do DPP: {exc}",
+        ) from exc
 
 
 @router.post("/dpp/analyze")
