@@ -133,10 +133,16 @@ async def inspect_files(files: list[UploadFile] = File(...)) -> dict:
 async def consolidate_dpp(
     wiu: UploadFile = File(...),
     explosion: UploadFile = File(...),
-    stock: UploadFile | None = File(default=None),
+    stock: UploadFile = File(...),
+    open_orders: UploadFile | None = File(default=None),
 ) -> dict:
     try:
-        return await consolidate_dpp_sources(wiu=wiu, explosion=explosion, stock=stock)
+        return await consolidate_dpp_sources(
+            wiu=wiu,
+            explosion=explosion,
+            stock=stock,
+            open_orders=open_orders,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
