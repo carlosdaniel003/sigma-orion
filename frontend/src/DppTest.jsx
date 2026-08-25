@@ -117,7 +117,13 @@ function DppTest({ apiUrl }) {
             <div>
               <span className="eyebrow">RESULTADO</span>
               <h3>{result.status}</h3>
-              <p>{result.pass ? 'Todos os campos críticos comparados ficaram iguais dentro da tolerância numérica.' : `${failedChecks.length} grupo(s) de validação possuem divergências.`}</p>
+              <p>
+                {result.pass
+                  ? result.summary.legacy_corrections_total
+                    ? `Nenhuma divergência atribuída ao ORION. ${result.summary.legacy_corrections_total.toLocaleString('pt-BR')} diferença(s) foram classificadas como correção do legado.`
+                    : 'Todos os campos críticos comparados ficaram iguais dentro da tolerância numérica.'
+                  : `${failedChecks.length} grupo(s) de validação ainda possuem divergências atribuídas ao ORION.`}
+              </p>
             </div>
             <div className="test-verdict-note">
               <strong>REAL controlado</strong>
@@ -145,15 +151,16 @@ function DppTest({ apiUrl }) {
             </div>
             <div className="table-scroll">
               <table className="dpp-table">
-                <thead><tr><th>Validação</th><th>Comparados</th><th>Iguais</th><th>Divergências</th><th>Resultado</th></tr></thead>
+                <thead><tr><th>Validação</th><th>Comparados</th><th>Iguais</th><th>Correções legado</th><th>Divergências ORION</th><th>Resultado</th></tr></thead>
                 <tbody>
                   {Object.entries(result.checks).map(([name, check]) => (
                     <tr key={name}>
                       <td>{CHECK_LABELS[name] || name}</td>
                       <td className="number-cell">{check.checked.toLocaleString('pt-BR')}</td>
                       <td className="number-cell">{check.matches.toLocaleString('pt-BR')}</td>
+                      <td className="number-cell">{(check.legacy_corrections || 0).toLocaleString('pt-BR')}</td>
                       <td className="number-cell">{check.mismatches.toLocaleString('pt-BR')}</td>
-                      <td><span className={`unit-badge ${check.mismatches ? 'warning' : 'ok'}`}>{check.mismatches ? 'DIVERGE' : 'OK'}</span></td>
+                      <td><CheckBadge check={check} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -163,31 +170,61 @@ function DppTest({ apiUrl }) {
 
           <section className="panel">
             <div className="panel-header">
-              <div><h3>Divergências encontradas</h3><p>O backend limita a exibição a 200 exemplos para manter a tela utilizável.</p></div>
-              <span className="status">{result.mismatches.length.toLocaleString('pt-BR')} exemplo(s)</span>
+              <div><h3>Divergências do ORION</h3><p>Diferenças que continuam indicando regra ausente, dado manual posterior ou comportamento incorreto no ORION.</p></div>
+              <span className="status">{result.summary.orion_mismatches_total.toLocaleString('pt-BR')} total · {result.mismatches.length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.mismatches.length ? (
-              <div className="rule-box"><strong>Nenhuma divergência crítica encontrada.</strong><p>Para este conjunto de arquivos, o ORION reproduziu o DPP de referência nos campos testados.</p></div>
+              <div className="rule-box"><strong>Nenhuma divergência atribuída ao ORION.</strong><p>As diferenças aceitas do legado são apresentadas separadamente abaixo.</p></div>
             ) : (
-              <div className="table-scroll">
-                <table className="dpp-table">
-                  <thead><tr><th>Escopo</th><th>Chave</th><th>Campo</th><th>ORION</th><th>DPP esperado</th></tr></thead>
-                  <tbody>
-                    {result.mismatches.map((item, index) => (
-                      <tr key={`${item.scope}-${item.key}-${item.field}-${index}`}>
-                        <td>{item.scope}</td><td className="material-code">{item.key}</td><td>{CHECK_LABELS[item.field] || item.field}</td><td>{displayValue(item.generated)}</td><td>{displayValue(item.expected)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DifferenceTable items={result.mismatches} />
             )}
-            {result.mismatch_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais divergências.</strong><p>A tabela mostra apenas uma amostra. Os contadores acima representam o total encontrado.</p></div>}
+            {result.mismatch_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais divergências do ORION.</strong><p>A tabela mostra apenas uma amostra. Os contadores acima representam o total encontrado.</p></div>}
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div><h3>Correções do legado</h3><p>Diferenças conhecidas em que o ORION mantém a fonte correta em vez de reproduzir uma falha histórica do Excel.</p></div>
+              <span className="status">{result.summary.legacy_corrections_total.toLocaleString('pt-BR')} total · {result.legacy_corrections.length.toLocaleString('pt-BR')} exemplo(s)</span>
+            </div>
+            {!result.legacy_corrections.length ? (
+              <div className="rule-box"><strong>Nenhuma correção de legado classificada.</strong><p>Neste teste, não houve diferença aceita por normalização de chave número × texto.</p></div>
+            ) : (
+              <DifferenceTable items={result.legacy_corrections} showReason />
+            )}
+            {result.legacy_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais correções do legado.</strong><p>A tabela mostra apenas uma amostra. Os contadores representam o total classificado.</p></div>}
           </section>
         </>
       )}
     </>
   )
+}
+
+function DifferenceTable({ items, showReason = false }) {
+  return (
+    <div className="table-scroll">
+      <table className="dpp-table">
+        <thead><tr><th>Escopo</th><th>Chave</th><th>Campo</th><th>ORION</th><th>DPP esperado</th>{showReason && <th>Classificação</th>}</tr></thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={`${item.scope}-${item.key}-${item.field}-${index}`}>
+              <td>{item.scope}</td>
+              <td className="material-code">{item.key}</td>
+              <td>{CHECK_LABELS[item.field] || item.field}</td>
+              <td>{displayValue(item.generated)}</td>
+              <td>{displayValue(item.expected)}</td>
+              {showReason && <td>{item.reason || item.classification}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function CheckBadge({ check }) {
+  if (check.mismatches) return <span className="unit-badge warning">DIVERGE</span>
+  if (check.legacy_corrections) return <span className="unit-badge neutral">LEGADO</span>
+  return <span className="unit-badge ok">OK</span>
 }
 
 function TestSource({ title, subtitle, file, onChange, optional = false }) {
@@ -207,12 +244,13 @@ function TestSource({ title, subtitle, file, onChange, optional = false }) {
 }
 
 function TestMetric({ label, check }) {
-  const ok = check && check.mismatches === 0
+  const hasError = check && check.mismatches > 0
+  const legacy = check?.legacy_corrections || 0
   return (
-    <div className={`metric-card ${ok ? 'metric-ok' : 'metric-attention'}`}>
+    <div className={`metric-card ${hasError ? 'metric-attention' : 'metric-ok'}`}>
       <span>{label}</span>
       <strong>{check ? `${check.matches.toLocaleString('pt-BR')}/${check.checked.toLocaleString('pt-BR')}` : '—'}</strong>
-      <small>{ok ? 'Iguais' : `${check?.mismatches || 0} divergência(s)`}</small>
+      <small>{hasError ? `${check.mismatches} divergência(s)` : legacy ? `${legacy} correção(ões) legado` : 'Iguais'}</small>
     </div>
   )
 }

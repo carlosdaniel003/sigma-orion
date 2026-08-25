@@ -16,7 +16,9 @@ from app.services.dpp_consolidation_service import (
     _validate_upload,
 )
 from app.services.dpp_monthly_base import parse_previous_dpp
+from app.services.dpp_optional_service import canonical_optional_material, split_optional_materials
 from app.services.dpp_scenario_service import register_monthly_scenario
+from app.services.pgd_mapping_rules import get_kit_override, get_variant_override
 from app.services.pgd_service import parse_pgd
 
 
@@ -27,7 +29,12 @@ def _normalize(value: object) -> str:
     return "".join(char for char in text if not unicodedata.combining(char))
 
 
-def _map_pgd_to_models(pgd_models: list[dict], current_models: list[dict], previous_models: list[dict]) -> dict:
+def _map_pgd_to_models(
+    pgd_models: list[dict],
+    current_models: list[dict],
+    previous_models: list[dict],
+    reference_month: str,
+) -> dict:
     by_name: dict[str, list[dict]] = defaultdict(list)
     by_code: dict[str, list[dict]] = defaultdict(list)
     for model in current_models:
@@ -40,46 +47,80 @@ def _map_pgd_to_models(pgd_models: list[dict], current_models: list[dict], previ
     unresolved_positive: list[dict] = []
     out_of_scope_positive: list[dict] = []
     ignored_zero_ambiguous = 0
+    variant_overrides_applied = 0
+    kit_overrides_applied = 0
 
-    for pgd in pgd_models:
-        candidates = by_name.get(_normalize(pgd.get("name")), [])
-        strategy = "EXACT_NAME"
-
-        if not candidates:
-            candidates = by_code.get(_normalize(pgd.get("code")), [])
-            strategy = "PRODUCT_CODE"
+    for original in pgd_models:
+        pgd = deepcopy(original)
+        has_kit_override, kit_override = get_kit_override(reference_month, pgd.get("name"))
+        if has_kit_override:
+            pgd["kit_pgd_before_rule"] = pgd.get("kit_pgd", 0.0)
+            pgd["kit_pgd"] = max(float(kit_override or 0.0), 0.0)
+            pgd["kit_rule"] = "MONTHLY_KIT_OVERRIDE"
+            kit_overrides_applied += 1
 
         selected = None
-        if len(candidates) == 1:
-            selected = candidates[0]
-        elif len(candidates) > 1:
-            ranked = []
-            for candidate in candidates:
-                previous = previous_by_name.get(_normalize(candidate.get("name")), {})
-                score = (
-                    float(previous.get("previous_kit_pgd") or 0.0),
-                    float(previous.get("previous_real") or 0.0),
-                )
-                ranked.append((score, candidate))
-            ranked.sort(key=lambda item: item[0], reverse=True)
-            if ranked and ranked[0][0] > (0.0, 0.0):
-                if len(ranked) == 1 or ranked[0][0] > ranked[1][0]:
-                    selected = ranked[0][1]
-                    strategy = "HISTORICAL_VARIANT"
+        strategy = "EXACT_NAME"
+        variant_target = get_variant_override(reference_month, pgd.get("name"))
 
-        if selected is None:
-            if not candidates:
-                if pgd.get("kit_pgd", 0.0) > 0:
-                    out_of_scope_positive.append(pgd)
+        if variant_target:
+            override_candidates = by_name.get(_normalize(variant_target), [])
+            if len(override_candidates) == 1:
+                selected = override_candidates[0]
+                strategy = "MONTHLY_VARIANT_RULE"
+                variant_overrides_applied += 1
             elif pgd.get("kit_pgd", 0.0) > 0:
                 unresolved_positive.append(
                     {
                         **pgd,
-                        "candidate_models": [item["name"] for item in candidates],
+                        "candidate_models": [item.get("name") for item in override_candidates],
+                        "configured_target": variant_target,
+                        "reason": "A regra mensal aponta para uma variante que não foi localizada de forma única no DPP atual.",
                     }
                 )
-            else:
-                ignored_zero_ambiguous += 1
+                continue
+
+        if selected is None and not variant_target:
+            candidates = by_name.get(_normalize(pgd.get("name")), [])
+            strategy = "EXACT_NAME"
+
+            if not candidates:
+                candidates = by_code.get(_normalize(pgd.get("code")), [])
+                strategy = "PRODUCT_CODE"
+
+            if len(candidates) == 1:
+                selected = candidates[0]
+            elif len(candidates) > 1:
+                ranked = []
+                for candidate in candidates:
+                    previous = previous_by_name.get(_normalize(candidate.get("name")), {})
+                    score = (
+                        float(previous.get("previous_kit_pgd") or 0.0),
+                        float(previous.get("previous_real") or 0.0),
+                    )
+                    ranked.append((score, candidate))
+                ranked.sort(key=lambda item: item[0], reverse=True)
+                if ranked and ranked[0][0] > (0.0, 0.0):
+                    if len(ranked) == 1 or ranked[0][0] > ranked[1][0]:
+                        selected = ranked[0][1]
+                        strategy = "HISTORICAL_VARIANT"
+
+            if selected is None:
+                if not candidates:
+                    if pgd.get("kit_pgd", 0.0) > 0:
+                        out_of_scope_positive.append(pgd)
+                elif pgd.get("kit_pgd", 0.0) > 0:
+                    unresolved_positive.append(
+                        {
+                            **pgd,
+                            "candidate_models": [item["name"] for item in candidates],
+                        }
+                    )
+                else:
+                    ignored_zero_ambiguous += 1
+                continue
+
+        if selected is None:
             continue
 
         existing = assignments.get(selected["name"])
@@ -93,6 +134,7 @@ def _map_pgd_to_models(pgd_models: list[dict], current_models: list[dict], previ
                 "dpp_model": selected.get("name"),
                 "dpp_code": selected.get("code"),
                 "kit_pgd": pgd.get("kit_pgd", 0.0),
+                "kit_pgd_before_rule": pgd.get("kit_pgd_before_rule"),
                 "strategy": strategy,
                 "source": pgd.get("source"),
             }
@@ -117,6 +159,9 @@ def _map_pgd_to_models(pgd_models: list[dict], current_models: list[dict], previ
         "unresolved_positive": unresolved_positive,
         "out_of_scope_positive": out_of_scope_positive,
         "ignored_zero_ambiguous": ignored_zero_ambiguous,
+        "variant_overrides_applied": variant_overrides_applied,
+        "kit_overrides_applied": kit_overrides_applied,
+        "mapped_positive_models": sum(1 for item in models if float(item.get("kit_pgd") or 0.0) > 0),
     }
 
 
@@ -181,7 +226,7 @@ async def generate_monthly_dpp(
     if open_content:
         open_map, open_diag = _parse_open(open_content)
 
-    pgd_mapping = _map_pgd_to_models(pgd_models, current_models, previous_models)
+    pgd_mapping = _map_pgd_to_models(pgd_models, current_models, previous_models, reference_month)
     mapped_models = pgd_mapping.pop("models")
 
     merged: dict[str, dict] = {}
@@ -214,7 +259,10 @@ async def generate_monthly_dpp(
             merged[key] = existing
 
         existing["in_current_wiu"] = True
-        existing["description"] = current.get("description") or existing.get("description")
+        # Descrição faz parte da base histórica acumulativa. Para materiais já conhecidos,
+        # preservamos o texto do DPP anterior e usamos o WIU apenas se o histórico estiver vazio.
+        if not existing.get("from_history") or not existing.get("description"):
+            existing["description"] = current.get("description") or existing.get("description")
         existing["um"] = current.get("um") or existing.get("um")
         existing["group_origin"] = current.get("group_origin") or existing.get("group_origin")
         existing["wiu_source"] = current.get("source")
@@ -225,6 +273,7 @@ async def generate_monthly_dpp(
     explosion_matches = 0
     stock_matches = 0
     opc_with_stock = 0
+    optional_stock_links = 0
     open_matches = 0
     unit_mismatches = 0
 
@@ -251,11 +300,39 @@ async def generate_monthly_dpp(
             stock_effective *= float(conversion["factor"])
         material["stock_sap_effective"] = stock_effective
 
-        optional_material = material.get("optional_material")
-        optional_entry = stock_map.get(_material_key(optional_material)) if optional_material else None
-        material["stock_op"] = float(optional_entry.get("value", 0.0)) if optional_entry else 0.0
-        material["stock_op_source"] = optional_entry.get("source") if optional_entry else None
-        if optional_entry:
+        optional_codes = split_optional_materials(material.get("optional_material"))
+        material["optional_materials"] = optional_codes
+        material["optional_material_canonical"] = canonical_optional_material(material.get("optional_material"))
+        optional_sources: list[dict] = []
+        optional_stock_total = 0.0
+        for optional_code in optional_codes:
+            optional_entry = stock_map.get(_material_key(optional_code))
+            if not optional_entry:
+                continue
+            value = float(optional_entry.get("value", 0.0))
+            optional_stock_total += value
+            optional_stock_links += 1
+            optional_sources.append(
+                {
+                    "material": optional_code,
+                    "value": value,
+                    "um": optional_entry.get("um"),
+                    "source": optional_entry.get("source"),
+                }
+            )
+
+        material["stock_op"] = optional_stock_total
+        material["stock_op_sources"] = optional_sources
+        if len(optional_sources) == 1:
+            material["stock_op_source"] = optional_sources[0]["source"]
+        elif optional_sources:
+            material["stock_op_source"] = {
+                "type": "MULTIPLE_OPC",
+                "entries": optional_sources,
+            }
+        else:
+            material["stock_op_source"] = None
+        if optional_sources:
             opc_with_stock += 1
 
         material["stock_total"] = material["stock_sap_effective"] + material["explosion"] + material["stock_op"]
@@ -283,14 +360,18 @@ async def generate_monthly_dpp(
         "new_materials_from_wiu": new_materials,
         "inherited_optional_materials": inherited_optional,
         "optional_materials_with_stock": opc_with_stock,
+        "optional_stock_links": optional_stock_links,
         "explosion_matches": explosion_matches,
         "stock_matches": stock_matches,
         "open_pending_materials": open_matches,
         "open_loaded": open_content is not None,
         "unit_mismatches": unit_mismatches,
-        "pgd_positive_models": pgd_diag["positive_models"],
+        "pgd_positive_models_raw": pgd_diag["positive_models"],
+        "pgd_positive_models": pgd_mapping["mapped_positive_models"],
         "pgd_unresolved_positive": len(pgd_mapping["unresolved_positive"]),
         "pgd_out_of_scope_positive": len(pgd_mapping["out_of_scope_positive"]),
+        "pgd_variant_overrides_applied": pgd_mapping["variant_overrides_applied"],
+        "pgd_kit_overrides_applied": pgd_mapping["kit_overrides_applied"],
     }
 
     sources = [
@@ -298,7 +379,7 @@ async def generate_monthly_dpp(
         {"id": "wiu", "label": "WIU", "required": True, "loaded": True, "filename": wiu.filename, "detail": f"{wiu_diag['imported_materials']} materiais importados · {wiu_diag['models']} modelos"},
         {"id": "explosion", "label": "Explosão de Placas", "required": True, "loaded": True, "filename": explosion.filename, "detail": f"{explosion_matches} materiais encontrados"},
         {"id": "stock", "label": "STK SAP", "required": True, "loaded": True, "filename": stock.filename, "detail": f"{stock_matches} materiais encontrados no snapshot"},
-        {"id": "pgd", "label": "PGD", "required": True, "loaded": True, "filename": pgd.filename, "detail": f"{pgd_diag['positive_models']} modelos com KIT disponível positivo em {reference_month}"},
+        {"id": "pgd", "label": "PGD", "required": True, "loaded": True, "filename": pgd.filename, "detail": f"{pgd_mapping['mapped_positive_models']} modelos aplicados ao DPP em {reference_month} · {len(pgd_mapping['out_of_scope_positive'])} positivos fora do escopo"},
         {"id": "open", "label": "OPEN", "required": False, "loaded": open_content is not None, "filename": open_orders.filename if open_orders is not None else None, "detail": f"{open_matches} materiais da base com evidência pendente" if open_content else "Opcional: evidência de investigação, sem alterar o saldo"},
     ]
 
@@ -306,6 +387,7 @@ async def generate_monthly_dpp(
         "REAL permanece editável pelo analista; o solver automático ainda não está habilitado.",
         "Conversões KG→G, M→CM e L→ML continuam desativadas até validação da regra operacional.",
         "Materiais fora de UM=UN são calculados, mas ficam fora da classificação OK/INVESTIGAR nesta etapa.",
+        "Mapeamentos agregados do PGD usam regras mensais explícitas quando conhecidas; meses futuros sem regra continuam usando a heurística histórica e podem exigir validação.",
     ]
     if pgd_mapping["unresolved_positive"]:
         pending.append("Existem modelos positivos do PGD com variante DPP ainda ambígua; revisar o mapeamento exibido.")
@@ -316,6 +398,10 @@ async def generate_monthly_dpp(
         "explosion": explosion_diag,
         "stock": stock_diag,
         "pgd": pgd_diag,
+        "pgd_mapping_rules": {
+            "variant_overrides_applied": pgd_mapping["variant_overrides_applied"],
+            "kit_overrides_applied": pgd_mapping["kit_overrides_applied"],
+        },
         "open": open_diag,
     }
 
@@ -323,11 +409,14 @@ async def generate_monthly_dpp(
         "historical_base": True,
         "cumulative_materials": True,
         "inherited_opc": True,
+        "multiple_opc_stock": True,
+        "historical_description": True,
         "material_model_matrix": True,
         "explosion": True,
         "stock_sap": True,
         "stock_op": True,
         "pgd_kit": True,
+        "pgd_monthly_mapping_rules": True,
         "manual_real": True,
         "nec": True,
         "balance": True,
@@ -341,9 +430,9 @@ async def generate_monthly_dpp(
         reference_month=reference_month,
         base_summary=base_summary,
         scope=(
-            "O novo DPP nasce da base histórica do mês anterior. Materiais e OPCs são acumulativos; "
+            "O novo DPP nasce da base histórica do mês anterior. Materiais, descrições históricas e OPCs são acumulativos; "
             "o WIU atualiza a matriz Material × Modelo, Explosão e STK atualizam a disponibilidade, "
-            "o PGD fornece o KIT DISPONÍVEL do mês e o REAL inicia pelo KIT para ajuste manual."
+            "o PGD fornece o KIT DISPONÍVEL do mês com regras explícitas para variantes agregadas conhecidas e o REAL inicia pelo KIT para ajuste manual."
         ),
         capabilities=capabilities,
         sources=sources,

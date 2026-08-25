@@ -8,6 +8,7 @@ from openpyxl import load_workbook
 
 from app.services.dpp_consolidation_service import _material_key, _normalize_unit, _validate_upload
 from app.services.dpp_monthly_service import generate_monthly_dpp
+from app.services.dpp_optional_service import optional_material_keyset
 from app.services.dpp_scenario_service import recalculate_monthly_scenario
 from app.services.dpp_service import (
     SOURCE_SHEET,
@@ -27,6 +28,7 @@ from app.services.dpp_service import (
 REL_TOL = 1e-9
 ABS_TOL = 1e-4
 MAX_MISMATCH_SAMPLES = 200
+MAX_LEGACY_SAMPLES = 200
 
 
 def _same_number(left: object, right: object) -> bool:
@@ -42,18 +44,20 @@ def _same_text(left: object, right: object) -> bool:
     return _normalize(left) == _normalize(right)
 
 
-def _same_material_code(left: object, right: object) -> bool:
-    return _material_key(left) == _material_key(right)
+def _same_optional_materials(left: object, right: object) -> bool:
+    return optional_material_keyset(left) == optional_material_keyset(right)
 
 
 def _counter() -> dict[str, int]:
-    return {"checked": 0, "matches": 0, "mismatches": 0}
+    return {"checked": 0, "matches": 0, "mismatches": 0, "legacy_corrections": 0}
 
 
-def _register(counter: dict[str, int], matches: bool) -> None:
+def _register(counter: dict[str, int], matches: bool, classification: str | None = None) -> None:
     counter["checked"] += 1
     if matches:
         counter["matches"] += 1
+    elif classification == "LEGACY_CORRECTION":
+        counter["legacy_corrections"] += 1
     else:
         counter["mismatches"] += 1
 
@@ -123,6 +127,7 @@ def _parse_expected_dpp(content: bytes) -> dict:
 
         materials[key] = {
             "material": _as_text(raw_material),
+            "material_was_numeric": isinstance(raw_material, (int, float)) and not isinstance(raw_material, bool),
             "description": _as_text(_cell(rows, excel_row, description_col)),
             "um": _normalize_unit(_cell(rows, excel_row, um_col)),
             "group_origin": _as_text(_cell(rows, excel_row, origin_col)),
@@ -144,8 +149,19 @@ def _parse_expected_dpp(content: bytes) -> dict:
     }
 
 
-def _append_mismatch(samples: list[dict], *, scope: str, key: str, field: str, generated: object, expected: object) -> None:
-    if len(samples) >= MAX_MISMATCH_SAMPLES:
+def _append_sample(
+    samples: list[dict],
+    *,
+    limit: int,
+    scope: str,
+    key: str,
+    field: str,
+    generated: object,
+    expected: object,
+    classification: str,
+    reason: str | None = None,
+) -> None:
+    if len(samples) >= limit:
         return
     samples.append(
         {
@@ -154,8 +170,47 @@ def _append_mismatch(samples: list[dict], *, scope: str, key: str, field: str, g
             "field": field,
             "generated": generated,
             "expected": expected,
+            "classification": classification,
+            "reason": reason,
         }
     )
+
+
+def _legacy_stock_correction(current: dict, reference: dict) -> bool:
+    if not reference.get("material_was_numeric"):
+        return False
+    if not current.get("stock_source"):
+        return False
+    if not _same_number(reference.get("stock_sap"), 0.0):
+        return False
+    return not _same_number(current.get("stock_sap"), reference.get("stock_sap"))
+
+
+def _legacy_numeric_difference(field: str, current: dict, reference: dict) -> bool:
+    if not _legacy_stock_correction(current, reference):
+        return False
+
+    if field == "stock_sap":
+        return True
+
+    stock_delta = float(current.get("stock_sap") or 0.0) - float(reference.get("stock_sap") or 0.0)
+    if field == "stock_total":
+        if not _same_number(current.get("explosion"), reference.get("explosion")):
+            return False
+        if not _same_number(current.get("stock_op"), reference.get("stock_op")):
+            return False
+        total_delta = float(current.get("stock_total") or 0.0) - float(reference.get("stock_total") or 0.0)
+        return _same_number(total_delta, stock_delta)
+
+    if field == "balance":
+        if not _same_number(current.get("nec"), reference.get("nec")):
+            return False
+        if not _legacy_numeric_difference("stock_total", current, reference):
+            return False
+        balance_delta = float(current.get("balance") or 0.0) - float(reference.get("balance") or 0.0)
+        return _same_number(balance_delta, stock_delta)
+
+    return False
 
 
 def _compare(*, generated: dict, expected: dict) -> dict:
@@ -180,6 +235,7 @@ def _compare(*, generated: dict, expected: dict) -> dict:
         )
     }
     mismatches: list[dict] = []
+    legacy_corrections: list[dict] = []
 
     generated_models = {_normalize(item.get("name")): item for item in generated.get("models", []) if item.get("name")}
     expected_models = expected["models"]
@@ -192,13 +248,15 @@ def _compare(*, generated: dict, expected: dict) -> dict:
         matches = present_generated and present_expected
         _register(checks["models"], matches)
         if not matches:
-            _append_mismatch(
+            _append_sample(
                 mismatches,
+                limit=MAX_MISMATCH_SAMPLES,
                 scope="model",
                 key=generated_models.get(key, expected_models.get(key, {})).get("name", key),
                 field="presence",
                 generated=present_generated,
                 expected=present_expected,
+                classification="ORION_DIVERGENCE",
             )
 
     for key in common_model_keys:
@@ -209,13 +267,15 @@ def _compare(*, generated: dict, expected: dict) -> dict:
             matches = _same_number(current.get(field), reference.get(field))
             _register(checks[check_name], matches)
             if not matches:
-                _append_mismatch(
+                _append_sample(
                     mismatches,
+                    limit=MAX_MISMATCH_SAMPLES,
                     scope="model",
                     key=reference["name"],
                     field=field,
                     generated=current.get(field),
                     expected=reference.get(field),
+                    classification="ORION_DIVERGENCE",
                 )
 
     generated_materials = {
@@ -234,20 +294,22 @@ def _compare(*, generated: dict, expected: dict) -> dict:
         _register(checks["materials"], matches)
         if not matches:
             item = generated_materials.get(key) or expected_materials.get(key) or {}
-            _append_mismatch(
+            _append_sample(
                 mismatches,
+                limit=MAX_MISMATCH_SAMPLES,
                 scope="material",
                 key=item.get("material") or key,
                 field="presence",
                 generated=present_generated,
                 expected=present_expected,
+                classification="ORION_DIVERGENCE",
             )
 
     text_fields = (
         ("description", "description", _same_text),
         ("um", "um", _same_text),
         ("origin", "group_origin", _same_text),
-        ("optional_material", "optional_material", _same_material_code),
+        ("optional_material", "optional_material", _same_optional_materials),
     )
     numeric_fields = (
         ("stock_sap", "stock_sap"),
@@ -267,26 +329,48 @@ def _compare(*, generated: dict, expected: dict) -> dict:
             matches = comparator(current.get(field), reference.get(field))
             _register(checks[check_name], matches)
             if not matches:
-                _append_mismatch(
+                _append_sample(
                     mismatches,
+                    limit=MAX_MISMATCH_SAMPLES,
                     scope="material",
                     key=display_key,
                     field=field,
                     generated=current.get(field),
                     expected=reference.get(field),
+                    classification="ORION_DIVERGENCE",
                 )
 
         for check_name, field in numeric_fields:
             matches = _same_number(current.get(field), reference.get(field))
-            _register(checks[check_name], matches)
-            if not matches:
-                _append_mismatch(
-                    mismatches,
+            classification = "LEGACY_CORRECTION" if (not matches and _legacy_numeric_difference(field, current, reference)) else None
+            _register(checks[check_name], matches, classification)
+            if matches:
+                continue
+            if classification == "LEGACY_CORRECTION":
+                _append_sample(
+                    legacy_corrections,
+                    limit=MAX_LEGACY_SAMPLES,
                     scope="material",
                     key=display_key,
                     field=field,
                     generated=current.get(field),
                     expected=reference.get(field),
+                    classification=classification,
+                    reason=(
+                        "O DPP histórico armazenou o código do material como número e registrou STK zero; "
+                        "o ORION normalizou a chave número × texto e encontrou o estoque no STK SAP."
+                    ),
+                )
+            else:
+                _append_sample(
+                    mismatches,
+                    limit=MAX_MISMATCH_SAMPLES,
+                    scope="material",
+                    key=display_key,
+                    field=field,
+                    generated=current.get(field),
+                    expected=reference.get(field),
+                    classification="ORION_DIVERGENCE",
                 )
 
         generated_matrix = current.get("consumption_by_model", {})
@@ -299,13 +383,15 @@ def _compare(*, generated: dict, expected: dict) -> dict:
             matches = _same_number(generated_value, expected_value)
             _register(checks["matrix"], matches)
             if not matches:
-                _append_mismatch(
+                _append_sample(
                     mismatches,
+                    limit=MAX_MISMATCH_SAMPLES,
                     scope="matrix",
                     key=f"{display_key} × {expected_name}",
                     field="uso_bom",
                     generated=generated_value,
                     expected=expected_value,
+                    classification="ORION_DIVERGENCE",
                 )
 
     critical_checks = (
@@ -329,12 +415,22 @@ def _compare(*, generated: dict, expected: dict) -> dict:
     if generated.get("summary", {}).get("pgd_unresolved_positive", 0):
         passed = False
 
+    mismatch_total = sum(item["mismatches"] for item in checks.values())
+    legacy_total = sum(item["legacy_corrections"] for item in checks.values())
+    status = "APROVADO" if passed else "DIVERGENCIAS"
+    if passed and legacy_total:
+        status = "APROVADO_COM_CORRECOES_LEGADO"
+
     return {
         "pass": passed,
-        "status": "APROVADO" if passed else "DIVERGENCIAS",
+        "status": status,
         "checks": checks,
         "mismatches": mismatches,
-        "mismatch_samples_truncated": sum(item["mismatches"] for item in checks.values()) > len(mismatches),
+        "legacy_corrections": legacy_corrections,
+        "mismatch_samples_truncated": mismatch_total > len(mismatches),
+        "legacy_samples_truncated": legacy_total > len(legacy_corrections),
+        "mismatch_total": mismatch_total,
+        "legacy_corrections_total": legacy_total,
     }
 
 
@@ -411,10 +507,14 @@ async def test_monthly_dpp_reconstruction(
             "expected_models": len(expected["models"]),
             "pgd_unresolved_positive": generated.get("summary", {}).get("pgd_unresolved_positive", 0),
             "reference_real_models_applied": len(reference_real),
+            "legacy_corrections_total": comparison["legacy_corrections_total"],
+            "orion_mismatches_total": comparison["mismatch_total"],
         },
         "checks": comparison["checks"],
         "mismatches": comparison["mismatches"],
+        "legacy_corrections": comparison["legacy_corrections"],
         "mismatch_samples_truncated": comparison["mismatch_samples_truncated"],
+        "legacy_samples_truncated": comparison["legacy_samples_truncated"],
         "sources": {
             "base_dpp": base_dpp.filename,
             "expected_dpp": expected_dpp.filename,
