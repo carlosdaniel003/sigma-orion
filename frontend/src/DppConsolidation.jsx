@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
+import OrionWorking from './OrionWorking'
 import './dpp-consolidation.css'
 
 const PAGE_SIZE = 80
+const AUTO_RUN_DELAY = 450
 
 function formatNumber(value, digits = 3) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '—'
@@ -17,6 +19,7 @@ function DppConsolidation({ apiUrl }) {
   const [pgd, setPgd] = useState(null)
   const [openFile, setOpenFile] = useState(null)
   const [referenceMonth, setReferenceMonth] = useState('')
+  const [bundleMeta, setBundleMeta] = useState({ ready: false, signature: '', total: 0 })
   const [result, setResult] = useState(null)
   const [realValues, setRealValues] = useState({})
   const [loading, setLoading] = useState(false)
@@ -27,6 +30,9 @@ function DppConsolidation({ apiUrl }) {
   const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
   const [selectedMaterial, setSelectedMaterial] = useState(null)
+  const lastAutoSignatureRef = useRef('')
+  const autoRunTimerRef = useRef(null)
+  const generationAbortRef = useRef(null)
 
   const materials = result?.materials || []
   const models = result?.models || []
@@ -51,6 +57,20 @@ function DppConsolidation({ apiUrl }) {
   const totalPages = Math.max(1, Math.ceil(filteredMaterials.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const visibleMaterials = filteredMaterials.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const requiredReady = Boolean(baseDpp && wiu && explosion && stock && pgd && referenceMonth)
+
+  useEffect(() => {
+    if (!bundleMeta.ready || !bundleMeta.signature || !requiredReady || loading) return undefined
+    if (lastAutoSignatureRef.current === bundleMeta.signature) return undefined
+
+    window.clearTimeout(autoRunTimerRef.current)
+    autoRunTimerRef.current = window.setTimeout(() => {
+      lastAutoSignatureRef.current = bundleMeta.signature
+      generateMonthlyDpp()
+    }, AUTO_RUN_DELAY)
+
+    return () => window.clearTimeout(autoRunTimerRef.current)
+  }, [bundleMeta.ready, bundleMeta.signature, requiredReady, loading, referenceMonth, baseDpp, wiu, explosion, stock, pgd, openFile])
 
   function resetPaging() {
     setPage(1)
@@ -64,12 +84,17 @@ function DppConsolidation({ apiUrl }) {
     setStock(bundle.stock || null)
     setPgd(bundle.pgd || null)
     setOpenFile(bundle.openFile || null)
+    setBundleMeta({ ready: bundle.ready, signature: bundle.signature || '', total: bundle.total || 0 })
     if (bundle.referenceMonth) setReferenceMonth(bundle.referenceMonth)
+    if (!bundle.total) lastAutoSignatureRef.current = ''
     setError('')
   }
 
   async function generateMonthlyDpp() {
-    if (!baseDpp || !wiu || !explosion || !stock || !pgd || !referenceMonth) return
+    if (!baseDpp || !wiu || !explosion || !stock || !pgd || !referenceMonth || loading) return
+
+    const controller = new AbortController()
+    generationAbortRef.current = controller
     setLoading(true)
     setError('')
     setResult(null)
@@ -85,7 +110,7 @@ function DppConsolidation({ apiUrl }) {
     if (openFile) form.append('open_orders', openFile)
 
     try {
-      const response = await fetch(`${apiUrl}/api/dpp/monthly/generate`, { method: 'POST', body: form })
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/generate`, { method: 'POST', body: form, signal: controller.signal })
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Não foi possível gerar o novo DPP mensal.')
       setResult(data)
@@ -93,10 +118,21 @@ function DppConsolidation({ apiUrl }) {
       setActiveTab('summary')
       resetPaging()
     } catch (requestError) {
-      setError(requestError.message || 'Falha ao gerar o DPP mensal.')
+      if (requestError.name === 'AbortError') setError('Processamento cancelado. Use “Reanalisar cenário” quando quiser executar novamente.')
+      else setError(requestError.message || 'Falha ao gerar o DPP mensal.')
     } finally {
+      generationAbortRef.current = null
       setLoading(false)
     }
+  }
+
+  function cancelGeneration() {
+    generationAbortRef.current?.abort()
+  }
+
+  function rerunScenario() {
+    if (bundleMeta.signature) lastAutoSignatureRef.current = bundleMeta.signature
+    generateMonthlyDpp()
   }
 
   async function recalculateReal() {
@@ -121,15 +157,13 @@ function DppConsolidation({ apiUrl }) {
     }
   }
 
-  const requiredReady = baseDpp && wiu && explosion && stock && pgd && referenceMonth
-
   return (
     <>
       <header className="page-header consolidation-header">
         <div>
           <span className="eyebrow">NOVO FLUXO MENSAL</span>
           <h2>Gerar novo DPP</h2>
-          <p>Adicione o pacote mensal de arquivos; o ORION identifica cada fonte automaticamente e informa se algo obrigatório estiver faltando.</p>
+          <p>Adicione o pacote mensal. Assim que todas as fontes obrigatórias forem reconhecidas, o ORION inicia a construção automaticamente.</p>
         </div>
         <span className="status">Pacote → Check → Python → DPP</span>
       </header>
@@ -139,11 +173,11 @@ function DppConsolidation({ apiUrl }) {
       <section className="monthly-controls panel">
         <label>
           <span>Mês de referência</span>
-          <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} />
+          <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} disabled={loading} />
         </label>
         <div>
-          <strong>Identificação automática</strong>
-          <p>O mês é inferido pelos nomes das fontes quando possível. Você ainda pode corrigi-lo manualmente antes de gerar.</p>
+          <strong>Execução automática</strong>
+          <p>O mês é inferido pelos nomes quando possível. Ao completar o pacote, o processamento começa sem exigir outro clique.</p>
         </div>
       </section>
 
@@ -151,16 +185,19 @@ function DppConsolidation({ apiUrl }) {
         mode="generate"
         referenceMonth={referenceMonth}
         onBundle={applyFileBundle}
+        processing={loading}
         title="Adicionar pacote mensal"
       />
 
+      <OrionWorking active={loading} mode="generate" onCancel={cancelGeneration} />
+
       <section className="panel consolidation-action-panel">
         <div>
-          <strong>{requiredReady ? 'Pacote pronto para processamento' : 'Aguardando arquivos obrigatórios'}</strong>
-          <p>{requiredReady ? 'O ORION reconheceu todas as fontes necessárias para construir o novo DPP.' : 'Adicione os arquivos em massa; o check acima mostra exatamente o que ainda está faltando.'}</p>
+          <strong>{loading ? 'ORION processando o cenário' : requiredReady ? 'Execução automática habilitada' : 'Aguardando arquivos obrigatórios'}</strong>
+          <p>{loading ? 'Acompanhe as etapas acima. O resultado aparece sozinho ao terminar.' : requiredReady ? 'O pacote está completo. Novos pacotes completos são processados automaticamente; use o botão apenas para repetir a análise.' : 'Adicione os arquivos em massa; o check mostra exatamente o que ainda está faltando.'}</p>
         </div>
-        <button className="primary-button consolidation-button" type="button" onClick={generateMonthlyDpp} disabled={!requiredReady || loading}>
-          {loading ? 'Gerando novo DPP...' : 'Gerar novo DPP'}
+        <button className="secondary-button consolidation-button" type="button" onClick={rerunScenario} disabled={!requiredReady || loading}>
+          {loading ? 'Processando...' : result ? 'Reanalisar cenário' : 'Executar agora'}
         </button>
       </section>
 

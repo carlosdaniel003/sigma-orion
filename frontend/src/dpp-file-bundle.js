@@ -41,6 +41,10 @@ function reference(year, month) {
   return `${year}-${String(month).padStart(2, '0')}`
 }
 
+function fileIdentity(file) {
+  return `${file?.name || ''}:${file?.size || 0}:${file?.lastModified || 0}`
+}
+
 export function previousReference(value) {
   if (!/^\d{4}-\d{2}$/.test(value || '')) return null
   const [year, month] = value.split('-').map(Number)
@@ -157,6 +161,11 @@ export function classifyDppBundle(inputFiles, referenceMonth = '', mode = 'gener
   const requiredKeys = REQUIRED_BY_MODE[mode] || REQUIRED_BY_MODE.generate
   const missing = requiredKeys.filter((key) => !bundle[key])
   const recognized = Object.entries(bundle).filter(([, file]) => Boolean(file)).length
+  const signature = [
+    mode,
+    inferredReference,
+    ...files.map(fileIdentity).sort(),
+  ].join('|')
 
   return {
     ...bundle,
@@ -168,6 +177,7 @@ export function classifyDppBundle(inputFiles, referenceMonth = '', mode = 'gener
     duplicates,
     recognized,
     total: files.length,
+    signature,
     ready: missing.length === 0,
   }
 }

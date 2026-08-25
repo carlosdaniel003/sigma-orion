@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
+import OrionWorking from './OrionWorking'
 import './dashboard.css'
 import './dashboard-state.css'
+
+const AUTO_RUN_DELAY = 450
 
 function number(value) {
   const parsed = Number(value)
@@ -126,6 +129,10 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
   const [finalFile, setFinalFile] = useState(null)
   const [finalLoading, setFinalLoading] = useState(false)
   const [finalError, setFinalError] = useState('')
+  const [bundleMeta, setBundleMeta] = useState({ ready: false, signature: '', total: 0 })
+  const lastAutoSignatureRef = useRef('')
+  const autoRunTimerRef = useRef(null)
+  const finalAbortRef = useRef(null)
 
   const initialState = scenario ? {
     pgd: data.pgdTotal,
@@ -144,28 +151,60 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
     activeModels: number(finalSummary.active_models),
   } : null
 
+  useEffect(() => {
+    if (!scenario || !bundleMeta.ready || !bundleMeta.signature || !finalFile || finalLoading) return undefined
+    if (lastAutoSignatureRef.current === bundleMeta.signature) return undefined
+
+    window.clearTimeout(autoRunTimerRef.current)
+    autoRunTimerRef.current = window.setTimeout(() => {
+      lastAutoSignatureRef.current = bundleMeta.signature
+      loadFinalDpp()
+    }, AUTO_RUN_DELAY)
+
+    return () => window.clearTimeout(autoRunTimerRef.current)
+  }, [scenario, bundleMeta.ready, bundleMeta.signature, finalFile, finalLoading])
+
   function applyDashboardBundle(bundle) {
     setFinalFile(bundle.expectedDpp || null)
+    setBundleMeta({ ready: bundle.ready, signature: bundle.signature || '', total: bundle.total || 0 })
+    if (!bundle.total) {
+      lastAutoSignatureRef.current = ''
+      onFinalDppAnalysis?.(null)
+    }
     setFinalError('')
   }
 
   async function loadFinalDpp() {
-    if (!finalFile) return
+    if (!finalFile || finalLoading) return
+
+    const controller = new AbortController()
+    finalAbortRef.current = controller
     setFinalLoading(true)
     setFinalError('')
     const form = new FormData()
     form.append('file', finalFile)
 
     try {
-      const response = await fetch(`${apiUrl}/api/dpp/dashboard/final`, { method: 'POST', body: form })
+      const response = await fetch(`${apiUrl}/api/dpp/dashboard/final`, { method: 'POST', body: form, signal: controller.signal })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.detail || 'Não foi possível carregar o DPP final.')
       onFinalDppAnalysis?.(payload)
     } catch (requestError) {
-      setFinalError(requestError.message || 'Falha ao resumir o DPP final.')
+      if (requestError.name === 'AbortError') setFinalError('Análise cancelada. Use “Reanalisar DPP final” quando quiser executar novamente.')
+      else setFinalError(requestError.message || 'Falha ao resumir o DPP final.')
     } finally {
+      finalAbortRef.current = null
       setFinalLoading(false)
     }
+  }
+
+  function cancelFinalLoad() {
+    finalAbortRef.current?.abort()
+  }
+
+  function rerunFinalDpp() {
+    if (bundleMeta.signature) lastAutoSignatureRef.current = bundleMeta.signature
+    loadFinalDpp()
   }
 
   return (
@@ -203,9 +242,10 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
             finalFilename={finalDppAnalysis?.filename}
             finalFile={finalFile}
             onBundle={applyDashboardBundle}
-            loadFinalDpp={loadFinalDpp}
+            loadFinalDpp={rerunFinalDpp}
             finalLoading={finalLoading}
             finalError={finalError}
+            cancelFinalLoad={cancelFinalLoad}
           />
 
           {finalState && <EvolutionPanel initial={initialState} finalState={finalState} />}
@@ -275,7 +315,7 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
   )
 }
 
-function DppStateSection({ month, referenceMonth, initial, finalState, finalFilename, finalFile, onBundle, loadFinalDpp, finalLoading, finalError }) {
+function DppStateSection({ month, referenceMonth, initial, finalState, finalFilename, finalFile, onBundle, loadFinalDpp, finalLoading, finalError, cancelFinalLoad }) {
   return (
     <section className="panel dpp-state-panel">
       <div className="panel-header">
@@ -299,7 +339,7 @@ function DppStateSection({ month, referenceMonth, initial, finalState, finalFile
           <div className="dpp-state-heading">
             <span>DPP FINAL</span>
             <strong>{finalState ? month : 'Aguardando DPP final'}</strong>
-            <small>{finalState ? 'Após análise e decisões humanas' : 'Adicione o pacote do mês; o ORION localizará o DPP final automaticamente'}</small>
+            <small>{finalState ? 'Após análise e decisões humanas' : 'Adicione o pacote do mês; quando estiver completo, a leitura inicia automaticamente'}</small>
           </div>
 
           {finalState ? (
@@ -307,7 +347,7 @@ function DppStateSection({ month, referenceMonth, initial, finalState, finalFile
           ) : (
             <div className="dpp-final-placeholder">
               <strong>Segunda etapa do processo</strong>
-              <p>O pacote mensal também é conferido aqui para deixar evidente se alguma fonte do processo está faltando.</p>
+              <p>O pacote mensal é conferido e o DPP final é localizado automaticamente para comparar com o cenário inicial.</p>
             </div>
           )}
 
@@ -315,14 +355,17 @@ function DppStateSection({ month, referenceMonth, initial, finalState, finalFile
             mode="dashboard"
             referenceMonth={referenceMonth}
             onBundle={onBundle}
+            processing={finalLoading}
             compact
             title="Adicionar pacote e localizar DPP final"
           />
 
+          <OrionWorking active={finalLoading} mode="dashboard" onCancel={cancelFinalLoad} compact />
+
           <div className="dpp-final-upload">
             <span>{finalFile ? `DPP final detectado: ${finalFile.name}` : finalFilename ? `Último DPP final: ${finalFilename}` : 'Nenhum DPP final reconhecido no pacote'}</span>
             <button className="secondary-button" type="button" disabled={!finalFile || finalLoading} onClick={loadFinalDpp}>
-              {finalLoading ? 'Lendo DPP final...' : finalState ? 'Atualizar comparação' : 'Comparar com cenário inicial'}
+              {finalLoading ? 'Processando...' : finalState ? 'Reanalisar DPP final' : 'Analisar agora'}
             </button>
           </div>
           {finalError && <div className="dpp-final-error">{finalError}</div>}
@@ -451,7 +494,7 @@ function EmptyDashboard({ onNavigate }) {
         <div>
           <span className="eyebrow">SEM DPP CARREGADO</span>
           <h3>Gere o DPP do mês para alimentar a visão operacional.</h3>
-          <p>No Gerar novo DPP você pode selecionar todo o pacote mensal de uma vez; o ORION identifica cada arquivo e verifica o que estiver faltando.</p>
+          <p>No Gerar novo DPP você pode selecionar todo o pacote mensal de uma vez; quando estiver completo, o processamento começa automaticamente.</p>
           <button className="primary-button" type="button" onClick={() => onNavigate?.('consolidation')}>Adicionar pacote e gerar DPP</button>
         </div>
         <div className="dashboard-readiness">

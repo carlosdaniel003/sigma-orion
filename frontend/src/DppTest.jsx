@@ -1,6 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
+import OrionWorking from './OrionWorking'
 import './dpp-consolidation.css'
+
+const AUTO_RUN_DELAY = 450
 
 const CHECK_LABELS = {
   materials: 'Materiais',
@@ -29,16 +32,33 @@ function DppTest({ apiUrl }) {
   const [pgd, setPgd] = useState(null)
   const [openFile, setOpenFile] = useState(null)
   const [referenceMonth, setReferenceMonth] = useState('')
+  const [bundleMeta, setBundleMeta] = useState({ ready: false, signature: '', total: 0 })
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const lastAutoSignatureRef = useRef('')
+  const autoRunTimerRef = useRef(null)
+  const testAbortRef = useRef(null)
 
-  const requiredReady = baseDpp && expectedDpp && wiu && explosion && stock && pgd && referenceMonth
+  const requiredReady = Boolean(baseDpp && expectedDpp && wiu && explosion && stock && pgd && referenceMonth)
 
   const failedChecks = useMemo(
     () => Object.entries(result?.checks || {}).filter(([, check]) => check.mismatches > 0),
     [result],
   )
+
+  useEffect(() => {
+    if (!bundleMeta.ready || !bundleMeta.signature || !requiredReady || loading) return undefined
+    if (lastAutoSignatureRef.current === bundleMeta.signature) return undefined
+
+    window.clearTimeout(autoRunTimerRef.current)
+    autoRunTimerRef.current = window.setTimeout(() => {
+      lastAutoSignatureRef.current = bundleMeta.signature
+      runTest()
+    }, AUTO_RUN_DELAY)
+
+    return () => window.clearTimeout(autoRunTimerRef.current)
+  }, [bundleMeta.ready, bundleMeta.signature, requiredReady, loading, referenceMonth, baseDpp, expectedDpp, wiu, explosion, stock, pgd, openFile])
 
   function applyFileBundle(bundle) {
     setBaseDpp(bundle.baseDpp || null)
@@ -48,12 +68,17 @@ function DppTest({ apiUrl }) {
     setStock(bundle.stock || null)
     setPgd(bundle.pgd || null)
     setOpenFile(bundle.openFile || null)
+    setBundleMeta({ ready: bundle.ready, signature: bundle.signature || '', total: bundle.total || 0 })
     if (bundle.referenceMonth) setReferenceMonth(bundle.referenceMonth)
+    if (!bundle.total) lastAutoSignatureRef.current = ''
     setError('')
   }
 
   async function runTest() {
-    if (!requiredReady) return
+    if (!baseDpp || !expectedDpp || !wiu || !explosion || !stock || !pgd || !referenceMonth || loading) return
+
+    const controller = new AbortController()
+    testAbortRef.current = controller
     setLoading(true)
     setError('')
     setResult(null)
@@ -69,15 +94,26 @@ function DppTest({ apiUrl }) {
     if (openFile) form.append('open_orders', openFile)
 
     try {
-      const response = await fetch(`${apiUrl}/api/dpp/monthly/test`, { method: 'POST', body: form })
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/test`, { method: 'POST', body: form, signal: controller.signal })
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Não foi possível executar o teste do DPP.')
       setResult(data)
     } catch (requestError) {
-      setError(requestError.message || 'Falha no teste de reconstrução.')
+      if (requestError.name === 'AbortError') setError('Teste cancelado. Use “Executar novamente” quando quiser repetir a reconstrução.')
+      else setError(requestError.message || 'Falha no teste de reconstrução.')
     } finally {
+      testAbortRef.current = null
       setLoading(false)
     }
+  }
+
+  function cancelTest() {
+    testAbortRef.current?.abort()
+  }
+
+  function rerunTest() {
+    if (bundleMeta.signature) lastAutoSignatureRef.current = bundleMeta.signature
+    runTest()
   }
 
   function verdictText() {
@@ -100,7 +136,7 @@ function DppTest({ apiUrl }) {
         <div>
           <span className="eyebrow">VALIDAÇÃO DE RECONSTRUÇÃO</span>
           <h2>Testes do DPP</h2>
-          <p>Adicione o pacote completo do mês. O ORION separa automaticamente a base anterior, o DPP final usado como gabarito e as demais fontes.</p>
+          <p>Adicione o pacote completo. Assim que a base anterior, o DPP final e as fontes mensais forem reconhecidos, o ORION executa o teste automaticamente.</p>
         </div>
         <span className="status">Pacote → Check → Reconstrução → Comparação</span>
       </header>
@@ -110,11 +146,11 @@ function DppTest({ apiUrl }) {
       <section className="monthly-controls panel">
         <label>
           <span>Mês que será reconstruído</span>
-          <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} />
+          <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} disabled={loading} />
         </label>
         <div>
-          <strong>Identificação automática</strong>
-          <p>O DPP do mês anterior e o DPP final são separados pela referência mensal encontrada no nome dos arquivos.</p>
+          <strong>Execução automática</strong>
+          <p>O DPP anterior e o DPP final são separados pela referência mensal encontrada nos nomes. Pacote completo inicia a reconstrução sem outro clique.</p>
         </div>
       </section>
 
@@ -122,16 +158,19 @@ function DppTest({ apiUrl }) {
         mode="test"
         referenceMonth={referenceMonth}
         onBundle={applyFileBundle}
+        processing={loading}
         title="Adicionar pacote de teste"
       />
 
+      <OrionWorking active={loading} mode="test" onCancel={cancelTest} />
+
       <section className="panel consolidation-action-panel">
         <div>
-          <strong>{requiredReady ? 'Pacote de teste completo' : 'Aguardando arquivos obrigatórios'}</strong>
-          <p>{requiredReady ? 'Base anterior, DPP esperado e fontes mensais foram reconhecidos.' : 'O check acima informa exatamente qual arquivo ainda precisa ser adicionado.'}</p>
+          <strong>{loading ? 'ORION reconstruindo e comparando' : requiredReady ? 'Execução automática habilitada' : 'Aguardando arquivos obrigatórios'}</strong>
+          <p>{loading ? 'Acompanhe as etapas acima. O relatório aparece automaticamente ao terminar.' : requiredReady ? 'O pacote está completo. Use o botão somente se quiser repetir o teste com os mesmos arquivos.' : 'O check acima informa exatamente qual arquivo ainda precisa ser adicionado.'}</p>
         </div>
-        <button className="primary-button consolidation-button" type="button" onClick={runTest} disabled={!requiredReady || loading}>
-          {loading ? 'Reconstruindo e comparando...' : 'Executar teste de reconstrução'}
+        <button className="secondary-button consolidation-button" type="button" onClick={rerunTest} disabled={!requiredReady || loading}>
+          {loading ? 'Processando...' : result ? 'Executar novamente' : 'Executar agora'}
         </button>
       </section>
 

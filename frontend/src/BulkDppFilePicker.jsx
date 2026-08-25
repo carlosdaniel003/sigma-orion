@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { classifyDppBundle, FILE_LABELS } from './dpp-file-bundle'
 import './bulk-file-picker.css'
 
@@ -22,65 +22,73 @@ function mergeFiles(currentFiles, newFiles) {
   return merged
 }
 
-function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, compact = false, title = 'Adicionar arquivos em massa' }) {
+function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, compact = false, processing = false, title = 'Adicionar arquivos em massa' }) {
   const [selectedFiles, setSelectedFiles] = useState([])
+  const onBundleRef = useRef(onBundle)
   const report = useMemo(
     () => classifyDppBundle(selectedFiles, referenceMonth, mode),
     [selectedFiles, referenceMonth, mode],
   )
 
+  useEffect(() => {
+    onBundleRef.current = onBundle
+  }, [onBundle])
+
+  useEffect(() => {
+    onBundleRef.current?.(report)
+  }, [report])
+
   function addFiles(event) {
     const incomingFiles = Array.from(event.target.files || [])
-    if (!incomingFiles.length) return
+    if (!incomingFiles.length || processing) return
 
-    const files = mergeFiles(selectedFiles, incomingFiles)
-    setSelectedFiles(files)
-    const next = classifyDppBundle(files, referenceMonth, mode)
-    onBundle?.(next)
-
-    // Permite selecionar novamente o mesmo arquivo depois de limpar/substituir.
+    setSelectedFiles((current) => mergeFiles(current, incomingFiles))
     event.target.value = ''
   }
 
   function clearFiles() {
+    if (processing) return
     setSelectedFiles([])
-    onBundle?.(classifyDppBundle([], referenceMonth, mode))
   }
 
   const missingLabels = report.missing.map((key) => FILE_LABELS[key])
-  const primaryActionLabel = selectedFiles.length
-    ? report.ready
-      ? 'Adicionar mais arquivos'
-      : 'Adicionar arquivos faltantes'
-    : 'Selecionar arquivos'
+  const primaryActionLabel = processing
+    ? 'Processando...'
+    : selectedFiles.length
+      ? report.ready
+        ? 'Adicionar mais arquivos'
+        : 'Adicionar arquivos faltantes'
+      : 'Selecionar arquivos'
 
   return (
-    <section className={`bulk-file-picker ${compact ? 'compact' : ''}`}>
+    <section className={`bulk-file-picker ${compact ? 'compact' : ''} ${processing ? 'is-processing' : ''}`}>
       <div className="bulk-file-picker-head">
         <div>
           <span className="eyebrow">PACOTE DO MÊS</span>
           <h3>{title}</h3>
-          <p>Selecione os arquivos em massa. Se algum obrigatório faltar, adicione somente o arquivo restante: os arquivos já reconhecidos permanecem no pacote.</p>
+          <p>Selecione os arquivos em massa. Quando todos os obrigatórios forem reconhecidos, o ORION inicia o processamento automaticamente.</p>
         </div>
         <div className="bulk-file-actions">
-          <label className="bulk-file-button">
-            <input type="file" accept=".xlsx,.xlsm" multiple onChange={addFiles} />
+          <label className={`bulk-file-button ${processing ? 'disabled' : ''}`}>
+            <input type="file" accept=".xlsx,.xlsm" multiple onChange={addFiles} disabled={processing} />
             <span>{primaryActionLabel}</span>
           </label>
           {selectedFiles.length > 0 && (
-            <button className="bulk-file-clear" type="button" onClick={clearFiles}>Limpar pacote</button>
+            <button className="bulk-file-clear" type="button" onClick={clearFiles} disabled={processing}>Limpar pacote</button>
           )}
         </div>
       </div>
 
       {selectedFiles.length > 0 && (
         <>
-          <div className={`bulk-package-status ${report.ready ? 'ready' : 'missing'}`}>
-            <strong>{report.ready ? 'Pacote completo' : `Faltam ${report.missing.length} arquivo(s) obrigatório(s)`}</strong>
+          <div className={`bulk-package-status ${processing ? 'processing' : report.ready ? 'ready' : 'missing'}`}>
+            <strong>{processing ? 'ORION processando o pacote' : report.ready ? 'Pacote completo' : `Faltam ${report.missing.length} arquivo(s) obrigatório(s)`}</strong>
             <span>
-              {report.ready
-                ? `${report.recognized} arquivo(s) reconhecido(s) automaticamente.`
-                : `${missingLabels.join(' · ')} — use “Adicionar arquivos faltantes” sem perder o pacote atual.`}
+              {processing
+                ? 'A análise já foi iniciada. O resultado será exibido automaticamente.'
+                : report.ready
+                  ? `${report.recognized} arquivo(s) reconhecido(s). Processamento automático habilitado.`
+                  : `${missingLabels.join(' · ')} — adicione somente o que falta sem perder o pacote atual.`}
             </span>
           </div>
 
