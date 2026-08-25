@@ -1,4 +1,9 @@
+from io import BytesIO
+
+from openpyxl import Workbook
+
 from app.services import dpp_scenario_service as scenario_service
+from app.services.dpp_dashboard_service import summarize_final_dpp_content
 
 
 def test_latest_monthly_scenario_returns_most_recent_registered_scenario() -> None:
@@ -41,3 +46,65 @@ def test_latest_monthly_scenario_returns_most_recent_registered_scenario() -> No
 def test_latest_monthly_scenario_returns_none_without_scenarios() -> None:
     scenario_service._SCENARIOS.clear()
     assert scenario_service.get_latest_monthly_scenario() is None
+
+
+def _final_dpp_workbook_bytes() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "DPP"
+
+    sheet["A1"] = "KIT Disponivel PGD"
+    sheet["E1"] = 100
+    sheet["F1"] = 50
+    sheet["A2"] = "REAL"
+    sheet["E2"] = 120
+    sheet["F2"] = 0
+
+    headers = [
+        "Material",
+        "Descrição",
+        "UM",
+        "Grupo Origem",
+        "MODELO A",
+        "MODELO B",
+        "Check",
+        "WIU",
+        "NEC",
+        "STK 01.07",
+        "EXPLOSÃO 01.07",
+        "OPC",
+        "STK OP",
+        "STK TTL",
+        "SALDO",
+        "Preço",
+        "Amount",
+    ]
+    for column, value in enumerate(headers, start=1):
+        sheet.cell(row=4, column=column, value=value)
+
+    rows = [
+        ["MAT-A", "A", "UN", "Importado", 1, 0, None, None, 120, 100, 0, "ALT-A", 10, 110, -10, 1, -10],
+        ["MAT-B", "B", "UN", "Importado", 1, 0, None, None, 120, 125, 0, None, 0, 125, 5, 1, 5],
+        ["MAT-C", "C", "G", "Importado", 0, 1, None, None, 0, 0, 0, None, 0, 0, -100, 1, -100],
+    ]
+    for row_index, values in enumerate(rows, start=5):
+        for column, value in enumerate(values, start=1):
+            sheet.cell(row=row_index, column=column, value=value)
+
+    output = BytesIO()
+    workbook.save(output)
+    workbook.close()
+    return output.getvalue()
+
+
+def test_final_dashboard_summary_uses_consolidated_excel_state() -> None:
+    result = summarize_final_dpp_content(_final_dpp_workbook_bytes(), "DPP JULHO.xlsx")
+    summary = result["summary"]
+
+    assert summary["pgd_total"] == 150
+    assert summary["real_total"] == 120
+    assert summary["model_count"] == 2
+    assert summary["active_models"] == 1
+    assert summary["total_materials"] == 3
+    assert summary["critical_materials"] == 1
+    assert summary["opc_count"] == 1
