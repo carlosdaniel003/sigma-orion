@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Dashboard from './Dashboard'
 
-function DashboardLoader({ apiUrl, onNavigate }) {
+function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnalysis }) {
   const [scenario, setScenario] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -49,7 +49,15 @@ function DashboardLoader({ apiUrl, onNavigate }) {
     )
   }
 
-  return <Dashboard scenario={scenario} onNavigate={onNavigate} />
+  return (
+    <Dashboard
+      apiUrl={apiUrl}
+      scenario={scenario}
+      onNavigate={onNavigate}
+      finalDppAnalysis={finalDppAnalysis}
+      onFinalDppAnalysis={onFinalDppAnalysis}
+    />
+  )
 }
 
 export default DashboardLoader
