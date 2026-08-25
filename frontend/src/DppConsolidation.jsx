@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import BulkDppFilePicker from './BulkDppFilePicker'
 import './dpp-consolidation.css'
 
 const PAGE_SIZE = 80
@@ -54,6 +55,17 @@ function DppConsolidation({ apiUrl }) {
   function resetPaging() {
     setPage(1)
     setSelectedMaterial(null)
+  }
+
+  function applyFileBundle(bundle) {
+    setBaseDpp(bundle.baseDpp || null)
+    setWiu(bundle.wiu || null)
+    setExplosion(bundle.explosion || null)
+    setStock(bundle.stock || null)
+    setPgd(bundle.pgd || null)
+    setOpenFile(bundle.openFile || null)
+    if (bundle.referenceMonth) setReferenceMonth(bundle.referenceMonth)
+    setError('')
   }
 
   async function generateMonthlyDpp() {
@@ -117,9 +129,9 @@ function DppConsolidation({ apiUrl }) {
         <div>
           <span className="eyebrow">NOVO FLUXO MENSAL</span>
           <h2>Gerar novo DPP</h2>
-          <p>Parta do DPP anterior, atualize as fontes do mês e use o KIT disponível do PGD como ponto inicial do REAL.</p>
+          <p>Adicione o pacote mensal de arquivos; o ORION identifica cada fonte automaticamente e informa se algo obrigatório estiver faltando.</p>
         </div>
-        <span className="status">Base histórica → Fontes → REAL → Saldo</span>
+        <span className="status">Pacote → Check → Python → DPP</span>
       </header>
 
       {error && <div className="alert error">{error}</div>}
@@ -130,24 +142,22 @@ function DppConsolidation({ apiUrl }) {
           <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} />
         </label>
         <div>
-          <strong>Regra atual</strong>
-          <p>Materiais e OPCs são acumulativos. REAL inicia igual ao KIT PGD e permanece editável pelo analista.</p>
+          <strong>Identificação automática</strong>
+          <p>O mês é inferido pelos nomes das fontes quando possível. Você ainda pode corrigi-lo manualmente antes de gerar.</p>
         </div>
       </section>
 
-      <section className="source-workspace source-workspace-six">
-        <SourceCard title="DPP mês anterior" subtitle="Base histórica acumulativa de materiais e OPCs" required file={baseDpp} onChange={setBaseDpp} />
-        <SourceCard title="WIU" subtitle="Material × Modelo e consumo da BOM do novo mês" required file={wiu} onChange={setWiu} />
-        <SourceCard title="Explosão" subtitle="Explosão consolidada por material" required file={explosion} onChange={setExplosion} />
-        <SourceCard title="STK SAP" subtitle="Snapshot do dia 1º antes da movimentação" required file={stock} onChange={setStock} />
-        <SourceCard title="PGD" subtitle="KIT DISPONÍVEL do mês de referência" required file={pgd} onChange={setPgd} />
-        <SourceCard title="OPEN" subtitle="PI/PO pendentes para investigação; não altera estoque" file={openFile} onChange={setOpenFile} optional />
-      </section>
+      <BulkDppFilePicker
+        mode="generate"
+        referenceMonth={referenceMonth}
+        onBundle={applyFileBundle}
+        title="Adicionar pacote mensal"
+      />
 
       <section className="panel consolidation-action-panel">
         <div>
-          <strong>Construção do próximo DPP</strong>
-          <p>O ORION preserva a base histórica, atualiza WIU/Explosão/STK, herda OPCs e extrai o KIT do PGD.</p>
+          <strong>{requiredReady ? 'Pacote pronto para processamento' : 'Aguardando arquivos obrigatórios'}</strong>
+          <p>{requiredReady ? 'O ORION reconheceu todas as fontes necessárias para construir o novo DPP.' : 'Adicione os arquivos em massa; o check acima mostra exatamente o que ainda está faltando.'}</p>
         </div>
         <button className="primary-button consolidation-button" type="button" onClick={generateMonthlyDpp} disabled={!requiredReady || loading}>
           {loading ? 'Gerando novo DPP...' : 'Gerar novo DPP'}
@@ -195,23 +205,6 @@ function DppConsolidation({ apiUrl }) {
         </>
       )}
     </>
-  )
-}
-
-function SourceCard({ title, subtitle, required = false, file, onChange, optional = false }) {
-  return (
-    <article className={`source-card ${file ? 'source-ready' : ''}`}>
-      <div className="source-card-topline">
-        <span className={`source-state ${file ? 'ready' : required ? 'required' : 'optional'}`}>{file ? 'Carregado' : required ? 'Obrigatório' : 'Opcional'}</span>
-        <small>{optional ? 'Investigação' : 'Novo mês'}</small>
-      </div>
-      <h3>{title}</h3>
-      <p>{subtitle}</p>
-      <label className="source-file-control">
-        <input type="file" accept=".xlsx,.xlsm" onChange={(event) => onChange(event.target.files?.[0] || null)} />
-        <span>{file ? file.name : 'Selecionar arquivo'}</span>
-      </label>
-    </article>
   )
 }
 
