@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import BulkDppFilePicker from './BulkDppFilePicker'
 import './dashboard.css'
 import './dashboard-state.css'
 
@@ -143,6 +144,11 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
     activeModels: number(finalSummary.active_models),
   } : null
 
+  function applyDashboardBundle(bundle) {
+    setFinalFile(bundle.expectedDpp || null)
+    setFinalError('')
+  }
+
   async function loadFinalDpp() {
     if (!finalFile) return
     setFinalLoading(true)
@@ -191,11 +197,12 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
 
           <DppStateSection
             month={formatMonth(scenario.reference_month)}
+            referenceMonth={scenario.reference_month}
             initial={initialState}
             finalState={finalState}
             finalFilename={finalDppAnalysis?.filename}
             finalFile={finalFile}
-            setFinalFile={setFinalFile}
+            onBundle={applyDashboardBundle}
             loadFinalDpp={loadFinalDpp}
             finalLoading={finalLoading}
             finalError={finalError}
@@ -268,7 +275,7 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
   )
 }
 
-function DppStateSection({ month, initial, finalState, finalFilename, finalFile, setFinalFile, loadFinalDpp, finalLoading, finalError }) {
+function DppStateSection({ month, referenceMonth, initial, finalState, finalFilename, finalFile, onBundle, loadFinalDpp, finalLoading, finalError }) {
   return (
     <section className="panel dpp-state-panel">
       <div className="panel-header">
@@ -292,7 +299,7 @@ function DppStateSection({ month, initial, finalState, finalFilename, finalFile,
           <div className="dpp-state-heading">
             <span>DPP FINAL</span>
             <strong>{finalState ? month : 'Aguardando DPP final'}</strong>
-            <small>{finalState ? 'Após análise e decisões humanas' : 'Carregue o consolidado para comparar com o cenário inicial'}</small>
+            <small>{finalState ? 'Após análise e decisões humanas' : 'Adicione o pacote do mês; o ORION localizará o DPP final automaticamente'}</small>
           </div>
 
           {finalState ? (
@@ -300,15 +307,20 @@ function DppStateSection({ month, initial, finalState, finalFilename, finalFile,
           ) : (
             <div className="dpp-final-placeholder">
               <strong>Segunda etapa do processo</strong>
-              <p>Quando o DPP final estiver disponível, o ORION poderá mostrar o que mudou após ajustes de REAL, OPCs e investigações.</p>
+              <p>O pacote mensal também é conferido aqui para deixar evidente se alguma fonte do processo está faltando.</p>
             </div>
           )}
 
+          <BulkDppFilePicker
+            mode="dashboard"
+            referenceMonth={referenceMonth}
+            onBundle={onBundle}
+            compact
+            title="Adicionar pacote e localizar DPP final"
+          />
+
           <div className="dpp-final-upload">
-            <label>
-              <input type="file" accept=".xlsx,.xlsm" onChange={(event) => setFinalFile(event.target.files?.[0] || null)} />
-              <span>{finalFile ? finalFile.name : finalFilename || 'Selecionar DPP final'}</span>
-            </label>
+            <span>{finalFile ? `DPP final detectado: ${finalFile.name}` : finalFilename ? `Último DPP final: ${finalFilename}` : 'Nenhum DPP final reconhecido no pacote'}</span>
             <button className="secondary-button" type="button" disabled={!finalFile || finalLoading} onClick={loadFinalDpp}>
               {finalLoading ? 'Lendo DPP final...' : finalState ? 'Atualizar comparação' : 'Comparar com cenário inicial'}
             </button>
@@ -439,8 +451,8 @@ function EmptyDashboard({ onNavigate }) {
         <div>
           <span className="eyebrow">SEM DPP CARREGADO</span>
           <h3>Gere o DPP do mês para alimentar a visão operacional.</h3>
-          <p>O dashboard usa diretamente o resultado do motor Python: PGD, REAL, materiais, saldos, OPCs e matriz Material × Modelo.</p>
-          <button className="primary-button" type="button" onClick={() => onNavigate?.('consolidation')}>Gerar novo DPP</button>
+          <p>No Gerar novo DPP você pode selecionar todo o pacote mensal de uma vez; o ORION identifica cada arquivo e verifica o que estiver faltando.</p>
+          <button className="primary-button" type="button" onClick={() => onNavigate?.('consolidation')}>Adicionar pacote e gerar DPP</button>
         </div>
         <div className="dashboard-readiness">
           <Readiness label="Construção mensal do DPP" status="Disponível" />
