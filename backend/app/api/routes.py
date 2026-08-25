@@ -21,6 +21,7 @@ from app.services.agent_service import (
     provider_status,
 )
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
+from app.services.dpp_dashboard_service import summarize_final_dpp
 from app.services.dpp_monthly_service import generate_monthly_dpp
 from app.services.dpp_scenario_service import get_latest_monthly_scenario, recalculate_monthly_scenario
 from app.services.dpp_service import analyze_dpp_file
@@ -197,6 +198,19 @@ def latest_monthly_dpp_route() -> dict:
         "available": scenario is not None,
         "scenario": scenario,
     }
+
+
+@router.post("/dpp/dashboard/final")
+async def final_dpp_dashboard_route(file: UploadFile = File(...)) -> dict:
+    try:
+        return await summarize_final_dpp(file)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível resumir o DPP final '{file.filename}': {exc}",
+        ) from exc
 
 
 @router.post("/dpp/monthly/recalculate")
