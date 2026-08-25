@@ -33,12 +33,19 @@
   font-size: 0.86rem;
 }
 
+.bulk-file-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .bulk-file-button {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 160px;
+  min-width: 190px;
   border: 1px solid #cbd5cf;
   border-radius: 10px;
   padding: 0.78rem 1.05rem;
@@ -52,6 +59,21 @@
   position: absolute;
   opacity: 0;
   pointer-events: none;
+}
+
+.bulk-file-clear {
+  flex: 0 0 auto;
+  border: 1px solid #d4dcd7;
+  border-radius: 10px;
+  padding: 0.78rem 0.9rem;
+  background: #fff;
+  color: #5e6a63;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.bulk-file-clear:hover {
+  background: #f4f7f5;
 }
 
 .bulk-package-status {
@@ -178,7 +200,8 @@
 
 @media (max-width: 720px) {
   .bulk-file-picker-head,
-  .bulk-package-status {
+  .bulk-package-status,
+  .bulk-file-actions {
     align-items: stretch;
     flex-direction: column;
   }
@@ -187,7 +210,8 @@
     text-align: left;
   }
 
-  .bulk-file-button {
+  .bulk-file-button,
+  .bulk-file-clear {
     width: 100%;
   }
 }
