@@ -22,7 +22,7 @@ from app.services.agent_service import (
 )
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
 from app.services.dpp_monthly_service import generate_monthly_dpp
-from app.services.dpp_scenario_service import recalculate_monthly_scenario
+from app.services.dpp_scenario_service import get_latest_monthly_scenario, recalculate_monthly_scenario
 from app.services.dpp_service import analyze_dpp_file
 from app.services.dpp_test_service import test_monthly_dpp_reconstruction
 from app.services.excel_service import inspect_uploaded_file
@@ -188,6 +188,15 @@ async def generate_monthly_dpp_route(
             status_code=422,
             detail=f"Não foi possível gerar o novo DPP mensal: {exc}",
         ) from exc
+
+
+@router.get("/dpp/monthly/latest")
+def latest_monthly_dpp_route() -> dict:
+    scenario = get_latest_monthly_scenario()
+    return {
+        "available": scenario is not None,
+        "scenario": scenario,
+    }
 
 
 @router.post("/dpp/monthly/recalculate")

@@ -120,6 +120,14 @@ def _payload(scenario_id: str, scenario: dict) -> dict:
     }
 
 
+def get_latest_monthly_scenario() -> dict | None:
+    """Retorna o cenário mensal mais recente mantido em memória pelo backend local."""
+    if not _SCENARIOS:
+        return None
+    scenario_id = next(reversed(_SCENARIOS))
+    return _payload(scenario_id, _SCENARIOS[scenario_id])
+
+
 def register_monthly_scenario(
     *,
     materials: list[dict],

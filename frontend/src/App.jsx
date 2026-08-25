@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import DashboardLoader from './DashboardLoader'
 import DppAnalysis from './DppAnalysis'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
@@ -7,13 +8,13 @@ import LegacyApp from './LegacyApp'
 const API_URL = 'http://localhost:8000'
 
 function App() {
-  const [activeView, setActiveView] = useState('consolidation')
+  const [activeView, setActiveView] = useState('dashboard')
 
   if (activeView === 'legacy') {
     return (
       <div>
         <div className="legacy-return-bar">
-          <button type="button" onClick={() => setActiveView('consolidation')}>Voltar para Novo DPP</button>
+          <button type="button" onClick={() => setActiveView('dashboard')}>Voltar para Visão Geral</button>
           <span>Módulos anteriores do MVP</span>
         </div>
         <LegacyApp />
@@ -25,20 +26,22 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div>
-          <span className="eyebrow">FLUXO MENSAL</span>
+          <span className="eyebrow">PLANEJAMENTO DPP</span>
           <h1>ORION</h1>
-          <p>Geração do novo DPP a partir da base histórica e das fontes mensais, com cálculo determinístico e rastreabilidade.</p>
+          <p>Visão operacional do plano de produção, cobertura de materiais, riscos e rastreabilidade do DPP.</p>
           <nav>
+            <button className={activeView === 'dashboard' ? 'nav-active' : ''} onClick={() => setActiveView('dashboard')}>Visão Geral</button>
             <button className={activeView === 'consolidation' ? 'nav-active' : ''} onClick={() => setActiveView('consolidation')}>Gerar novo DPP</button>
             <button className={activeView === 'test' ? 'nav-active' : ''} onClick={() => setActiveView('test')}>Testes do DPP</button>
             <button className={activeView === 'validation' ? 'nav-active' : ''} onClick={() => setActiveView('validation')}>Validar DPP pronto</button>
             <button onClick={() => setActiveView('legacy')}>Agente, Histórico e Diagnóstico</button>
           </nav>
         </div>
-        <div className="sidebar-footer"><span className="status-dot" />Backend local</div>
+        <div className="sidebar-footer"><span className="status-dot" />Motor Python local</div>
       </aside>
 
       <main className="content">
+        {activeView === 'dashboard' && <DashboardLoader apiUrl={API_URL} onNavigate={setActiveView} />}
         {activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
         {activeView === 'test' && <DppTest apiUrl={API_URL} />}
         {activeView === 'validation' && <DppAnalysis apiUrl={API_URL} />}
