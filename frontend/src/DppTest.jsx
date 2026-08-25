@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import BulkDppFilePicker from './BulkDppFilePicker'
 import './dpp-consolidation.css'
 
 const CHECK_LABELS = {
@@ -38,6 +39,18 @@ function DppTest({ apiUrl }) {
     () => Object.entries(result?.checks || {}).filter(([, check]) => check.mismatches > 0),
     [result],
   )
+
+  function applyFileBundle(bundle) {
+    setBaseDpp(bundle.baseDpp || null)
+    setExpectedDpp(bundle.expectedDpp || null)
+    setWiu(bundle.wiu || null)
+    setExplosion(bundle.explosion || null)
+    setStock(bundle.stock || null)
+    setPgd(bundle.pgd || null)
+    setOpenFile(bundle.openFile || null)
+    if (bundle.referenceMonth) setReferenceMonth(bundle.referenceMonth)
+    setError('')
+  }
 
   async function runTest() {
     if (!requiredReady) return
@@ -87,9 +100,9 @@ function DppTest({ apiUrl }) {
         <div>
           <span className="eyebrow">VALIDAÇÃO DE RECONSTRUÇÃO</span>
           <h2>Testes do DPP</h2>
-          <p>Reconstrua um mês já conhecido e compare o resultado do ORION campo a campo contra o DPP consolidado real.</p>
+          <p>Adicione o pacote completo do mês. O ORION separa automaticamente a base anterior, o DPP final usado como gabarito e as demais fontes.</p>
         </div>
-        <span className="status">Fontes do mês → ORION → DPP esperado</span>
+        <span className="status">Pacote → Check → Reconstrução → Comparação</span>
       </header>
 
       {error && <div className="alert error">{error}</div>}
@@ -100,25 +113,22 @@ function DppTest({ apiUrl }) {
           <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} />
         </label>
         <div>
-          <strong>Critério do teste</strong>
-          <p>O DPP anterior é necessário porque materiais e OPCs são acumulativos. O DPP consolidado do mês testado é usado somente como gabarito.</p>
+          <strong>Identificação automática</strong>
+          <p>O DPP do mês anterior e o DPP final são separados pela referência mensal encontrada no nome dos arquivos.</p>
         </div>
       </section>
 
-      <section className="source-workspace source-workspace-six">
-        <TestSource title="DPP mês anterior" subtitle="Base histórica usada para gerar o mês testado" file={baseDpp} onChange={setBaseDpp} />
-        <TestSource title="DPP consolidado esperado" subtitle="Gabarito real do mês que o ORION deve reproduzir" file={expectedDpp} onChange={setExpectedDpp} />
-        <TestSource title="WIU" subtitle="Material × Modelo e consumo BOM do mês" file={wiu} onChange={setWiu} />
-        <TestSource title="Explosão" subtitle="Explosão de Placas do mês" file={explosion} onChange={setExplosion} />
-        <TestSource title="STK SAP" subtitle="Snapshot do dia 1º do mês" file={stock} onChange={setStock} />
-        <TestSource title="PGD" subtitle="KIT DISPONÍVEL do mês" file={pgd} onChange={setPgd} />
-        <TestSource title="OPEN" subtitle="Opcional; apenas evidência de investigação" file={openFile} onChange={setOpenFile} optional />
-      </section>
+      <BulkDppFilePicker
+        mode="test"
+        referenceMonth={referenceMonth}
+        onBundle={applyFileBundle}
+        title="Adicionar pacote de teste"
+      />
 
       <section className="panel consolidation-action-panel">
         <div>
-          <strong>Teste de aceitação</strong>
-          <p>O teste compara base de materiais, modelos, matriz WIU, OPC, KIT PGD, STK, Explosão, STK OP, STK TTL, NEC e SALDO.</p>
+          <strong>{requiredReady ? 'Pacote de teste completo' : 'Aguardando arquivos obrigatórios'}</strong>
+          <p>{requiredReady ? 'Base anterior, DPP esperado e fontes mensais foram reconhecidos.' : 'O check acima informa exatamente qual arquivo ainda precisa ser adicionado.'}</p>
         </div>
         <button className="primary-button consolidation-button" type="button" onClick={runTest} disabled={!requiredReady || loading}>
           {loading ? 'Reconstruindo e comparando...' : 'Executar teste de reconstrução'}
@@ -251,22 +261,6 @@ function CheckBadge({ check }) {
   if (human) return <span className="unit-badge neutral">HUMANO</span>
   if (legacy) return <span className="unit-badge neutral">LEGADO</span>
   return <span className="unit-badge ok">OK</span>
-}
-
-function TestSource({ title, subtitle, file, onChange, optional = false }) {
-  return (
-    <article className={`source-card ${file ? 'source-ready' : ''}`}>
-      <div className="source-card-topline">
-        <span className={`source-state ${file ? 'ready' : optional ? 'optional' : 'required'}`}>{file ? 'Carregado' : optional ? 'Opcional' : 'Obrigatório'}</span>
-        <small>{optional ? 'Investigação' : 'Teste'}</small>
-      </div>
-      <h3>{title}</h3><p>{subtitle}</p>
-      <label className="source-file-control">
-        <input type="file" accept=".xlsx,.xlsm" onChange={(event) => onChange(event.target.files?.[0] || null)} />
-        <span>{file ? file.name : 'Selecionar arquivo'}</span>
-      </label>
-    </article>
-  )
 }
 
 function TestMetric({ label, check }) {
