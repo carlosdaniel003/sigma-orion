@@ -70,5 +70,5 @@ def test_reconstruction_classifies_source_side_of_opc_reallocation_as_human_inte
     ]
     assert len(source_samples) == 3
     assert all(item.get("subtype") == "OPC_REALLOCATION" for item in source_samples)
-    assert all("REALOCACAO DE OPC" in item["reason"].upper() for item in source_samples)
+    assert all("REALOCAÇÃO DE OPC" in item["reason"].upper() for item in source_samples)
     assert comparison["mismatches"] == []
