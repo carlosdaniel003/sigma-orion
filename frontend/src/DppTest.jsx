@@ -67,6 +67,20 @@ function DppTest({ apiUrl }) {
     }
   }
 
+  function verdictText() {
+    if (!result) return ''
+    if (!result.pass) return `${failedChecks.length} grupo(s) de validação ainda possuem divergências atribuídas ao ORION.`
+
+    const human = result.summary.human_interventions_total || 0
+    const legacy = result.summary.legacy_corrections_total || 0
+    if (!human && !legacy) return 'Todos os campos críticos comparados ficaram iguais dentro da tolerância numérica.'
+
+    const parts = []
+    if (human) parts.push(`${human.toLocaleString('pt-BR')} intervenção(ões) humana(s) separada(s) do motor`)
+    if (legacy) parts.push(`${legacy.toLocaleString('pt-BR')} correção(ões) do legado`)
+    return `Nenhuma divergência atribuída ao ORION. ${parts.join(' e ')}.`
+  }
+
   return (
     <>
       <header className="page-header consolidation-header">
@@ -117,13 +131,7 @@ function DppTest({ apiUrl }) {
             <div>
               <span className="eyebrow">RESULTADO</span>
               <h3>{result.status}</h3>
-              <p>
-                {result.pass
-                  ? result.summary.legacy_corrections_total
-                    ? `Nenhuma divergência atribuída ao ORION. ${result.summary.legacy_corrections_total.toLocaleString('pt-BR')} diferença(s) foram classificadas como correção do legado.`
-                    : 'Todos os campos críticos comparados ficaram iguais dentro da tolerância numérica.'
-                  : `${failedChecks.length} grupo(s) de validação ainda possuem divergências atribuídas ao ORION.`}
-              </p>
+              <p>{verdictText()}</p>
             </div>
             <div className="test-verdict-note">
               <strong>REAL controlado</strong>
@@ -151,13 +159,14 @@ function DppTest({ apiUrl }) {
             </div>
             <div className="table-scroll">
               <table className="dpp-table">
-                <thead><tr><th>Validação</th><th>Comparados</th><th>Iguais</th><th>Correções legado</th><th>Divergências ORION</th><th>Resultado</th></tr></thead>
+                <thead><tr><th>Validação</th><th>Comparados</th><th>Iguais</th><th>Intervenções humanas</th><th>Correções legado</th><th>Divergências ORION</th><th>Resultado</th></tr></thead>
                 <tbody>
                   {Object.entries(result.checks).map(([name, check]) => (
                     <tr key={name}>
                       <td>{CHECK_LABELS[name] || name}</td>
                       <td className="number-cell">{check.checked.toLocaleString('pt-BR')}</td>
                       <td className="number-cell">{check.matches.toLocaleString('pt-BR')}</td>
+                      <td className="number-cell">{(check.human_interventions || 0).toLocaleString('pt-BR')}</td>
                       <td className="number-cell">{(check.legacy_corrections || 0).toLocaleString('pt-BR')}</td>
                       <td className="number-cell">{check.mismatches.toLocaleString('pt-BR')}</td>
                       <td><CheckBadge check={check} /></td>
@@ -170,11 +179,11 @@ function DppTest({ apiUrl }) {
 
           <section className="panel">
             <div className="panel-header">
-              <div><h3>Divergências do ORION</h3><p>Diferenças que continuam indicando regra ausente, dado manual posterior ou comportamento incorreto no ORION.</p></div>
+              <div><h3>Divergências do ORION</h3><p>Diferenças que continuam indicando regra ausente ou comportamento incorreto no motor determinístico.</p></div>
               <span className="status">{result.summary.orion_mismatches_total.toLocaleString('pt-BR')} total · {result.mismatches.length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.mismatches.length ? (
-              <div className="rule-box"><strong>Nenhuma divergência atribuída ao ORION.</strong><p>As diferenças aceitas do legado são apresentadas separadamente abaixo.</p></div>
+              <div className="rule-box"><strong>Nenhuma divergência atribuída ao ORION.</strong><p>Intervenções humanas e correções do legado são apresentadas separadamente abaixo.</p></div>
             ) : (
               <DifferenceTable items={result.mismatches} />
             )}
@@ -183,11 +192,24 @@ function DppTest({ apiUrl }) {
 
           <section className="panel">
             <div className="panel-header">
-              <div><h3>Correções do legado</h3><p>Diferenças conhecidas em que o ORION mantém a fonte correta em vez de reproduzir uma falha histórica do Excel.</p></div>
+              <div><h3>Intervenções humanas</h3><p>OPCs criados, removidos ou reassociados durante a análise do mês e os efeitos diretamente derivados dessas decisões.</p></div>
+              <span className="status">{(result.summary.human_interventions_total || 0).toLocaleString('pt-BR')} total · {(result.human_interventions || []).length.toLocaleString('pt-BR')} exemplo(s)</span>
+            </div>
+            {!result.human_interventions?.length ? (
+              <div className="rule-box"><strong>Nenhuma intervenção humana classificada.</strong><p>O OPC do DPP final coincide com a informação disponível na base histórica para os casos comparados.</p></div>
+            ) : (
+              <DifferenceTable items={result.human_interventions} showReason />
+            )}
+            {result.human_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais intervenções humanas.</strong><p>A tabela mostra apenas uma amostra. Os contadores representam o total classificado.</p></div>}
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div><h3>Correções do legado</h3><p>Diferenças conhecidas em que o ORION mantém a fonte ou o cálculo correto em vez de reproduzir uma falha histórica do Excel.</p></div>
               <span className="status">{result.summary.legacy_corrections_total.toLocaleString('pt-BR')} total · {result.legacy_corrections.length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.legacy_corrections.length ? (
-              <div className="rule-box"><strong>Nenhuma correção de legado classificada.</strong><p>Neste teste, não houve diferença aceita por normalização de chave número × texto.</p></div>
+              <div className="rule-box"><strong>Nenhuma correção de legado classificada.</strong><p>Neste teste, não houve falha histórica reconhecida pelo classificador.</p></div>
             ) : (
               <DifferenceTable items={result.legacy_corrections} showReason />
             )}
@@ -223,7 +245,11 @@ function DifferenceTable({ items, showReason = false }) {
 
 function CheckBadge({ check }) {
   if (check.mismatches) return <span className="unit-badge warning">DIVERGE</span>
-  if (check.legacy_corrections) return <span className="unit-badge neutral">LEGADO</span>
+  const human = check.human_interventions || 0
+  const legacy = check.legacy_corrections || 0
+  if (human && legacy) return <span className="unit-badge neutral">HUMANO + LEGADO</span>
+  if (human) return <span className="unit-badge neutral">HUMANO</span>
+  if (legacy) return <span className="unit-badge neutral">LEGADO</span>
   return <span className="unit-badge ok">OK</span>
 }
 
@@ -246,11 +272,18 @@ function TestSource({ title, subtitle, file, onChange, optional = false }) {
 function TestMetric({ label, check }) {
   const hasError = check && check.mismatches > 0
   const legacy = check?.legacy_corrections || 0
+  const human = check?.human_interventions || 0
+  let detail = 'Iguais'
+  if (hasError) detail = `${check.mismatches} divergência(s)`
+  else if (human && legacy) detail = `${human} humana(s) · ${legacy} legado`
+  else if (human) detail = `${human} intervenção(ões) humana(s)`
+  else if (legacy) detail = `${legacy} correção(ões) legado`
+
   return (
     <div className={`metric-card ${hasError ? 'metric-attention' : 'metric-ok'}`}>
       <span>{label}</span>
       <strong>{check ? `${check.matches.toLocaleString('pt-BR')}/${check.checked.toLocaleString('pt-BR')}` : '—'}</strong>
-      <small>{hasError ? `${check.mismatches} divergência(s)` : legacy ? `${legacy} correção(ões) legado` : 'Iguais'}</small>
+      <small>{detail}</small>
     </div>
   )
 }

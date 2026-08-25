@@ -149,6 +149,26 @@ def build_expected_dpp() -> bytes:
     return _save(workbook)
 
 
+def build_expected_dpp_with_human_opc() -> bytes:
+    workbook = load_workbook(BytesIO(build_expected_dpp()))
+    sheet = workbook["DPP"]
+    # NEW-001 não existe no DPP anterior. O OPC é uma decisão adicionada durante o mês.
+    sheet["L12"] = "ALT-001"
+    sheet["M12"] = 30
+    sheet["N12"] = 45
+    sheet["O12"] = 37
+    return _save(workbook)
+
+
+def build_expected_dpp_with_missing_formulas() -> bytes:
+    workbook = load_workbook(BytesIO(build_expected_dpp()))
+    sheet = workbook["DPP"]
+    # Simula material novo adicionado sem extensão das fórmulas de STK TTL e SALDO.
+    sheet["N12"] = None
+    sheet["O12"] = None
+    return _save(workbook)
+
+
 def test_monthly_generation_uses_history_pgd_and_opc_stock() -> None:
     with TestClient(app) as client:
         response = client.post(
@@ -318,6 +338,7 @@ def test_monthly_reconstruction_test_matches_known_consolidated_dpp() -> None:
     assert payload["status"] == "APROVADO"
     assert payload["summary"]["reference_real_models_applied"] == 2
     assert payload["summary"]["legacy_corrections_total"] == 0
+    assert payload["summary"]["human_interventions_total"] == 0
     assert payload["checks"]["materials"]["mismatches"] == 0
     assert payload["checks"]["matrix"]["checked"] == 6
     assert payload["checks"]["matrix"]["mismatches"] == 0
@@ -328,6 +349,62 @@ def test_monthly_reconstruction_test_matches_known_consolidated_dpp() -> None:
     assert payload["checks"]["stock_op"]["mismatches"] == 0
     assert payload["checks"]["nec"]["mismatches"] == 0
     assert payload["checks"]["balance"]["mismatches"] == 0
+    assert payload["mismatches"] == []
+
+
+def test_reconstruction_classifies_manual_opc_and_derivatives_as_human_intervention() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/dpp/monthly/test",
+            data={"reference_month": "2026-07"},
+            files={
+                "base_dpp": ("DPP_JUNHO.xlsx", build_base_dpp(), MIME),
+                "expected_dpp": ("DPP_JULHO_COM_OPC_MANUAL.xlsx", build_expected_dpp_with_human_opc(), MIME),
+                "wiu": ("WIU_JULHO.xlsx", build_wiu(), MIME),
+                "explosion": ("EXPLOSAO_JULHO.xlsm", build_explosion(), MIME),
+                "stock": ("STK_JULHO.xlsx", build_stock(), MIME),
+                "pgd": ("PGD.xlsx", build_pgd(), MIME),
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["pass"] is True
+    assert payload["status"] == "APROVADO_COM_INTERVENCOES_HUMANAS"
+    assert payload["summary"]["orion_mismatches_total"] == 0
+    assert payload["summary"]["human_interventions_total"] == 4
+    assert payload["checks"]["optional_material"]["human_interventions"] == 1
+    assert payload["checks"]["stock_op"]["human_interventions"] == 1
+    assert payload["checks"]["stock_total"]["human_interventions"] == 1
+    assert payload["checks"]["balance"]["human_interventions"] == 1
+    assert len(payload["human_interventions"]) == 4
+    assert payload["mismatches"] == []
+
+
+def test_reconstruction_classifies_missing_stock_total_and_balance_formulas_as_legacy() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/dpp/monthly/test",
+            data={"reference_month": "2026-07"},
+            files={
+                "base_dpp": ("DPP_JUNHO.xlsx", build_base_dpp(), MIME),
+                "expected_dpp": ("DPP_JULHO_SEM_FORMULAS.xlsx", build_expected_dpp_with_missing_formulas(), MIME),
+                "wiu": ("WIU_JULHO.xlsx", build_wiu(), MIME),
+                "explosion": ("EXPLOSAO_JULHO.xlsm", build_explosion(), MIME),
+                "stock": ("STK_JULHO.xlsx", build_stock(), MIME),
+                "pgd": ("PGD.xlsx", build_pgd(), MIME),
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["pass"] is True
+    assert payload["status"] == "APROVADO_COM_CORRECOES_LEGADO"
+    assert payload["summary"]["orion_mismatches_total"] == 0
+    assert payload["summary"]["legacy_corrections_total"] == 2
+    assert payload["checks"]["stock_total"]["legacy_corrections"] == 1
+    assert payload["checks"]["balance"]["legacy_corrections"] == 1
+    assert any("sem fórmula" in item["reason"] for item in payload["legacy_corrections"])
     assert payload["mismatches"] == []
 
 
