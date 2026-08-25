@@ -9,6 +9,7 @@ const API_URL = 'http://localhost:8000'
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard')
+  const [finalDppAnalysis, setFinalDppAnalysis] = useState(null)
 
   if (activeView === 'legacy') {
     return (
@@ -41,7 +42,14 @@ function App() {
       </aside>
 
       <main className="content">
-        {activeView === 'dashboard' && <DashboardLoader apiUrl={API_URL} onNavigate={setActiveView} />}
+        {activeView === 'dashboard' && (
+          <DashboardLoader
+            apiUrl={API_URL}
+            onNavigate={setActiveView}
+            finalDppAnalysis={finalDppAnalysis}
+            onFinalDppAnalysis={setFinalDppAnalysis}
+          />
+        )}
         {activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
         {activeView === 'test' && <DppTest apiUrl={API_URL} />}
         {activeView === 'validation' && <DppAnalysis apiUrl={API_URL} />}
