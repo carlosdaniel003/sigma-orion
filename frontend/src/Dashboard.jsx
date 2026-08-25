@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import './dashboard.css'
+import './dashboard-state.css'
 
 function number(value) {
   const parsed = Number(value)
@@ -33,14 +34,13 @@ function buildDashboardData(scenario) {
   const materials = scenario?.materials || []
   const summary = scenario?.summary || {}
   const realLookup = Object.fromEntries(models.map((model) => [model.name, number(model.real)]))
-  const modelLookup = Object.fromEntries(models.map((model) => [model.name, model]))
 
   const pgdTotal = number(summary.kit_pgd_total ?? models.reduce((total, model) => total + number(model.kit_pgd), 0))
   const realTotal = number(summary.real_total ?? models.reduce((total, model) => total + number(model.real), 0))
   const gap = pgdTotal - realTotal
   const realVsPgd = pgdTotal > 0 ? (realTotal / pgdTotal) * 100 : 0
 
-  const activeModels = models.filter((model) => number(model.real) > 0 || number(model.kit_pgd) > 0)
+  const activeModels = models.filter((model) => number(model.real) > 0)
   const criticalMaterials = materials.filter((material) => material.status === 'INVESTIGAR')
   const riskMap = new Map()
 
@@ -101,7 +101,6 @@ function buildDashboardData(scenario) {
     models,
     materials,
     summary,
-    modelLookup,
     pgdTotal,
     realTotal,
     gap,
@@ -121,16 +120,55 @@ function buildDashboardData(scenario) {
   }
 }
 
-function Dashboard({ scenario, onNavigate }) {
+function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppAnalysis }) {
   const data = useMemo(() => buildDashboardData(scenario), [scenario])
+  const [finalFile, setFinalFile] = useState(null)
+  const [finalLoading, setFinalLoading] = useState(false)
+  const [finalError, setFinalError] = useState('')
+
+  const initialState = scenario ? {
+    pgd: data.pgdTotal,
+    real: data.realTotal,
+    critical: data.criticalMaterials.length,
+    opc: number(data.summary.inherited_optional_materials),
+    activeModels: data.activeModels.length,
+  } : null
+
+  const finalSummary = finalDppAnalysis?.summary || null
+  const finalState = finalSummary ? {
+    pgd: number(finalSummary.pgd_total),
+    real: number(finalSummary.real_total),
+    critical: number(finalSummary.critical_materials),
+    opc: number(finalSummary.opc_count),
+    activeModels: number(finalSummary.active_models),
+  } : null
+
+  async function loadFinalDpp() {
+    if (!finalFile) return
+    setFinalLoading(true)
+    setFinalError('')
+    const form = new FormData()
+    form.append('file', finalFile)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/dpp/dashboard/final`, { method: 'POST', body: form })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.detail || 'Não foi possível carregar o DPP final.')
+      onFinalDppAnalysis?.(payload)
+    } catch (requestError) {
+      setFinalError(requestError.message || 'Falha ao resumir o DPP final.')
+    } finally {
+      setFinalLoading(false)
+    }
+  }
 
   return (
     <>
       <header className="page-header dashboard-header">
         <div>
           <span className="eyebrow">VISÃO OPERACIONAL</span>
-          <h2>Visão Geral do DPP</h2>
-          <p>PGD, REAL, cobertura material e gargalos em uma única leitura para apoiar o planejamento do mês.</p>
+          <h2>Visão Geral do cenário inicial gerado pelo ORION</h2>
+          <p>Esta visão mostra o DPP criado pelo motor Python antes dos ajustes, investigações e decisões manuais do analista.</p>
         </div>
         <span className="status">{scenario ? formatMonth(scenario.reference_month) : 'Aguardando cenário'}</span>
       </header>
@@ -143,13 +181,29 @@ function Dashboard({ scenario, onNavigate }) {
             <div>
               <span className="dashboard-context-label">Cenário atual</span>
               <strong>{formatMonth(scenario.reference_month)}</strong>
-              <small>{scenario.status === 'PRONTO_PARA_AJUSTE_REAL' ? 'DPP construído e disponível para ajuste do REAL' : scenario.status}</small>
+              <small>Cenário inicial ORION · antes dos ajustes do analista</small>
             </div>
             <div className="dashboard-context-actions">
               <span className="engine-badge"><span className="status-dot" />Motor Python ativo</span>
               <button className="secondary-button" type="button" onClick={() => onNavigate?.('consolidation')}>Ajustar REAL / Ver DPP</button>
             </div>
           </section>
+
+          <DppStateSection
+            month={formatMonth(scenario.reference_month)}
+            initial={initialState}
+            finalState={finalState}
+            finalFilename={finalDppAnalysis?.filename}
+            finalFile={finalFile}
+            setFinalFile={setFinalFile}
+            loadFinalDpp={loadFinalDpp}
+            finalLoading={finalLoading}
+            finalError={finalError}
+          />
+
+          {finalState && <EvolutionPanel initial={initialState} finalState={finalState} />}
+
+          <AiBridge initial={initialState} finalState={finalState} />
 
           <section className="dashboard-kpi-grid dashboard-kpi-primary">
             <KpiCard label="PGD do mês" value={formatNumber(data.pgdTotal)} unit="un." detail="Referência de produção do PGD" />
@@ -158,7 +212,7 @@ function Dashboard({ scenario, onNavigate }) {
               label="Gap PGD × REAL"
               value={formatNumber(Math.abs(data.gap))}
               unit="un."
-              detail={data.gap >= 0 ? 'Ainda não cobertas pelo REAL' : 'REAL acima do PGD'}
+              detail={data.gap > 0 ? 'Ainda não cobertas pelo REAL' : data.gap < 0 ? 'REAL acima do PGD' : 'REAL alinhado ao PGD'}
               tone={data.gap > 0 ? 'attention' : 'good'}
             />
             <KpiCard
@@ -190,7 +244,7 @@ function Dashboard({ scenario, onNavigate }) {
             <div className="panel-header">
               <div>
                 <h3>Estado da construção do DPP</h3>
-                <p>Indicadores de consolidação e rastreabilidade do cenário carregado.</p>
+                <p>Indicadores de consolidação e rastreabilidade do cenário inicial carregado.</p>
               </div>
               <span className="status">Base atualizada</span>
             </div>
@@ -211,6 +265,170 @@ function Dashboard({ scenario, onNavigate }) {
         </>
       )}
     </>
+  )
+}
+
+function DppStateSection({ month, initial, finalState, finalFilename, finalFile, setFinalFile, loadFinalDpp, finalLoading, finalError }) {
+  return (
+    <section className="panel dpp-state-panel">
+      <div className="panel-header">
+        <div>
+          <h3>Estado do DPP</h3>
+          <p>Separe o cenário que o Python gera automaticamente do DPP consolidado depois do trabalho do analista.</p>
+        </div>
+        <span className="status">Inicial × Final</span>
+      </div>
+
+      <div className="dpp-state-grid">
+        <DppStateCard
+          eyebrow="CENÁRIO ORION"
+          title={month}
+          subtitle="Antes dos ajustes do analista"
+          state={initial}
+          tone="initial"
+        />
+
+        <article className={`dpp-state-card final ${finalState ? 'loaded' : ''}`}>
+          <div className="dpp-state-heading">
+            <span>DPP FINAL</span>
+            <strong>{finalState ? month : 'Aguardando DPP final'}</strong>
+            <small>{finalState ? 'Após análise e decisões humanas' : 'Carregue o consolidado para comparar com o cenário inicial'}</small>
+          </div>
+
+          {finalState ? (
+            <StateMetrics state={finalState} />
+          ) : (
+            <div className="dpp-final-placeholder">
+              <strong>Segunda etapa do processo</strong>
+              <p>Quando o DPP final estiver disponível, o ORION poderá mostrar o que mudou após ajustes de REAL, OPCs e investigações.</p>
+            </div>
+          )}
+
+          <div className="dpp-final-upload">
+            <label>
+              <input type="file" accept=".xlsx,.xlsm" onChange={(event) => setFinalFile(event.target.files?.[0] || null)} />
+              <span>{finalFile ? finalFile.name : finalFilename || 'Selecionar DPP final'}</span>
+            </label>
+            <button className="secondary-button" type="button" disabled={!finalFile || finalLoading} onClick={loadFinalDpp}>
+              {finalLoading ? 'Lendo DPP final...' : finalState ? 'Atualizar comparação' : 'Comparar com cenário inicial'}
+            </button>
+          </div>
+          {finalError && <div className="dpp-final-error">{finalError}</div>}
+        </article>
+      </div>
+    </section>
+  )
+}
+
+function DppStateCard({ eyebrow, title, subtitle, state, tone }) {
+  return (
+    <article className={`dpp-state-card ${tone}`}>
+      <div className="dpp-state-heading">
+        <span>{eyebrow}</span>
+        <strong>{title}</strong>
+        <small>{subtitle}</small>
+      </div>
+      <StateMetrics state={state} />
+    </article>
+  )
+}
+
+function StateMetrics({ state }) {
+  return (
+    <div className="dpp-state-metrics">
+      <StateMetric label="PGD" value={formatNumber(state?.pgd)} />
+      <StateMetric label="REAL" value={formatNumber(state?.real)} />
+      <StateMetric label="Críticos" value={formatNumber(state?.critical)} />
+      <StateMetric label="OPCs" value={formatNumber(state?.opc)} />
+      <StateMetric label="Modelos ativos" value={formatNumber(state?.activeModels)} wide />
+    </div>
+  )
+}
+
+function StateMetric({ label, value, wide = false }) {
+  return <div className={wide ? 'dpp-state-metric wide' : 'dpp-state-metric'}><span>{label}</span><strong>{value}</strong></div>
+}
+
+function EvolutionPanel({ initial, finalState }) {
+  const criticalDelta = number(finalState.critical) - number(initial.critical)
+  const opcDelta = number(finalState.opc) - number(initial.opc)
+  const realDelta = number(finalState.real) - number(initial.real)
+  const activeDelta = number(finalState.activeModels) - number(initial.activeModels)
+
+  return (
+    <section className="panel dpp-evolution-panel">
+      <div className="panel-header">
+        <div>
+          <h3>Evolução do DPP</h3>
+          <p>O que mudou entre o cenário inicial calculado pelo ORION e o DPP consolidado após a análise.</p>
+        </div>
+        <span className="status">ANTES → DEPOIS</span>
+      </div>
+      <div className="dpp-evolution-list">
+        <EvolutionRow label="Materiais críticos" before={initial.critical} after={finalState.critical} delta={criticalDelta} lowerIsBetter />
+        <EvolutionRow label="OPCs" before={initial.opc} after={finalState.opc} delta={opcDelta} />
+        <EvolutionRow label="REAL" before={initial.real} after={finalState.real} delta={realDelta} />
+        <EvolutionRow label="Modelos ativos" before={initial.activeModels} after={finalState.activeModels} delta={activeDelta} />
+      </div>
+    </section>
+  )
+}
+
+function EvolutionRow({ label, before, after, delta, lowerIsBetter = false }) {
+  const improved = lowerIsBetter ? delta < 0 : delta > 0
+  const neutral = Math.abs(delta) < 1e-9
+  return (
+    <div className="dpp-evolution-row">
+      <strong>{label}</strong>
+      <span className="evolution-value before">{formatNumber(before)}</span>
+      <span className="evolution-arrow">→</span>
+      <span className="evolution-value after">{formatNumber(after)}</span>
+      <small className={neutral ? 'neutral' : improved ? 'good' : 'attention'}>
+        {neutral ? 'sem alteração' : `${delta > 0 ? '+' : ''}${formatNumber(delta)}`}
+      </small>
+    </div>
+  )
+}
+
+function AiBridge({ initial, finalState }) {
+  const resolved = finalState ? Math.max(number(initial.critical) - number(finalState.critical), 0) : null
+  return (
+    <section className="panel dpp-ai-bridge">
+      <div className="panel-header">
+        <div>
+          <h3>Onde entra o Agente ORION</h3>
+          <p>O intervalo entre o cenário inicial e o DPP final representa o trabalho de investigação e decisão que a próxima camada de IA deve apoiar.</p>
+        </div>
+        <span className="status">Próxima camada</span>
+      </div>
+
+      <div className="ai-flow-grid">
+        <div className="ai-flow-stage current">
+          <span>HOJE</span>
+          <strong>Python gera o cenário inicial</strong>
+          <p>{formatNumber(initial.critical)} materiais críticos entram para investigação.</p>
+        </div>
+        <div className="ai-flow-arrow">→</div>
+        <div className="ai-flow-stage human">
+          <span>HOJE</span>
+          <strong>Humano investiga e decide</strong>
+          <p>Ajusta REAL, localiza OPC, consulta evidências e consolida o DPP.</p>
+        </div>
+        <div className="ai-flow-arrow">→</div>
+        <div className="ai-flow-stage future">
+          <span>FUTURO</span>
+          <strong>Agente ORION apoia a investigação</strong>
+          <p>Sugere prioridade, causa, OPC, OPEN e possíveis ajustes; o humano continua validando.</p>
+        </div>
+      </div>
+
+      {finalState && (
+        <div className="ai-gap-summary">
+          <strong>{formatNumber(initial.critical)} → {formatNumber(finalState.critical)} materiais críticos</strong>
+          <span>{resolved > 0 ? `${formatNumber(resolved)} situações deixaram de permanecer críticas entre o cenário inicial e o DPP final.` : 'O DPP final permite medir o efeito real das decisões tomadas durante a análise.'}</span>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -270,7 +488,7 @@ function PlanningPanel({ data }) {
   return (
     <section className="panel dashboard-planning-panel">
       <div className="panel-header">
-        <div><h3>PGD × REAL</h3><p>Compare a referência do PGD com o volume atualmente definido no REAL.</p></div>
+        <div><h3>PGD × REAL</h3><p>Compare a referência do PGD com o volume definido no REAL do cenário inicial.</p></div>
         <span className="status">{formatPercent(data.realVsPgd)}</span>
       </div>
       <div className="planning-bars">
@@ -279,8 +497,8 @@ function PlanningPanel({ data }) {
       </div>
       <div className="dashboard-explanation-row">
         <div><small>PGD</small><strong>Referência do plano</strong></div>
-        <div><small>REAL</small><strong>Decisão de produção</strong></div>
-        <div><small>GAP</small><strong>{data.gap >= 0 ? `${formatNumber(data.gap)} un.` : `${formatNumber(Math.abs(data.gap))} un. acima`}</strong></div>
+        <div><small>REAL</small><strong>Decisão inicial</strong></div>
+        <div><small>GAP</small><strong>{data.gap > 0 ? `${formatNumber(data.gap)} un.` : data.gap < 0 ? `${formatNumber(Math.abs(data.gap))} un. acima` : 'Alinhado ao PGD'}</strong></div>
       </div>
     </section>
   )
@@ -299,7 +517,7 @@ function ModelHealthPanel({ data }) {
   return (
     <section className="panel dashboard-health-panel">
       <div className="panel-header">
-        <div><h3>Situação dos modelos</h3><p>Leitura do cenário REAL contra materiais UN com saldo negativo.</p></div>
+        <div><h3>Situação dos modelos</h3><p>Leitura do cenário REAL inicial contra materiais UN com saldo negativo.</p></div>
       </div>
       <div className="health-score">
         <strong>{formatPercent(data.materialCoverage)}</strong>
@@ -310,7 +528,7 @@ function ModelHealthPanel({ data }) {
         <div className="health-safe"><strong>{data.safeModels}</strong><span>sem restrição detectada</span></div>
         <div className="health-risk"><strong>{data.riskModels.length}</strong><span>com material crítico</span></div>
       </div>
-      <p className="dashboard-method-note">A cobertura mede os modelos ativos que não consomem nenhum material UN com SALDO negativo no REAL atual.</p>
+      <p className="dashboard-method-note">A cobertura mede os modelos ativos que não consomem nenhum material UN com SALDO negativo no REAL inicial.</p>
     </section>
   )
 }
@@ -319,7 +537,7 @@ function BottleneckPanel({ items }) {
   return (
     <section className="panel dashboard-table-panel">
       <div className="panel-header">
-        <div><h3>Principais gargalos</h3><p>Materiais com os maiores déficits no cenário atual.</p></div>
+        <div><h3>Principais gargalos</h3><p>Materiais com os maiores déficits no cenário inicial.</p></div>
         <span className="status">Top {items.length}</span>
       </div>
       {!items.length ? <div className="dashboard-clear-state">Nenhum material crítico no cenário atual.</div> : (
@@ -345,7 +563,7 @@ function RiskModelsPanel({ items }) {
   return (
     <section className="panel dashboard-table-panel">
       <div className="panel-header">
-        <div><h3>Modelos com maior risco</h3><p>Priorização pela quantidade de materiais críticos associados ao REAL atual.</p></div>
+        <div><h3>Modelos com maior risco</h3><p>Priorização pela quantidade de materiais críticos associados ao REAL inicial.</p></div>
         <span className="status">{items.length} exibidos</span>
       </div>
       {!items.length ? <div className="dashboard-clear-state">Nenhum modelo com restrição material detectada.</div> : (
@@ -376,7 +594,7 @@ function QualityPanel({ data }) {
   const sourceOk = data.requiredSources.length > 0 && data.loadedRequiredSources === data.requiredSources.length
   return (
     <section className="panel dashboard-quality-panel">
-      <div className="panel-header"><div><h3>Qualidade dos dados</h3><p>Condições básicas para confiar no cenário exibido.</p></div></div>
+      <div className="panel-header"><div><h3>Qualidade dos dados</h3><p>Condições básicas para confiar no cenário inicial exibido.</p></div></div>
       <div className="quality-list">
         <QualityRow label="Fontes obrigatórias" value={`${data.loadedRequiredSources}/${data.requiredSources.length}`} ok={sourceOk} />
         <QualityRow label="Mapeamentos PGD pendentes" value={formatNumber(data.pgdPending)} ok={data.pgdPending === 0} />
@@ -394,11 +612,11 @@ function QualityRow({ label, value, ok }) {
 function DecisionGuide() {
   return (
     <section className="panel dashboard-guide-panel">
-      <div className="panel-header"><div><h3>Como ler o dashboard</h3><p>Três perguntas orientam a análise operacional.</p></div></div>
+      <div className="panel-header"><div><h3>Como ler o cenário inicial</h3><p>Três perguntas orientam a análise operacional.</p></div></div>
       <div className="decision-guide">
         <div><span>01</span><strong>Quanto precisamos produzir?</strong><p>PGD define a referência do mês.</p></div>
-        <div><span>02</span><strong>Quanto estamos planejando?</strong><p>REAL representa a decisão atual de produção.</p></div>
-        <div><span>03</span><strong>O que limita o plano?</strong><p>Materiais críticos e gargalos mostram onde investigar.</p></div>
+        <div><span>02</span><strong>Quanto o cenário inicial planeja?</strong><p>REAL começa pela referência disponível no PGD.</p></div>
+        <div><span>03</span><strong>O que limita o plano?</strong><p>Materiais críticos e gargalos mostram onde o analista precisa investigar.</p></div>
       </div>
       <div className="dashboard-method-note strong-note">A capacidade agregada máxima ainda não é apresentada como um número único porque materiais compartilhados exigem uma regra de alocação/solver. Esta versão exibe apenas indicadores sustentados pelo motor atual.</div>
     </section>
