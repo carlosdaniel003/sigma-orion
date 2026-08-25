@@ -4,6 +4,24 @@ import './bulk-file-picker.css'
 
 const DISPLAY_ORDER = ['baseDpp', 'expectedDpp', 'stock', 'explosion', 'openFile', 'pgd', 'wiu']
 
+function fileIdentity(file) {
+  return `${file?.name || ''}:${file?.size || 0}:${file?.lastModified || 0}`
+}
+
+function mergeFiles(currentFiles, newFiles) {
+  const merged = [...currentFiles]
+  const known = new Set(currentFiles.map(fileIdentity))
+
+  for (const file of newFiles) {
+    const identity = fileIdentity(file)
+    if (known.has(identity)) continue
+    known.add(identity)
+    merged.push(file)
+  }
+
+  return merged
+}
+
 function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, compact = false, title = 'Adicionar arquivos em massa' }) {
   const [selectedFiles, setSelectedFiles] = useState([])
   const report = useMemo(
@@ -11,14 +29,30 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
     [selectedFiles, referenceMonth, mode],
   )
 
-  function selectFiles(event) {
-    const files = Array.from(event.target.files || [])
+  function addFiles(event) {
+    const incomingFiles = Array.from(event.target.files || [])
+    if (!incomingFiles.length) return
+
+    const files = mergeFiles(selectedFiles, incomingFiles)
     setSelectedFiles(files)
     const next = classifyDppBundle(files, referenceMonth, mode)
     onBundle?.(next)
+
+    // Permite selecionar novamente o mesmo arquivo depois de limpar/substituir.
+    event.target.value = ''
+  }
+
+  function clearFiles() {
+    setSelectedFiles([])
+    onBundle?.(classifyDppBundle([], referenceMonth, mode))
   }
 
   const missingLabels = report.missing.map((key) => FILE_LABELS[key])
+  const primaryActionLabel = selectedFiles.length
+    ? report.ready
+      ? 'Adicionar mais arquivos'
+      : 'Adicionar arquivos faltantes'
+    : 'Selecionar arquivos'
 
   return (
     <section className={`bulk-file-picker ${compact ? 'compact' : ''}`}>
@@ -26,12 +60,17 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
         <div>
           <span className="eyebrow">PACOTE DO MÊS</span>
           <h3>{title}</h3>
-          <p>Selecione todos os arquivos de uma vez. O ORION identifica automaticamente DPP anterior, DPP final, STK, Explosão, OPEN, PGD e WIU pelo nome do arquivo.</p>
+          <p>Selecione os arquivos em massa. Se algum obrigatório faltar, adicione somente o arquivo restante: os arquivos já reconhecidos permanecem no pacote.</p>
         </div>
-        <label className="bulk-file-button">
-          <input type="file" accept=".xlsx,.xlsm" multiple onChange={selectFiles} />
-          <span>{selectedFiles.length ? 'Trocar pacote' : 'Selecionar arquivos'}</span>
-        </label>
+        <div className="bulk-file-actions">
+          <label className="bulk-file-button">
+            <input type="file" accept=".xlsx,.xlsm" multiple onChange={addFiles} />
+            <span>{primaryActionLabel}</span>
+          </label>
+          {selectedFiles.length > 0 && (
+            <button className="bulk-file-clear" type="button" onClick={clearFiles}>Limpar pacote</button>
+          )}
+        </div>
       </div>
 
       {selectedFiles.length > 0 && (
@@ -41,7 +80,7 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
             <span>
               {report.ready
                 ? `${report.recognized} arquivo(s) reconhecido(s) automaticamente.`
-                : missingLabels.join(' · ')}
+                : `${missingLabels.join(' · ')} — use “Adicionar arquivos faltantes” sem perder o pacote atual.`}
             </span>
           </div>
 
@@ -55,7 +94,7 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
                   <span className="bulk-check-icon">{file ? '✓' : required ? '!' : '–'}</span>
                   <div>
                     <strong>{FILE_LABELS[key]}</strong>
-                    <small>{file ? file.name : required ? 'Não encontrado' : 'Opcional / não carregado'}</small>
+                    <small>{file ? file.name : required ? 'Não encontrado — adicione este arquivo ao pacote' : 'Opcional / não carregado'}</small>
                   </div>
                 </div>
               )
