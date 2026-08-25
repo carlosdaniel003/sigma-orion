@@ -189,6 +189,7 @@ def _append_sample(
     expected: object,
     classification: str,
     reason: str | None = None,
+    subtype: str | None = None,
 ) -> None:
     if len(samples) >= limit:
         return
@@ -200,6 +201,7 @@ def _append_sample(
             "generated": generated,
             "expected": expected,
             "classification": classification,
+            "subtype": subtype,
             "reason": reason,
         }
     )
@@ -307,6 +309,140 @@ def _human_opc_numeric_difference(
     return False
 
 
+def _detect_opc_reallocations(
+    generated_materials: dict[str, dict],
+    expected_materials: dict[str, dict],
+    previous_materials: dict[str, dict] | None,
+) -> dict[str, dict]:
+    """Detecta realocação manual de um mesmo estoque OPC entre dois materiais.
+
+    A regra é conservadora: o destino precisa ter recebido exatamente um OPC novo em relação
+    à base histórica e o aumento de STK OP no destino deve ser igual à redução de STK OP em
+    um único material de origem que já possuía aquele OPC na base. O texto do OPC de origem
+    pode continuar presente no DPP final; o que muda é a utilização daquele estoque.
+    """
+    if previous_materials is None:
+        return {}
+
+    common_keys = set(generated_materials) & set(expected_materials)
+    destination_events: list[dict] = []
+
+    for destination_key in common_keys:
+        current = generated_materials[destination_key]
+        reference = expected_materials[destination_key]
+        if not _human_opc_change(destination_key, current, reference, previous_materials):
+            continue
+
+        previous = previous_materials.get(destination_key) or {}
+        previous_keys = set(optional_material_keyset(previous.get("optional_material")))
+        expected_keys = set(optional_material_keyset(reference.get("optional_material")))
+        added_keys = expected_keys - previous_keys
+        if len(added_keys) != 1:
+            continue
+
+        received_delta = float(reference.get("stock_op") or 0.0) - float(current.get("stock_op") or 0.0)
+        if received_delta <= ABS_TOL:
+            continue
+
+        destination_events.append(
+            {
+                "destination_key": destination_key,
+                "destination_material": reference.get("material") or current.get("material") or destination_key,
+                "optional_key": next(iter(added_keys)),
+                "amount": received_delta,
+            }
+        )
+
+    reallocations: dict[str, dict] = {}
+    ambiguous_sources: set[str] = set()
+
+    for event in destination_events:
+        candidates: list[str] = []
+        for source_key in common_keys:
+            if source_key == event["destination_key"]:
+                continue
+
+            source_current = generated_materials[source_key]
+            source_reference = expected_materials[source_key]
+            source_previous = previous_materials.get(source_key) or {}
+
+            # O motor precisa ter preservado o OPC histórico no material de origem.
+            if not _same_optional_materials(source_current.get("optional_material"), source_previous.get("optional_material")):
+                continue
+
+            # Se o próprio texto do OPC também mudou no material de origem, ele já é tratado
+            # pela classificação normal de intervenção humana e não por este subtipo.
+            if not _same_optional_materials(source_reference.get("optional_material"), source_previous.get("optional_material")):
+                continue
+
+            source_optional_keys = set(optional_material_keyset(source_previous.get("optional_material")))
+            if event["optional_key"] not in source_optional_keys:
+                continue
+
+            released_delta = float(source_current.get("stock_op") or 0.0) - float(source_reference.get("stock_op") or 0.0)
+            if released_delta <= ABS_TOL or not _same_number(released_delta, event["amount"]):
+                continue
+
+            candidates.append(source_key)
+
+        # Não classificar por inferência se houver mais de uma origem possível.
+        if len(candidates) != 1:
+            continue
+
+        source_key = candidates[0]
+        if source_key in reallocations:
+            ambiguous_sources.add(source_key)
+            reallocations.pop(source_key, None)
+            continue
+        if source_key in ambiguous_sources:
+            continue
+
+        reallocations[source_key] = {
+            **event,
+            "source_material": expected_materials[source_key].get("material")
+            or generated_materials[source_key].get("material")
+            or source_key,
+        }
+
+    return reallocations
+
+
+def _human_opc_reallocation_numeric_difference(
+    field: str,
+    current: dict,
+    reference: dict,
+    reallocation: dict | None,
+) -> bool:
+    if not reallocation:
+        return False
+
+    opc_delta = float(current.get("stock_op") or 0.0) - float(reference.get("stock_op") or 0.0)
+    if opc_delta <= ABS_TOL or not _same_number(opc_delta, reallocation.get("amount")):
+        return False
+
+    if field == "stock_op":
+        return True
+
+    if field == "stock_total":
+        if not _same_number(current.get("stock_sap"), reference.get("stock_sap")):
+            return False
+        if not _same_number(current.get("explosion"), reference.get("explosion")):
+            return False
+        total_delta = float(current.get("stock_total") or 0.0) - float(reference.get("stock_total") or 0.0)
+        return _same_number(total_delta, opc_delta)
+
+    if field == "balance":
+        if not _same_number(current.get("nec"), reference.get("nec")):
+            return False
+        if not _human_opc_reallocation_numeric_difference("stock_total", current, reference, reallocation):
+            return False
+        balance_delta = float(current.get("balance") or 0.0) - float(reference.get("balance") or 0.0)
+        total_delta = float(current.get("stock_total") or 0.0) - float(reference.get("stock_total") or 0.0)
+        return _same_number(balance_delta, total_delta)
+
+    return False
+
+
 def _legacy_reason(field: str, reference: dict) -> str:
     if _missing_formula_legacy(field, reference):
         label = "STK TTL" if field == "stock_total" else "SALDO"
@@ -329,6 +465,18 @@ def _human_reason(field: str) -> str:
     return (
         "A diferença é consequência de uma alteração manual de OPC feita durante o mês; "
         "o campo derivado foi calculado pelo ORION usando o OPC disponível na base histórica."
+    )
+
+
+def _human_reallocation_reason(field: str, reallocation: dict) -> str:
+    amount = float(reallocation.get("amount") or 0.0)
+    optional_key = reallocation.get("optional_key") or "OPC"
+    destination = reallocation.get("destination_material") or reallocation.get("destination_key") or "outro material"
+    label = {"stock_op": "STK OP", "stock_total": "STK TTL", "balance": "SALDO"}.get(field, field)
+    return (
+        "INTERVENÇÃO HUMANA — REALOCAÇÃO DE OPC. "
+        f"O estoque do OPC {optional_key} ({amount:g}) deixou de ser utilizado neste material e foi alocado ao material {destination}. "
+        f"A diferença de {label} é explicada integralmente pela mesma quantidade realocada, sem alterar o motor de geração mensal."
     )
 
 
@@ -406,6 +554,7 @@ def _compare(*, generated: dict, expected: dict, previous_materials: dict[str, d
     expected_materials = expected["materials"]
     all_material_keys = sorted(set(generated_materials) | set(expected_materials))
     common_material_keys = sorted(set(generated_materials) & set(expected_materials))
+    opc_reallocations = _detect_opc_reallocations(generated_materials, expected_materials, previous_materials)
 
     for key in all_material_keys:
         present_generated = key in generated_materials
@@ -481,11 +630,16 @@ def _compare(*, generated: dict, expected: dict, previous_materials: dict[str, d
         for check_name, field in numeric_fields:
             matches = _same_number(current.get(field), reference.get(field))
             classification = None
+            subtype = None
+            reallocation = opc_reallocations.get(key)
             if not matches:
                 if _missing_formula_legacy(field, reference):
                     classification = "LEGACY_CORRECTION"
                 elif _human_opc_numeric_difference(field, key, current, reference, previous_materials):
                     classification = "HUMAN_INTERVENTION"
+                elif _human_opc_reallocation_numeric_difference(field, current, reference, reallocation):
+                    classification = "HUMAN_INTERVENTION"
+                    subtype = "OPC_REALLOCATION"
                 elif _legacy_numeric_difference(field, current, reference):
                     classification = "LEGACY_CORRECTION"
 
@@ -515,7 +669,8 @@ def _compare(*, generated: dict, expected: dict, previous_materials: dict[str, d
                     generated=current.get(field),
                     expected=reference.get(field),
                     classification=classification,
-                    reason=_human_reason(field),
+                    subtype=subtype,
+                    reason=_human_reallocation_reason(field, reallocation) if subtype == "OPC_REALLOCATION" else _human_reason(field),
                 )
             else:
                 _append_sample(
@@ -596,6 +751,7 @@ def _compare(*, generated: dict, expected: dict, previous_materials: dict[str, d
         "mismatch_total": mismatch_total,
         "legacy_corrections_total": legacy_total,
         "human_interventions_total": human_total,
+        "opc_reallocations_detected": len(opc_reallocations),
     }
 
 
@@ -685,6 +841,7 @@ async def test_monthly_dpp_reconstruction(
             "legacy_corrections_total": comparison["legacy_corrections_total"],
             "human_interventions_total": comparison["human_interventions_total"],
             "orion_mismatches_total": comparison["mismatch_total"],
+            "opc_reallocations_detected": comparison["opc_reallocations_detected"],
         },
         "checks": comparison["checks"],
         "mismatches": comparison["mismatches"],
