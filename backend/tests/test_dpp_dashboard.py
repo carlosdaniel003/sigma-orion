@@ -108,3 +108,8 @@ def test_final_dashboard_summary_uses_consolidated_excel_state() -> None:
     assert summary["total_materials"] == 3
     assert summary["critical_materials"] == 1
     assert summary["opc_count"] == 1
+    assert summary["risk_models"] == 1
+    assert summary["safe_models"] == 0
+    assert summary["material_coverage"] == 0
+    assert summary["pgd_exposed"] == 100
+    assert summary["shared_critical"] == 0
