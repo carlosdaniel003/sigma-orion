@@ -35,46 +35,90 @@ const TITLES = {
   dashboard: 'Analisando o DPP final',
 }
 
-function OrionAgentVisual() {
+const CONSTELLATION_NODES = [
+  { x: 38, y: 126, start: 0 },
+  { x: 92, y: 54, start: 10 },
+  { x: 157, y: 88, start: 31 },
+  { x: 214, y: 38, start: 60 },
+  { x: 300, y: 88, start: 72 },
+  { x: 252, y: 160, start: 88 },
+  { x: 142, y: 174, start: 97 },
+]
+
+function getMeasuredNodeIndex(progress) {
+  let index = 0
+  CONSTELLATION_NODES.forEach((node, nodeIndex) => {
+    if (progress >= node.start) index = nodeIndex
+  })
+  return index
+}
+
+function OrionConstellation({ measured, progress, stageIndex }) {
+  const activeIndex = measured
+    ? getMeasuredNodeIndex(progress)
+    : Math.min(stageIndex, CONSTELLATION_NODES.length - 1)
+
+  function nodeState(index) {
+    if (measured && progress >= 100) return 'done'
+    if (index < activeIndex) return 'done'
+    if (index === activeIndex) return 'active'
+    return 'future'
+  }
+
+  function segmentState(index) {
+    if (measured && progress >= 100) return 'done'
+    if (index < activeIndex) return 'done'
+    if (index === activeIndex) return 'active'
+    return 'future'
+  }
+
   return (
-    <div className="orion-agent-visual" aria-hidden="true">
-      <svg className="orion-agent-core" viewBox="0 0 220 220" role="presentation">
-        <defs>
-          <radialGradient id="orion-core-fill" cx="38%" cy="32%" r="72%">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="72%" stopColor="#f4f5f6" />
-            <stop offset="100%" stopColor="#e8eaec" />
-          </radialGradient>
-          <linearGradient id="orion-accent" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#27f29a" />
-            <stop offset="100%" stopColor="#46d9ff" />
-          </linearGradient>
-        </defs>
-
-        <circle className="orion-agent-halo halo-outer" cx="110" cy="110" r="88" />
-        <circle className="orion-agent-halo halo-inner" cx="110" cy="110" r="67" />
-
-        <g className="orion-agent-orbit orbit-one">
-          <circle className="orion-agent-orbit-line" cx="110" cy="110" r="80" />
-          <circle className="orion-agent-node accent" cx="110" cy="30" r="5" />
-          <circle className="orion-agent-node" cx="179" cy="150" r="3.5" />
+    <div className="orion-constellation" aria-hidden="true">
+      <svg viewBox="0 0 340 214" role="presentation">
+        <g className="orion-constellation-structure">
+          <line x1="38" y1="126" x2="176" y2="116" />
+          <line x1="157" y1="88" x2="176" y2="116" />
+          <line x1="214" y1="38" x2="176" y2="116" />
+          <line x1="300" y1="88" x2="176" y2="116" />
+          <line x1="252" y1="160" x2="176" y2="116" />
+          <line x1="142" y1="174" x2="176" y2="116" />
         </g>
 
-        <g className="orion-agent-orbit orbit-two">
-          <circle className="orion-agent-orbit-line secondary" cx="110" cy="110" r="59" />
-          <circle className="orion-agent-node" cx="51" cy="110" r="4" />
-          <circle className="orion-agent-node accent" cx="145" cy="158" r="3.5" />
+        <g className="orion-constellation-path">
+          {CONSTELLATION_NODES.slice(0, -1).map((node, index) => {
+            const next = CONSTELLATION_NODES[index + 1]
+            return (
+              <line
+                key={`segment-${index}`}
+                className={`orion-constellation-segment ${segmentState(index)}`}
+                x1={node.x}
+                y1={node.y}
+                x2={next.x}
+                y2={next.y}
+              />
+            )
+          })}
         </g>
 
-        <g className="orion-agent-center">
-          <circle className="orion-agent-core-shadow" cx="110" cy="110" r="43" />
-          <circle className="orion-agent-core-surface" cx="110" cy="110" r="39" fill="url(#orion-core-fill)" />
-          <circle className="orion-agent-core-ring" cx="110" cy="110" r="31" />
-          <path className="orion-agent-wave" d="M88 112c7-17 14 17 22 0s15 17 23 0" />
-          <circle className="orion-agent-spark" cx="110" cy="110" r="4.5" fill="url(#orion-accent)" />
+        <g className="orion-constellation-core">
+          <circle className="orion-core-aura" cx="176" cy="116" r="27" />
+          <circle className="orion-core-disc" cx="176" cy="116" r="18" />
+          <path className="orion-core-mark" d="M168 116h16M176 108v16" />
+          <circle className="orion-core-point" cx="176" cy="116" r="3.5" />
+        </g>
+
+        <g className="orion-constellation-nodes">
+          {CONSTELLATION_NODES.map((node, index) => {
+            const state = nodeState(index)
+            return (
+              <g key={`node-${index}`} className={`orion-constellation-node ${state}`}>
+                <circle className="node-halo" cx={node.x} cy={node.y} r="10" />
+                <circle className="node-dot" cx={node.x} cy={node.y} r="4.5" />
+              </g>
+            )
+          })}
         </g>
       </svg>
-      <span className="orion-agent-glow" />
     </div>
   )
 }
@@ -173,28 +217,31 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
       >
         <div className="orion-working-status">
           <span className="orion-working-status-dot" />
-          <span>AGENTE ORION</span>
-          <small>EM PROCESSAMENTO</small>
+          <span>ORION</span>
+          <small>ANALISANDO DADOS</small>
         </div>
 
-        <OrionAgentVisual />
+        <OrionConstellation
+          measured={measured}
+          progress={progressValue ?? 0}
+          stageIndex={stageIndex}
+        />
 
         <div className="orion-working-copy">
           <h3 id="orion-working-title">{TITLES[mode] || TITLES.generate}</h3>
           <p className="orion-working-subtitle">
-            {measured
-              ? 'O progresso abaixo é atualizado pelos checkpoints reais do processamento Python.'
-              : 'O ORION está cruzando e validando os dados do processo.'}
+            Analisando, conectando e consolidando dados reais para montar o cenário operacional.
           </p>
 
           <div className="orion-current-stage" id="orion-working-description">
             <div>
-              <small className="orion-stage-label">{measured ? 'ETAPA REAL DO BACKEND' : 'ATIVIDADE EM ANDAMENTO'}</small>
+              <small className="orion-stage-label">{measured ? 'ETAPA REAL DO PROCESSAMENTO' : 'ATIVIDADE EM ANDAMENTO'}</small>
               <span>{currentActivity}</span>
             </div>
-            <small className={measured ? 'orion-progress-percent' : 'orion-elapsed-time'}>
-              {measured ? `${Math.round(progressValue)}%` : `${elapsedSeconds}s decorridos`}
-            </small>
+            <div className="orion-stage-measures">
+              {measured && <strong className="orion-progress-percent">{Math.round(progressValue)}%</strong>}
+              <small className="orion-elapsed-time">{elapsedSeconds}s</small>
+            </div>
           </div>
 
           <div
@@ -208,8 +255,8 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
 
           <div className="orion-working-footer">
             {measured
-              ? `${elapsedSeconds}s decorridos. A barra só avança quando o Python conclui um checkpoint real.`
-              : 'O progresso permanece indeterminado até o processamento real terminar. O tempo varia conforme o tamanho e a complexidade das planilhas.'}
+              ? 'A constelação e a barra avançam somente quando o backend registra um checkpoint real.'
+              : 'O tempo varia conforme o tamanho e a complexidade das planilhas.'}
           </div>
         </div>
       </section>
