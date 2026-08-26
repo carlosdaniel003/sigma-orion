@@ -8,16 +8,33 @@ import { useDppWorkspace } from './DppWorkspaceContext'
 const AUTO_RUN_DELAY = 450
 
 function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnalysis }) {
-  const { files, referenceMonth, setReferenceMonth, generatedSignature, setGeneratedSignature } = useDppWorkspace()
-  const [scenario, setScenario] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const {
+    files,
+    referenceMonth,
+    setReferenceMonth,
+    generatedSignature,
+    setGeneratedSignature,
+    generatedScenario,
+    setGeneratedScenario,
+    testSignature,
+    setTestSignature,
+    setTestResult,
+  } = useDppWorkspace()
+  const [loading, setLoading] = useState(!generatedScenario)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const generationTimerRef = useRef(null)
   const generationAbortRef = useRef(null)
+  const testPreparingRef = useRef(false)
+  const bootstrappedRef = useRef(false)
 
   const bundle = useMemo(
     () => classifyDppBundle(files, referenceMonth, 'generate'),
+    [files, referenceMonth],
+  )
+
+  const testBundle = useMemo(
+    () => classifyDppBundle(files, referenceMonth, 'test'),
     [files, referenceMonth],
   )
 
@@ -28,18 +45,24 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       const response = await fetch(`${apiUrl}/api/dpp/monthly/latest`)
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Não foi possível carregar o cenário mensal mais recente.')
-      setScenario(data.available ? data.scenario : null)
+      setGeneratedScenario(data.available ? data.scenario : null)
     } catch (requestError) {
       setError(requestError.message || 'Falha ao carregar o dashboard.')
-      setScenario(null)
+      setGeneratedScenario(null)
     } finally {
       setLoading(false)
     }
-  }, [apiUrl])
+  }, [apiUrl, setGeneratedScenario])
 
   useEffect(() => {
+    if (bootstrappedRef.current) return
+    bootstrappedRef.current = true
+    if (generatedScenario) {
+      setLoading(false)
+      return
+    }
     loadLatest()
-  }, [loadLatest])
+  }, [generatedScenario, loadLatest])
 
   useEffect(() => {
     if (bundle.referenceMonth && bundle.referenceMonth !== referenceMonth) {
@@ -49,7 +72,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
 
   useEffect(() => {
     if (loading || generating || !bundle.ready || !bundle.signature) return undefined
-    if (bundle.signature === generatedSignature) return undefined
+    if (bundle.signature === generatedSignature && generatedScenario) return undefined
 
     window.clearTimeout(generationTimerRef.current)
     generationTimerRef.current = window.setTimeout(() => {
@@ -57,7 +80,44 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     }, AUTO_RUN_DELAY)
 
     return () => window.clearTimeout(generationTimerRef.current)
-  }, [loading, generating, bundle.ready, bundle.signature, generatedSignature])
+  }, [loading, generating, bundle.ready, bundle.signature, generatedSignature, generatedScenario])
+
+  useEffect(() => {
+    if (loading || generating || !generatedScenario || !testBundle.ready || !testBundle.signature) return
+    if (testBundle.signature === testSignature) return
+    prepareTestFromPackage()
+  }, [loading, generating, generatedScenario, testBundle.ready, testBundle.signature, testSignature])
+
+  async function prepareTestFromPackage() {
+    if (!testBundle.ready || !testBundle.signature || testPreparingRef.current) return
+    if (testBundle.signature === testSignature) return
+
+    const month = testBundle.referenceMonth || referenceMonth
+    if (!month) return
+
+    testPreparingRef.current = true
+    const form = new FormData()
+    form.append('base_dpp', testBundle.baseDpp)
+    form.append('expected_dpp', testBundle.expectedDpp)
+    form.append('wiu', testBundle.wiu)
+    form.append('explosion', testBundle.explosion)
+    form.append('stock', testBundle.stock)
+    form.append('pgd', testBundle.pgd)
+    form.append('reference_month', month)
+    if (testBundle.openFile) form.append('open_orders', testBundle.openFile)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/test`, { method: 'POST', body: form })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Não foi possível preparar os Testes do DPP.')
+      setTestResult(data)
+      setTestSignature(testBundle.signature)
+    } catch (requestError) {
+      console.error('Falha ao preparar Testes do DPP em segundo plano:', requestError)
+    } finally {
+      testPreparingRef.current = false
+    }
+  }
 
   async function generateFromPackage() {
     const month = bundle.referenceMonth || referenceMonth
@@ -85,8 +145,14 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Não foi possível gerar o cenário mensal a partir do pacote.')
-      setScenario(data)
+
       setGeneratedSignature(bundle.signature)
+
+      if (testBundle.ready && testBundle.signature !== testSignature) {
+        await prepareTestFromPackage()
+      }
+
+      setGeneratedScenario(data)
     } catch (requestError) {
       if (requestError.name !== 'AbortError') {
         setError(requestError.message || 'Falha ao gerar o cenário mensal.')
@@ -107,14 +173,14 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     )
   }
 
-  if (!scenario) {
+  if (!generatedScenario) {
     return (
       <>
         <header className="page-header dashboard-header">
           <div>
             <span className="eyebrow">VISÃO OPERACIONAL</span>
             <h2>Dashboard do DPP</h2>
-            <p>Carregue o pacote mensal aqui. O SIGMA-S ORION gera o cenário automaticamente e reutiliza os mesmos arquivos nas demais telas.</p>
+            <p>Carregue o pacote mensal aqui uma única vez. O SIGMA-S ORION gera o cenário e prepara as demais telas usando os mesmos arquivos.</p>
           </div>
           <span className="status">Aguardando pacote</span>
         </header>
@@ -152,7 +218,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       <OrionWorking active={generating} mode="generate" />
       <Dashboard
         apiUrl={apiUrl}
-        scenario={scenario}
+        scenario={generatedScenario}
         onNavigate={onNavigate}
         finalDppAnalysis={finalDppAnalysis}
         onFinalDppAnalysis={onFinalDppAnalysis}
