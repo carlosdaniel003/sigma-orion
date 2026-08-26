@@ -12,6 +12,11 @@
   animation: orion-overlay-in 180ms ease-out both;
 }
 
+.orion-working-overlay.closing {
+  pointer-events: none;
+  animation: orion-overlay-out 260ms ease-in both;
+}
+
 .orion-working {
   width: min(650px, 100%);
   display: flex;
@@ -27,6 +32,10 @@
   color: #1d1d1f;
   text-align: center;
   animation: orion-card-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.orion-working.panel-closing {
+  animation: orion-card-out 260ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .orion-working.compact {
@@ -65,7 +74,12 @@
 
 .orion-constellation {
   width: min(410px, 92%);
-  margin: 14px auto 4px;
+  margin: 0 auto 4px;
+  transform-origin: center center;
+}
+
+.orion-working.constellation-closing .orion-constellation {
+  animation: orion-constellation-close 420ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 .orion-constellation svg {
@@ -143,12 +157,14 @@
   transform-box: fill-box;
   transform-origin: center;
   animation: orion-core-aura 2.8s ease-in-out infinite;
+  transition: fill 240ms ease;
 }
 
 .orion-constellation-core .orion-core-disc {
   fill: #fff;
   stroke: #d7d7dc;
   stroke-width: 1.5;
+  transition: stroke 240ms ease;
 }
 
 .orion-constellation-core .orion-core-mark {
@@ -156,12 +172,34 @@
   stroke: #1d1d1f;
   stroke-width: 1.7;
   stroke-linecap: round;
+  transition: stroke 240ms ease;
 }
 
 .orion-constellation-core .orion-core-point {
   fill: #46d9ff;
   stroke: #fff;
   stroke-width: 1.5;
+  transition: fill 240ms ease;
+}
+
+.orion-working.complete .orion-core-aura,
+.orion-working.constellation-closing .orion-core-aura {
+  fill: rgba(52, 199, 89, 0.12);
+}
+
+.orion-working.complete .orion-core-disc,
+.orion-working.constellation-closing .orion-core-disc {
+  stroke: rgba(52, 199, 89, 0.45);
+}
+
+.orion-working.complete .orion-core-mark,
+.orion-working.constellation-closing .orion-core-mark {
+  stroke: #248a3d;
+}
+
+.orion-working.complete .orion-core-point,
+.orion-working.constellation-closing .orion-core-point {
+  fill: #34c759;
 }
 
 .orion-working-copy {
@@ -228,6 +266,11 @@
   will-change: transform;
 }
 
+.orion-working.complete .orion-working-progress span,
+.orion-working.constellation-closing .orion-working-progress span {
+  background: #34c759;
+}
+
 .orion-working-footer {
   margin-top: 13px;
   color: #8e8e93;
@@ -240,9 +283,25 @@
   to { opacity: 1; }
 }
 
+@keyframes orion-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 @keyframes orion-card-in {
   from { opacity: 0; transform: translateY(7px) scale(0.988); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes orion-card-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(5px) scale(0.985); }
+}
+
+@keyframes orion-constellation-close {
+  0% { opacity: 1; transform: scale(1); }
+  34% { opacity: 1; transform: scale(1.025); }
+  100% { opacity: 0; transform: scale(0.72); }
 }
 
 @keyframes orion-status-pulse {
@@ -290,7 +349,7 @@
 
   .orion-constellation {
     width: min(350px, 96%);
-    margin-top: 10px;
+    margin-top: 0;
   }
 
   .orion-current-stage {
@@ -308,12 +367,17 @@
   .orion-constellation-node.active .node-dot,
   .orion-constellation-node.active .node-halo,
   .orion-constellation-core .orion-core-aura,
-  .orion-working-progress span {
+  .orion-working-progress span,
+  .orion-working.constellation-closing .orion-constellation {
     animation: none;
   }
 
   .orion-working-progress span {
     width: 100%;
     opacity: 0.35;
+  }
+
+  .orion-working.constellation-closing .orion-constellation {
+    opacity: 0;
   }
 }
