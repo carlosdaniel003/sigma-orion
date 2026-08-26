@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { classifyDppBundle, FILE_LABELS } from './dpp-file-bundle'
+import { useDppWorkspace } from './DppWorkspaceContext'
 import './bulk-file-picker.css'
 
 const DISPLAY_ORDER = ['baseDpp', 'expectedDpp', 'stock', 'explosion', 'openFile', 'pgd', 'wiu']
@@ -23,11 +24,12 @@ function mergeFiles(currentFiles, newFiles) {
 }
 
 function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, compact = false, processing = false, title = 'Adicionar arquivos em massa' }) {
-  const [selectedFiles, setSelectedFiles] = useState([])
+  const { files: selectedFiles, setFiles, referenceMonth: sharedReferenceMonth, setReferenceMonth: setSharedReferenceMonth } = useDppWorkspace()
   const onBundleRef = useRef(onBundle)
+  const effectiveReferenceMonth = referenceMonth || sharedReferenceMonth
   const report = useMemo(
-    () => classifyDppBundle(selectedFiles, referenceMonth, mode),
-    [selectedFiles, referenceMonth, mode],
+    () => classifyDppBundle(selectedFiles, effectiveReferenceMonth, mode),
+    [selectedFiles, effectiveReferenceMonth, mode],
   )
 
   useEffect(() => {
@@ -38,17 +40,24 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
     onBundleRef.current?.(report)
   }, [report])
 
+  useEffect(() => {
+    if (report.referenceMonth && report.referenceMonth !== sharedReferenceMonth) {
+      setSharedReferenceMonth(report.referenceMonth)
+    }
+  }, [report.referenceMonth, sharedReferenceMonth, setSharedReferenceMonth])
+
   function addFiles(event) {
     const incomingFiles = Array.from(event.target.files || [])
     if (!incomingFiles.length || processing) return
 
-    setSelectedFiles((current) => mergeFiles(current, incomingFiles))
+    setFiles((current) => mergeFiles(current, incomingFiles))
     event.target.value = ''
   }
 
   function clearFiles() {
     if (processing) return
-    setSelectedFiles([])
+    setFiles([])
+    setSharedReferenceMonth('')
   }
 
   const missingLabels = report.missing.map((key) => FILE_LABELS[key])
@@ -66,7 +75,7 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
         <div>
           <span className="eyebrow">PACOTE DO MÊS</span>
           <h3>{title}</h3>
-          <p>Selecione os arquivos em massa. Quando todos os obrigatórios forem reconhecidos, o ORION inicia o processamento automaticamente.</p>
+          <p>Selecione o pacote uma única vez. Os mesmos arquivos permanecem disponíveis no Dashboard, Gerar DPP e Testes enquanto o SIGMA-S ORION estiver aberto.</p>
         </div>
         <div className="bulk-file-actions">
           <label className={`bulk-file-button ${processing ? 'disabled' : ''}`}>
@@ -87,8 +96,8 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
               {processing
                 ? 'A análise já foi iniciada. O resultado será exibido automaticamente.'
                 : report.ready
-                  ? `${report.recognized} arquivo(s) reconhecido(s). Processamento automático habilitado.`
-                  : `${missingLabels.join(' · ')} — adicione somente o que falta sem perder o pacote atual.`}
+                  ? `${report.recognized} arquivo(s) reconhecido(s). O pacote está disponível para todas as telas do DPP.`
+                  : `${missingLabels.join(' · ')} — adicione somente o que falta sem perder os arquivos já carregados.`}
             </span>
           </div>
 
