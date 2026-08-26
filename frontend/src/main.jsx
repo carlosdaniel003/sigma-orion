@@ -2,12 +2,15 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import App from './App.jsx'
+import { DppWorkspaceProvider } from './DppWorkspaceContext.jsx'
 import './styles.css'
 import './navigation.css'
 import './dashboard-visibility.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <DppWorkspaceProvider>
+      <App />
+    </DppWorkspaceProvider>
   </StrictMode>,
 )
