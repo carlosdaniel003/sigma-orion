@@ -1,0 +1,271 @@
+/* Theme corrections for dashboard sections with legacy hard-coded light colors. */
+
+/* Estado do DPP */
+.dpp-dashboard-view .dpp-state-panel,
+.dpp-dashboard-view .dpp-state-card,
+.dpp-dashboard-view .dpp-state-card.initial,
+.dpp-dashboard-view .dpp-state-card.final,
+.dpp-dashboard-view .dpp-state-card.final.loaded {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  color: var(--orion-text) !important;
+  box-shadow: var(--orion-shadow) !important;
+}
+
+.dpp-dashboard-view .dpp-state-card.initial,
+.dpp-dashboard-view .dpp-state-card.final.loaded {
+  background: var(--orion-surface-elevated) !important;
+}
+
+.dpp-dashboard-view .dpp-state-heading > span,
+.dpp-dashboard-view .dpp-state-card.final .dpp-state-heading > span {
+  border: 1px solid var(--orion-border) !important;
+  background: var(--orion-blue-soft) !important;
+  color: var(--orion-blue) !important;
+}
+
+.dpp-dashboard-view .dpp-state-card.final .dpp-state-heading > span {
+  background: var(--orion-success-soft) !important;
+  color: var(--orion-success) !important;
+}
+
+.dpp-dashboard-view .dpp-state-heading > small,
+.dpp-dashboard-view .dpp-state-metric span {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dpp-state-metric,
+.dpp-dashboard-view .dpp-final-placeholder,
+.dpp-dashboard-view .dpp-final-upload label {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  color: var(--orion-text) !important;
+}
+
+/* Evolucao do DPP */
+.dpp-dashboard-view .dpp-evolution-panel,
+.dpp-dashboard-view .dpp-evolution-list {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .dpp-evolution-row {
+  border-bottom-color: var(--orion-border-soft) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .evolution-value.before,
+.dpp-dashboard-view .evolution-arrow {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .evolution-value.after {
+  color: var(--orion-success) !important;
+}
+
+.dpp-dashboard-view .dpp-evolution-row small.good {
+  background: var(--orion-success-soft) !important;
+  color: var(--orion-success) !important;
+}
+
+.dpp-dashboard-view .dpp-evolution-row small.attention {
+  background: var(--orion-warning-soft) !important;
+  color: var(--orion-warning) !important;
+}
+
+.dpp-dashboard-view .dpp-evolution-row small.neutral {
+  background: var(--orion-border-soft) !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+/* Principais gargalos + Modelos com maior risco */
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  box-shadow: var(--orion-shadow) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .panel-header,
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table,
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table tbody,
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table tr {
+  background: var(--orion-surface) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .panel-header h3,
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table td:first-child strong,
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table .number-cell {
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .panel-header p,
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table td:first-child small {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .panel-header .status,
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table td:first-child small {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .table-scroll {
+  border-top-color: var(--orion-border) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table th {
+  border-bottom-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table td {
+  border-bottom-color: var(--orion-border-soft) !important;
+  background: var(--orion-surface) !important;
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table tbody tr:hover td {
+  background: var(--orion-blue-soft) !important;
+}
+
+.dpp-dashboard-view .dashboard-risk-grid > .dashboard-table-panel .dashboard-table .dashboard-negative {
+  color: var(--orion-danger) !important;
+}
+
+/* Reframe the old PGD x REAL chart as a compact planning-adherence summary. */
+.dpp-dashboard-view .dashboard-planning-panel .panel-header {
+  align-items: flex-start;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header h3 {
+  font-size: 0 !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header h3::after {
+  content: 'Aderência do planejamento';
+  display: block;
+  color: var(--orion-text);
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header p {
+  max-width: 520px;
+  font-size: 0 !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header p::after {
+  content: 'Mostra quanto do PGD está coberto pelo REAL e evidencia qualquer diferença entre meta e planejamento.';
+  display: block;
+  margin-top: 8px;
+  color: var(--orion-text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel > .panel-header > .status {
+  display: inline-flex !important;
+  align-items: baseline;
+  gap: 5px;
+  padding: 8px 11px !important;
+  border: 1px solid var(--orion-border) !important;
+  background: var(--orion-blue-soft) !important;
+  color: var(--orion-blue) !important;
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel > .panel-header > .status::after {
+  content: ' do PGD coberto';
+  color: var(--orion-text-secondary);
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bars {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row {
+  min-height: 92px;
+  align-content: center;
+  padding: 18px;
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row > div:first-child {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row > div:first-child strong {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row > div:first-child span {
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-track {
+  display: none;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row {
+  grid-template-columns: 1fr;
+  margin-top: 10px;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div:nth-child(1),
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div:nth-child(2) {
+  display: none;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div:nth-child(3) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div:nth-child(3) small {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div:nth-child(3) strong {
+  color: var(--orion-success) !important;
+  text-align: right;
+}
+
+/* Light mode remains the restrained black-and-white Apple version. */
+:root[data-theme='light'] .dpp-dashboard-view .dashboard-planning-panel > .panel-header > .status {
+  background: rgba(29, 29, 31, 0.06) !important;
+  color: #1d1d1f !important;
+}
+
+:root[data-theme='light'] .dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div:nth-child(3) strong {
+  color: #1d7046 !important;
+}
+
+@media (max-width: 760px) {
+  .dpp-dashboard-view .dashboard-planning-panel .planning-bars {
+    grid-template-columns: 1fr;
+  }
+
+  .dpp-dashboard-view .dashboard-planning-panel > .panel-header > .status {
+    align-self: flex-start;
+  }
+}
