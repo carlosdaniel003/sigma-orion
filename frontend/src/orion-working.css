@@ -6,32 +6,32 @@
   place-items: center;
   padding: 24px;
   overflow: auto;
-  background: rgba(8, 10, 12, 0.72);
+  background: rgba(10, 10, 12, 0.68);
   cursor: wait;
   overscroll-behavior: contain;
   animation: orion-overlay-in 180ms ease-out both;
 }
 
 .orion-working {
-  width: min(680px, 100%);
+  width: min(650px, 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   margin: auto;
-  padding: 28px 32px 26px;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  border-radius: 30px;
+  padding: 26px 30px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 28px;
   outline: none;
-  background: #ffffff;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
+  background: #fff;
+  box-shadow: 0 28px 84px rgba(0, 0, 0, 0.28);
   color: #1d1d1f;
   text-align: center;
   animation: orion-card-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .orion-working.compact {
-  width: min(610px, 100%);
-  padding: 24px 28px 22px;
+  width: min(590px, 100%);
+  padding: 22px 26px 20px;
 }
 
 .orion-working-status {
@@ -39,11 +39,11 @@
   align-items: center;
   gap: 7px;
   padding: 7px 10px;
-  border: 1px solid #e6e7e9;
+  border: 1px solid #e6e6e9;
   border-radius: 999px;
   background: #fafafa;
   color: #3a3a3c;
-  font-size: 0.66rem;
+  font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -58,149 +58,128 @@
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #27f29a;
-  box-shadow: 0 0 0 4px rgba(39, 242, 154, 0.12);
+  background: #34c759;
+  box-shadow: 0 0 0 4px rgba(52, 199, 89, 0.11);
   animation: orion-status-pulse 1.8s ease-in-out infinite;
 }
 
-.orion-agent-visual {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 196px;
-  height: 196px;
-  margin: 14px 0 8px;
+.orion-constellation {
+  width: min(410px, 92%);
+  margin: 14px auto 4px;
 }
 
-.orion-agent-core {
-  position: relative;
-  z-index: 2;
+.orion-constellation svg {
+  display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   overflow: visible;
 }
 
-.orion-agent-glow {
-  position: absolute;
-  inset: 44px;
-  z-index: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(39, 242, 154, 0.16) 0%, rgba(70, 217, 255, 0.08) 48%, rgba(255, 255, 255, 0) 72%);
-  transform: scale(1.3);
-  animation: orion-glow-breathe 3.2s ease-in-out infinite;
+.orion-constellation-structure line {
+  stroke: #ececef;
+  stroke-width: 1.15;
+  stroke-linecap: round;
 }
 
-.orion-agent-halo {
-  fill: none;
-  stroke: #e9eaec;
+.orion-constellation-segment {
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  transition: stroke 280ms ease, opacity 280ms ease;
+}
+
+.orion-constellation-segment.future {
+  stroke: #d9d9de;
+  opacity: 0.72;
+}
+
+.orion-constellation-segment.done {
+  stroke: #34c759;
+  opacity: 0.82;
+}
+
+.orion-constellation-segment.active {
+  stroke: #46d9ff;
+  stroke-dasharray: 5 7;
+  opacity: 1;
+  animation: orion-data-flow 1.25s linear infinite;
+}
+
+.orion-constellation-node .node-halo,
+.orion-constellation-node .node-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: fill 260ms ease, opacity 260ms ease, transform 260ms ease;
+}
+
+.orion-constellation-node .node-halo {
+  fill: transparent;
+}
+
+.orion-constellation-node.future .node-dot {
+  fill: #c7c7cc;
+}
+
+.orion-constellation-node.done .node-dot {
+  fill: #34c759;
+}
+
+.orion-constellation-node.done .node-halo {
+  fill: rgba(52, 199, 89, 0.09);
+}
+
+.orion-constellation-node.active .node-dot {
+  fill: #46d9ff;
+  transform: scale(1.18);
+  animation: orion-node-pulse 1.45s ease-in-out infinite;
+}
+
+.orion-constellation-node.active .node-halo {
+  fill: rgba(70, 217, 255, 0.12);
+  animation: orion-node-halo 1.45s ease-in-out infinite;
+}
+
+.orion-constellation-core .orion-core-aura {
+  fill: rgba(70, 217, 255, 0.055);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: orion-core-aura 2.8s ease-in-out infinite;
+}
+
+.orion-constellation-core .orion-core-disc {
+  fill: #fff;
+  stroke: #d7d7dc;
   stroke-width: 1.5;
 }
 
-.orion-agent-halo.halo-outer {
-  stroke-dasharray: 2 8;
-  opacity: 0.8;
-}
-
-.orion-agent-halo.halo-inner {
-  opacity: 0.65;
-}
-
-.orion-agent-orbit {
-  transform-box: fill-box;
-  transform-origin: center;
-  will-change: transform;
-}
-
-.orion-agent-orbit.orbit-one {
-  animation: orion-orbit-clockwise 8s linear infinite;
-}
-
-.orion-agent-orbit.orbit-two {
-  animation: orion-orbit-counter 10.5s linear infinite;
-}
-
-.orion-agent-orbit-line {
-  fill: none;
-  stroke: #d8dadd;
-  stroke-width: 1.6;
-  stroke-dasharray: 4 7;
-}
-
-.orion-agent-orbit-line.secondary {
-  stroke: #eceef0;
-  stroke-dasharray: 2 5;
-}
-
-.orion-agent-node {
-  fill: #8e8e93;
-  stroke: #ffffff;
-  stroke-width: 2;
-}
-
-.orion-agent-node.accent {
-  fill: #27f29a;
-}
-
-.orion-agent-center {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: orion-core-breathe 2.6s ease-in-out infinite;
-}
-
-.orion-agent-core-shadow {
-  fill: rgba(0, 0, 0, 0.035);
-}
-
-.orion-agent-core-surface {
-  stroke: #d9dbde;
-  stroke-width: 1.8;
-}
-
-.orion-agent-core-ring {
+.orion-constellation-core .orion-core-mark {
   fill: none;
   stroke: #1d1d1f;
-  stroke-width: 2.2;
-  stroke-dasharray: 10 9;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: orion-orbit-counter 7s linear infinite;
-}
-
-.orion-agent-wave {
-  fill: none;
-  stroke: #3a3a3c;
-  stroke-width: 3.2;
+  stroke-width: 1.7;
   stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 48;
-  stroke-dashoffset: 48;
-  animation: orion-wave 1.9s ease-in-out infinite;
 }
 
-.orion-agent-spark {
-  stroke: #ffffff;
-  stroke-width: 2;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: orion-spark 1.6s ease-in-out infinite;
+.orion-constellation-core .orion-core-point {
+  fill: #46d9ff;
+  stroke: #fff;
+  stroke-width: 1.5;
 }
 
 .orion-working-copy {
-  width: min(520px, 100%);
+  width: min(535px, 100%);
 }
 
 .orion-working h3 {
   margin: 0;
-  font-size: clamp(1.5rem, 3vw, 2.05rem);
+  font-size: clamp(1.45rem, 3vw, 1.95rem);
   font-weight: 700;
   letter-spacing: -0.035em;
 }
 
 .orion-working-subtitle {
-  margin: 8px auto 18px;
-  max-width: 430px;
+  max-width: 455px;
+  margin: 7px auto 18px;
   color: #6e6e73;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   line-height: 1.5;
 }
 
@@ -232,8 +211,8 @@
 
 .orion-working-progress {
   position: relative;
-  height: 4px;
-  margin-top: 14px;
+  height: 5px;
+  margin-top: 13px;
   overflow: hidden;
   border-radius: 999px;
   background: #ececef;
@@ -244,35 +223,15 @@
   width: 30%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #1d1d1f 0%, #5f6368 72%, #27f29a 100%);
+  background: linear-gradient(90deg, #34c759 0%, #46d9ff 100%);
   animation: orion-progress 1.45s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   will-change: transform;
 }
 
-.orion-stage-dots {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.orion-stage-dots span {
-  width: 18px;
-  height: 3px;
-  border-radius: 999px;
-  background: #e2e3e5;
-  transition: background 180ms ease, transform 180ms ease;
-}
-
-.orion-stage-dots span.done {
-  background: #4a4a4f;
-  transform: scaleX(1.08);
-}
-
 .orion-working-footer {
-  margin-top: 16px;
+  margin-top: 13px;
   color: #8e8e93;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   line-height: 1.4;
 }
 
@@ -282,42 +241,32 @@
 }
 
 @keyframes orion-card-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  from { opacity: 0; transform: translateY(7px) scale(0.988); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes orion-status-pulse {
-  0%, 100% { opacity: 0.72; transform: scale(0.92); }
+  0%, 100% { opacity: 0.68; transform: scale(0.92); }
   50% { opacity: 1; transform: scale(1.08); }
 }
 
-@keyframes orion-orbit-clockwise {
-  to { transform: rotate(360deg); }
+@keyframes orion-data-flow {
+  to { stroke-dashoffset: -24; }
 }
 
-@keyframes orion-orbit-counter {
-  to { transform: rotate(-360deg); }
+@keyframes orion-node-pulse {
+  0%, 100% { opacity: 0.78; transform: scale(1.02); }
+  50% { opacity: 1; transform: scale(1.28); }
 }
 
-@keyframes orion-core-breathe {
-  0%, 100% { transform: scale(0.985); }
-  50% { transform: scale(1.025); }
+@keyframes orion-node-halo {
+  0%, 100% { opacity: 0.35; transform: scale(0.76); }
+  50% { opacity: 1; transform: scale(1.12); }
 }
 
-@keyframes orion-glow-breathe {
-  0%, 100% { opacity: 0.5; transform: scale(1.18); }
-  50% { opacity: 0.95; transform: scale(1.42); }
-}
-
-@keyframes orion-wave {
-  0% { stroke-dashoffset: 48; opacity: 0.35; }
-  40%, 70% { stroke-dashoffset: 0; opacity: 1; }
-  100% { stroke-dashoffset: -48; opacity: 0.35; }
-}
-
-@keyframes orion-spark {
-  0%, 100% { transform: scale(0.85); opacity: 0.55; }
-  50% { transform: scale(1.2); opacity: 1; }
+@keyframes orion-core-aura {
+  0%, 100% { opacity: 0.42; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
 @keyframes orion-progress {
@@ -335,23 +284,19 @@
   .orion-working,
   .orion-working.compact {
     width: min(520px, 100%);
-    padding: 22px 20px 20px;
+    padding: 21px 18px 19px;
     border-radius: 24px;
   }
 
-  .orion-agent-visual {
-    width: 168px;
-    height: 168px;
+  .orion-constellation {
+    width: min(350px, 96%);
+    margin-top: 10px;
   }
 
   .orion-current-stage {
     align-items: flex-start;
     flex-direction: column;
-    gap: 4px;
-  }
-
-  .orion-stage-dots span {
-    width: 14px;
+    gap: 8px;
   }
 }
 
@@ -359,12 +304,10 @@
   .orion-working-overlay,
   .orion-working,
   .orion-working-status-dot,
-  .orion-agent-orbit,
-  .orion-agent-center,
-  .orion-agent-core-ring,
-  .orion-agent-wave,
-  .orion-agent-spark,
-  .orion-agent-glow,
+  .orion-constellation-segment.active,
+  .orion-constellation-node.active .node-dot,
+  .orion-constellation-node.active .node-halo,
+  .orion-constellation-core .orion-core-aura,
   .orion-working-progress span {
     animation: none;
   }
