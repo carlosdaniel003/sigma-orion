@@ -1,20 +1,40 @@
-import { useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import DashboardLoader from './DashboardLoader'
 import DashboardKpiComparison from './DashboardKpiComparison'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
 
 const API_URL = 'http://localhost:8000'
+const THEME_STORAGE_KEY = 'sigma-s-orion-theme'
+
+function getInitialTheme() {
+  if (typeof window === 'undefined') return 'dark'
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return savedTheme === 'light' ? 'light' : 'dark'
+}
 
 function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('dpp')
   const [activeView, setActiveView] = useState('dashboard')
   const [finalDppAnalysis, setFinalDppAnalysis] = useState(null)
+  const [theme, setTheme] = useState(getInitialTheme)
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   function openDppView(view) {
     setActiveWorkspace('dpp')
     setActiveView(view)
   }
+
+  function toggleTheme() {
+    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+  }
+
+  const themeAction = theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'
 
   return (
     <div className="app-shell">
@@ -27,6 +47,19 @@ function App() {
           onClick={() => openDppView('dashboard')}
         >
           <DppIcon />
+        </button>
+
+        <span className="workspace-dock-separator" aria-hidden="true" />
+
+        <button
+          className="workspace-button theme-toggle-button"
+          type="button"
+          aria-label={themeAction}
+          aria-pressed={theme === 'dark'}
+          data-tooltip={themeAction}
+          onClick={toggleTheme}
+        >
+          {theme === 'dark' ? <MoonIcon /> : <SunIcon />}
         </button>
       </aside>
 
@@ -106,6 +139,23 @@ function TestIcon() {
       <path d="M9 3.5h6M10 3.5v5l-5 9A2 2 0 0 0 6.8 20.5h10.4A2 2 0 0 0 19 17.5l-5-9v-5" />
       <path d="M8 14h8" />
       <path d="m9.5 17 1.5 1.5 3.5-3.5" />
+    </svg>
+  )
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5 7 7M17 17l1.5 1.5M18.5 5.5 17 7M7 17l-1.5 1.5" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 15.2A8.2 8.2 0 0 1 8.8 4a8.2 8.2 0 1 0 11.2 11.2Z" />
     </svg>
   )
 }
