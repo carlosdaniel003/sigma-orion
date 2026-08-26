@@ -7,6 +7,7 @@ import './styles.css'
 import './navigation.css'
 import './dashboard-visibility.css'
 import './dashboard-kpi-polish.css'
+import './dashboard-table-polish.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
