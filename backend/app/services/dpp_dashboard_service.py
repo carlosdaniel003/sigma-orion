@@ -73,6 +73,7 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
         model_count += 1
         pgd = max(_number(_cell(rows, kit_row, column), 0.0) or 0.0, 0.0) if kit_row else 0.0
         real = max(_number(_cell(rows, real_row, column), 0.0) or 0.0, 0.0)
+        delta = real - pgd
         pgd_total += pgd
         real_total += real
         if real > 1e-9:
@@ -84,7 +85,9 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
                 "column": column,
                 "pgd": pgd,
                 "real": real,
+                "delta": delta,
                 "active": real > 1e-9,
+                "changed": abs(delta) > 1e-9,
             }
         )
 
@@ -122,6 +125,10 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
         if len(affected_models) > 1:
             shared_critical += 1
 
+    for model in model_states:
+        model["at_risk"] = model["name"] in risk_model_names
+        model.pop("column", None)
+
     risk_models = len(risk_model_names)
     safe_models = max(active_models - risk_models, 0)
     material_coverage = (safe_models / active_models * 100.0) if active_models else 0.0
@@ -130,15 +137,22 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
         for model in model_states
         if model["name"] in risk_model_names
     )
+    changed_models = sum(1 for model in model_states if model["changed"])
+    below_pgd_models = sum(1 for model in model_states if model["delta"] < -1e-9)
+    above_pgd_models = sum(1 for model in model_states if model["delta"] > 1e-9)
 
     return {
         "filename": filename,
         "status": "DPP_FINAL",
+        "models": model_states,
         "summary": {
             "pgd_total": pgd_total,
             "real_total": real_total,
             "model_count": model_count,
             "active_models": active_models,
+            "changed_models": changed_models,
+            "below_pgd_models": below_pgd_models,
+            "above_pgd_models": above_pgd_models,
             "total_materials": total_materials,
             "critical_materials": critical_materials,
             "opc_count": opc_count,
