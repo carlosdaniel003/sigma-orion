@@ -79,12 +79,15 @@ function OrionAgentVisual() {
   )
 }
 
-function OrionWorking({ active, mode = 'generate', compact = false }) {
+function OrionWorking({ active, mode = 'generate', compact = false, progress = null, activity = '' }) {
   const stages = STAGES[mode] || STAGES.generate
   const [stageIndex, setStageIndex] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const dialogRef = useRef(null)
   const blocking = mode !== 'dashboard'
+  const numericProgress = Number(progress)
+  const measured = progress !== null && progress !== undefined && Number.isFinite(numericProgress)
+  const progressValue = measured ? Math.min(Math.max(numericProgress, 0), 100) : null
 
   useEffect(() => {
     if (!active) return undefined
@@ -92,18 +95,22 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
     setStageIndex(0)
     setElapsedSeconds(0)
 
-    const stageTimer = window.setInterval(() => {
-      setStageIndex((current) => Math.min(current + 1, stages.length - 1))
-    }, 2200)
     const elapsedTimer = window.setInterval(() => {
       setElapsedSeconds((current) => current + 1)
     }, 1000)
 
+    let stageTimer = null
+    if (!measured) {
+      stageTimer = window.setInterval(() => {
+        setStageIndex((current) => Math.min(current + 1, stages.length - 1))
+      }, 2200)
+    }
+
     return () => {
-      window.clearInterval(stageTimer)
+      if (stageTimer) window.clearInterval(stageTimer)
       window.clearInterval(elapsedTimer)
     }
-  }, [active, mode, stages.length])
+  }, [active, mode, stages.length, measured])
 
   useEffect(() => {
     if (!active || !blocking || typeof document === 'undefined') return undefined
@@ -139,13 +146,15 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
 
   if (!active || typeof document === 'undefined') return null
 
+  const currentActivity = activity || stages[stageIndex]
+
   if (!blocking) {
     return (
       <div className="orion-inline-working" role="status" aria-live="polite">
         <span className="orion-working-status-dot" aria-hidden="true" />
         <div>
           <strong>{TITLES[mode]}</strong>
-          <small>{stages[stageIndex]} · {elapsedSeconds}s</small>
+          <small>{currentActivity} · {elapsedSeconds}s</small>
         </div>
       </div>
     )
@@ -172,20 +181,35 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
 
         <div className="orion-working-copy">
           <h3 id="orion-working-title">{TITLES[mode] || TITLES.generate}</h3>
-          <p className="orion-working-subtitle">O ORION está cruzando e validando os dados do processo.</p>
+          <p className="orion-working-subtitle">
+            {measured
+              ? 'O progresso abaixo é atualizado pelos checkpoints reais do processamento Python.'
+              : 'O ORION está cruzando e validando os dados do processo.'}
+          </p>
 
           <div className="orion-current-stage" id="orion-working-description">
             <div>
-              <small className="orion-stage-label">ATIVIDADE EM ANDAMENTO</small>
-              <span>{stages[stageIndex]}</span>
+              <small className="orion-stage-label">{measured ? 'ETAPA REAL DO BACKEND' : 'ATIVIDADE EM ANDAMENTO'}</small>
+              <span>{currentActivity}</span>
             </div>
-            <small className="orion-elapsed-time">{elapsedSeconds}s decorridos</small>
+            <small className={measured ? 'orion-progress-percent' : 'orion-elapsed-time'}>
+              {measured ? `${Math.round(progressValue)}%` : `${elapsedSeconds}s decorridos`}
+            </small>
           </div>
 
-          <div className="orion-working-progress" aria-label="Processamento em andamento" role="progressbar"><span /></div>
+          <div
+            className={`orion-working-progress ${measured ? 'measured' : ''}`}
+            aria-label={measured ? `Processamento ${Math.round(progressValue)}% concluído` : 'Processamento em andamento'}
+            role="progressbar"
+            {...(measured ? { 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(progressValue) } : {})}
+          >
+            <span style={measured ? { width: `${progressValue}%` } : undefined} />
+          </div>
 
           <div className="orion-working-footer">
-            O progresso permanece indeterminado até o processamento real terminar. O tempo varia conforme o tamanho e a complexidade das planilhas.
+            {measured
+              ? `${elapsedSeconds}s decorridos. A barra só avança quando o Python conclui um checkpoint real.`
+              : 'O progresso permanece indeterminado até o processamento real terminar. O tempo varia conforme o tamanho e a complexidade das planilhas.'}
           </div>
         </div>
       </section>
