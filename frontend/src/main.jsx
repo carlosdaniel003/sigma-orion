@@ -9,6 +9,7 @@ import './dashboard-visibility.css'
 import './dashboard-kpi-polish.css'
 import './dashboard-table-polish.css'
 import './dashboard-comparison.css'
+import './dashboard-hierarchy.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
