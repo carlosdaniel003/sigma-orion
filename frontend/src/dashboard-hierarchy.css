@@ -1,0 +1,106 @@
+/* Dashboard hierarchy: keep the operational narrative clear from top to bottom. */
+.dpp-dashboard-view:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+
+.dpp-dashboard-view > .dashboard-header {
+  order: 0;
+  margin: 0 0 24px;
+}
+
+.dpp-dashboard-view > .alert {
+  order: 5;
+}
+
+.dpp-dashboard-view > .dashboard-context-strip {
+  order: 10;
+  margin: 0 0 26px;
+}
+
+.dpp-dashboard-view > .dashboard-shared-package {
+  order: 20;
+  margin: 0 0 40px;
+}
+
+.dpp-dashboard-view > .dashboard-operational-panel {
+  order: 30;
+  margin: 0 0 36px;
+}
+
+.dpp-dashboard-view > .dpp-state-panel {
+  order: 40;
+  margin: 0 0 34px;
+}
+
+.dpp-dashboard-view > .dpp-evolution-panel {
+  order: 50;
+  margin: 0 0 36px;
+}
+
+.dpp-dashboard-view > .dashboard-comparison-portal-host {
+  order: 60;
+  margin: 0 0 38px;
+}
+
+.dpp-dashboard-view .dashboard-kpi-comparison {
+  margin-top: 0;
+}
+
+.dpp-dashboard-view > .dashboard-kpi-primary,
+.dpp-dashboard-view > .dashboard-kpi-secondary {
+  order: 65;
+}
+
+.dpp-dashboard-view > .dashboard-grid-main:not(.dashboard-risk-grid):not(.dashboard-footer-grid) {
+  order: 70;
+  margin: 0 0 34px;
+}
+
+.dpp-dashboard-view > .dashboard-risk-grid {
+  order: 80;
+  margin: 0 0 34px;
+}
+
+.dpp-dashboard-view > .dpp-ai-bridge {
+  order: 85;
+}
+
+.dpp-dashboard-view > .dashboard-footer-grid {
+  order: 90;
+}
+
+/* The parent now owns the vertical rhythm instead of every panel adding its own top margin. */
+.dpp-dashboard-view > .dashboard-operational-panel,
+.dpp-dashboard-view > .dpp-state-panel,
+.dpp-dashboard-view > .dpp-evolution-panel,
+.dpp-dashboard-view > .dashboard-grid-main > .panel {
+  margin-top: 0;
+}
+
+/* Package and the sections that follow need a stronger visual break. */
+.dpp-dashboard-view .dashboard-shared-package .bulk-file-picker {
+  margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .dpp-dashboard-view > .dashboard-header {
+    margin-bottom: 20px;
+  }
+
+  .dpp-dashboard-view > .dashboard-context-strip {
+    margin-bottom: 22px;
+  }
+
+  .dpp-dashboard-view > .dashboard-shared-package {
+    margin-bottom: 30px;
+  }
+
+  .dpp-dashboard-view > .dashboard-operational-panel,
+  .dpp-dashboard-view > .dpp-state-panel,
+  .dpp-dashboard-view > .dpp-evolution-panel,
+  .dpp-dashboard-view > .dashboard-comparison-portal-host,
+  .dpp-dashboard-view > .dashboard-grid-main:not(.dashboard-footer-grid) {
+    margin-bottom: 28px;
+  }
+}
