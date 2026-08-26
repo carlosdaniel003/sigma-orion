@@ -137,6 +137,18 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   return (
     <>
       {error && <div className="alert error">{error}</div>}
+
+      <section className="dashboard-shared-package">
+        <BulkDppFilePicker
+          mode="generate"
+          referenceMonth={referenceMonth}
+          onBundle={() => {}}
+          processing={generating}
+          compact
+          title="Pacote compartilhado do DPP"
+        />
+      </section>
+
       <OrionWorking active={generating} mode="generate" />
       <Dashboard
         apiUrl={apiUrl}
