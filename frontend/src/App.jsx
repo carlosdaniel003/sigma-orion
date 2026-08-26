@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import DashboardLoader from './DashboardLoader'
+import DashboardKpiComparison from './DashboardKpiComparison'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
 
@@ -58,11 +59,6 @@ function App() {
             </button>
           </nav>
         )}
-
-        <div className="topbar-status" data-tooltip="Motor Python local ativo" aria-label="Motor Python local ativo">
-          <span className="status-dot" />
-          <EngineIcon />
-        </div>
       </header>
 
       <main className="content">
@@ -73,6 +69,7 @@ function App() {
             finalDppAnalysis={finalDppAnalysis}
             onFinalDppAnalysis={setFinalDppAnalysis}
           />
+          <DashboardKpiComparison finalDppAnalysis={finalDppAnalysis} />
         </section>
 
         {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
@@ -109,17 +106,6 @@ function TestIcon() {
       <path d="M9 3.5h6M10 3.5v5l-5 9A2 2 0 0 0 6.8 20.5h10.4A2 2 0 0 0 19 17.5l-5-9v-5" />
       <path d="M8 14h8" />
       <path d="m9.5 17 1.5 1.5 3.5-3.5" />
-    </svg>
-  )
-}
-
-function EngineIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 7h8a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3Z" />
-      <path d="M9 3v4M15 3v4M9 17v4M15 17v4M5 10H2M5 14H2M22 10h-3M22 14h-3" />
-      <circle cx="10" cy="12" r="1" />
-      <circle cx="14" cy="12" r="1" />
     </svg>
   )
 }
