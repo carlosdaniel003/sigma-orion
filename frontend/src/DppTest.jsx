@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
 import OrionWorking from './OrionWorking'
+import { useDppWorkspace } from './DppWorkspaceContext'
 import './dpp-consolidation.css'
 
 const AUTO_RUN_DELAY = 450
@@ -24,6 +25,12 @@ const CHECK_LABELS = {
 }
 
 function DppTest({ apiUrl }) {
+  const {
+    testResult: cachedTestResult,
+    testSignature,
+    setTestResult: setCachedTestResult,
+    setTestSignature,
+  } = useDppWorkspace()
   const [baseDpp, setBaseDpp] = useState(null)
   const [expectedDpp, setExpectedDpp] = useState(null)
   const [wiu, setWiu] = useState(null)
@@ -33,10 +40,10 @@ function DppTest({ apiUrl }) {
   const [openFile, setOpenFile] = useState(null)
   const [referenceMonth, setReferenceMonth] = useState('')
   const [bundleMeta, setBundleMeta] = useState({ ready: false, signature: '', total: 0 })
-  const [result, setResult] = useState(null)
+  const [result, setResult] = useState(cachedTestResult)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const lastAutoSignatureRef = useRef('')
+  const lastAutoSignatureRef = useRef(testSignature || '')
   const autoRunTimerRef = useRef(null)
   const testAbortRef = useRef(null)
 
@@ -48,7 +55,12 @@ function DppTest({ apiUrl }) {
   )
 
   useEffect(() => {
+    if (cachedTestResult) setResult(cachedTestResult)
+  }, [cachedTestResult])
+
+  useEffect(() => {
     if (!bundleMeta.ready || !bundleMeta.signature || !requiredReady || loading) return undefined
+    if (testSignature === bundleMeta.signature && cachedTestResult) return undefined
     if (lastAutoSignatureRef.current === bundleMeta.signature) return undefined
 
     window.clearTimeout(autoRunTimerRef.current)
@@ -58,7 +70,7 @@ function DppTest({ apiUrl }) {
     }, AUTO_RUN_DELAY)
 
     return () => window.clearTimeout(autoRunTimerRef.current)
-  }, [bundleMeta.ready, bundleMeta.signature, requiredReady, loading, referenceMonth, baseDpp, expectedDpp, wiu, explosion, stock, pgd, openFile])
+  }, [bundleMeta.ready, bundleMeta.signature, requiredReady, loading, referenceMonth, baseDpp, expectedDpp, wiu, explosion, stock, pgd, openFile, testSignature, cachedTestResult])
 
   function applyFileBundle(bundle) {
     setBaseDpp(bundle.baseDpp || null)
@@ -70,7 +82,10 @@ function DppTest({ apiUrl }) {
     setOpenFile(bundle.openFile || null)
     setBundleMeta({ ready: bundle.ready, signature: bundle.signature || '', total: bundle.total || 0 })
     if (bundle.referenceMonth) setReferenceMonth(bundle.referenceMonth)
-    if (!bundle.total) lastAutoSignatureRef.current = ''
+    if (!bundle.total) {
+      lastAutoSignatureRef.current = ''
+      setResult(null)
+    }
     setError('')
   }
 
@@ -98,6 +113,8 @@ function DppTest({ apiUrl }) {
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Não foi possível executar o teste do DPP.')
       setResult(data)
+      setCachedTestResult(data)
+      setTestSignature(bundleMeta.signature)
     } catch (requestError) {
       if (requestError.name === 'AbortError') setError('Teste cancelado. Use “Executar novamente” quando quiser repetir a reconstrução.')
       else setError(requestError.message || 'Falha no teste de reconstrução.')
@@ -136,9 +153,9 @@ function DppTest({ apiUrl }) {
         <div>
           <span className="eyebrow">VALIDAÇÃO DE RECONSTRUÇÃO</span>
           <h2>Testes do DPP</h2>
-          <p>Adicione o pacote completo. Assim que a base anterior, o DPP final e as fontes mensais forem reconhecidos, o ORION executa o teste automaticamente.</p>
+          <p>Esta tela reutiliza o pacote carregado no Dashboard. Quando o teste já foi preparado para o mesmo pacote, o resultado abre imediatamente sem novo processamento.</p>
         </div>
-        <span className="status">Pacote → Check → Reconstrução → Comparação</span>
+        <span className="status">Reconstrução → Comparação</span>
       </header>
 
       {error && <div className="alert error">{error}</div>}
@@ -149,8 +166,8 @@ function DppTest({ apiUrl }) {
           <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} disabled={loading} />
         </label>
         <div>
-          <strong>Execução automática</strong>
-          <p>O DPP anterior e o DPP final são separados pela referência mensal encontrada nos nomes. Pacote completo inicia a reconstrução sem outro clique.</p>
+          <strong>Pacote compartilhado</strong>
+          <p>Os arquivos selecionados no Dashboard continuam disponíveis aqui. Só há novo processamento se o pacote mudar ou se você solicitar uma nova execução.</p>
         </div>
       </section>
 
@@ -159,15 +176,15 @@ function DppTest({ apiUrl }) {
         referenceMonth={referenceMonth}
         onBundle={applyFileBundle}
         processing={loading}
-        title="Adicionar pacote de teste"
+        title="Pacote atual do DPP"
       />
 
       <OrionWorking active={loading} mode="test" onCancel={cancelTest} />
 
       <section className="panel consolidation-action-panel">
         <div>
-          <strong>{loading ? 'ORION reconstruindo e comparando' : requiredReady ? 'Execução automática habilitada' : 'Aguardando arquivos obrigatórios'}</strong>
-          <p>{loading ? 'Acompanhe as etapas acima. O relatório aparece automaticamente ao terminar.' : requiredReady ? 'O pacote está completo. Use o botão somente se quiser repetir o teste com os mesmos arquivos.' : 'O check acima informa exatamente qual arquivo ainda precisa ser adicionado.'}</p>
+          <strong>{loading ? 'ORION reconstruindo e comparando' : result ? 'Resultado preparado' : requiredReady ? 'Pacote pronto para teste' : 'Aguardando arquivo necessário para o teste'}</strong>
+          <p>{loading ? 'O relatório aparece automaticamente ao terminar.' : result ? 'Este resultado pertence ao pacote já processado. Navegar entre Dashboard e Testes não executa novamente.' : requiredReady ? 'O teste será executado somente se ainda não existir resultado para este pacote.' : 'Se o DPP final não estiver no pacote, adicione apenas esse arquivo; os demais continuam preservados.'}</p>
         </div>
         <button className="secondary-button consolidation-button" type="button" onClick={rerunTest} disabled={!requiredReady || loading}>
           {loading ? 'Processando...' : result ? 'Executar novamente' : 'Executar agora'}
