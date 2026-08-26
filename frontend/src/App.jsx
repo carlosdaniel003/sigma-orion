@@ -62,7 +62,7 @@ function App() {
       </header>
 
       <main className="content">
-        <section hidden={activeWorkspace !== 'dpp' || activeView !== 'dashboard'}>
+        <section className="dpp-dashboard-view" hidden={activeWorkspace !== 'dpp' || activeView !== 'dashboard'}>
           <DashboardLoader
             apiUrl={API_URL}
             onNavigate={openDppView}
