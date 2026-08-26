@@ -1,0 +1,238 @@
+/* Apple-inspired refinement for the two operational risk tables. */
+.dashboard-risk-grid {
+  gap: 20px;
+  align-items: start;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel {
+  margin-top: 18px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e5e5ea;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.025), 0 8px 28px rgba(0, 0, 0, 0.035);
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .panel-header {
+  min-height: 96px;
+  align-items: center;
+  gap: 20px;
+  margin: 0;
+  padding: 22px 24px 20px;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .panel-header > div {
+  min-width: 0;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .panel-header h3 {
+  margin: 0 0 5px;
+  color: #1d1d1f;
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.018em;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .panel-header p {
+  max-width: 520px;
+  margin: 0;
+  color: #86868b;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .panel-header .status {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #e5e5ea;
+  border-radius: 999px;
+  background: #f5f5f7;
+  color: #6e6e73;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .table-scroll {
+  margin: 0;
+  overflow-x: auto;
+  border-top: 1px solid #eeeeF0;
+  scrollbar-width: thin;
+  scrollbar-color: #c7c7cc transparent;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  background: #fff;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table th {
+  height: 42px;
+  padding: 11px 16px;
+  border-bottom: 1px solid #e5e5ea;
+  background: #f7f7f8;
+  color: #6e6e73;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.025em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table td {
+  height: 68px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #eeeeF0;
+  background: #fff;
+  color: #3a3a3c;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table tbody tr:hover td {
+  background: #fafafa;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table td:first-child {
+  max-width: none;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table td:first-child strong {
+  display: block;
+  overflow: hidden;
+  color: #1d1d1f;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table td:first-child small {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #8e8e93;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table .number-cell {
+  color: #3a3a3c;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table .dashboard-negative {
+  color: #b42318;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Principais gargalos */
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table th:nth-child(1),
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table td:nth-child(1) {
+  width: 52%;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table th:nth-child(2),
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table td:nth-child(2) {
+  width: 18%;
+  text-align: right;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table th:nth-child(3),
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table td:nth-child(3) {
+  width: 16%;
+  text-align: center;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table th:nth-child(4),
+.dashboard-risk-grid > .dashboard-table-panel:first-child .dashboard-table td:nth-child(4) {
+  width: 14%;
+  text-align: center;
+}
+
+/* Modelos com maior risco */
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table th:nth-child(1),
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table td:nth-child(1) {
+  width: 32%;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table th:nth-child(2),
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table td:nth-child(2),
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table th:nth-child(3),
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table td:nth-child(3) {
+  width: 16%;
+  text-align: right;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table th:nth-child(4),
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table td:nth-child(4) {
+  width: 14%;
+  text-align: center;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table th:nth-child(5),
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table td:nth-child(5) {
+  width: 22%;
+  text-align: right;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel:last-child .dashboard-table td:first-child small {
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f5f5f7;
+  color: #6e6e73;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.66rem;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-risk-grid > .dashboard-table-panel .panel-header {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard-risk-grid {
+    gap: 14px;
+  }
+
+  .dashboard-risk-grid > .dashboard-table-panel {
+    border-radius: 16px;
+  }
+
+  .dashboard-risk-grid > .dashboard-table-panel .panel-header {
+    align-items: flex-start;
+    padding: 18px 18px 16px;
+  }
+
+  .dashboard-risk-grid > .dashboard-table-panel .dashboard-table {
+    min-width: 700px;
+  }
+
+  .dashboard-risk-grid > .dashboard-table-panel .dashboard-table th,
+  .dashboard-risk-grid > .dashboard-table-panel .dashboard-table td {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
