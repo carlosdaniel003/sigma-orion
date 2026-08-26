@@ -11,6 +11,7 @@ import './dashboard-table-polish.css'
 import './dashboard-comparison.css'
 import './dashboard-hierarchy.css'
 import './dashboard-operational-polish.css'
+import './sigma-orion-theme.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
