@@ -1,0 +1,205 @@
+/* Dashboard comparison: one calm, aligned view for the initial ORION scenario and the consolidated DPP. */
+.dashboard-kpi-primary,
+.dashboard-kpi-secondary {
+  display: none !important;
+}
+
+.dashboard-context-actions {
+  display: none !important;
+}
+
+.dpp-final-upload .secondary-button {
+  display: none !important;
+}
+
+.dpp-final-upload {
+  justify-content: flex-start !important;
+}
+
+.dashboard-comparison-portal-host {
+  width: 100%;
+}
+
+.dashboard-kpi-comparison {
+  margin-top: 32px;
+  padding: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.045);
+}
+
+.dashboard-comparison-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 24px;
+}
+
+.dashboard-comparison-heading > div:first-child {
+  max-width: 760px;
+}
+
+.dashboard-comparison-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #86868b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+
+.dashboard-comparison-heading h3 {
+  margin: 0;
+  color: #1d1d1f;
+  font-size: clamp(1.45rem, 2vw, 1.9rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.dashboard-comparison-heading p {
+  max-width: 690px;
+  margin: 8px 0 0;
+  color: #6e6e73;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.dashboard-comparison-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 4px;
+  color: #6e6e73;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-comparison-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-comparison-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #86868b;
+}
+
+.dashboard-comparison-legend i.final {
+  background: #34c759;
+}
+
+.dashboard-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-comparison-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.075);
+  border-radius: 18px;
+  background: #fbfbfd;
+}
+
+.dashboard-comparison-label {
+  display: block;
+  margin-bottom: 16px;
+  color: #515154;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dashboard-comparison-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+
+.dashboard-comparison-values > div {
+  min-width: 0;
+  padding-right: 18px;
+}
+
+.dashboard-comparison-values > .final-value {
+  padding-right: 0;
+  padding-left: 18px;
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-comparison-values small {
+  display: block;
+  margin-bottom: 8px;
+  color: #86868b;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.dashboard-comparison-values .final-value small {
+  color: #248a3d;
+}
+
+.dashboard-comparison-values strong {
+  display: block;
+  overflow: hidden;
+  color: #1d1d1f;
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-comparison-values p {
+  min-height: 34px;
+  margin: 8px 0 0;
+  color: #86868b;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .dashboard-comparison-heading {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .dashboard-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-kpi-comparison {
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .dashboard-comparison-card {
+    padding: 17px;
+  }
+
+  .dashboard-comparison-values {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dashboard-comparison-values > div,
+  .dashboard-comparison-values > .final-value {
+    padding: 0;
+  }
+
+  .dashboard-comparison-values > .final-value {
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    border-left: 0;
+  }
+}
