@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import './orion-working.css'
+import './orion-working-timing.css'
 
 const STAGES = {
   generate: [
