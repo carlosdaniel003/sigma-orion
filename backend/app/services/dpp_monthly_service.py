@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 from copy import deepcopy
 import unicodedata
 
@@ -20,6 +21,13 @@ from app.services.dpp_optional_service import canonical_optional_material, split
 from app.services.dpp_scenario_service import register_monthly_scenario
 from app.services.pgd_mapping_rules import get_kit_override, get_variant_override
 from app.services.pgd_service import parse_pgd
+
+ProgressCallback = Callable[[int, str], None]
+
+
+def _notify(progress: ProgressCallback | None, value: int, activity: str) -> None:
+    if progress is not None:
+        progress(value, activity)
 
 
 def _normalize(value: object) -> str:
@@ -185,7 +193,9 @@ async def generate_monthly_dpp(
     pgd: UploadFile,
     reference_month: str,
     open_orders: UploadFile | None = None,
+    progress: ProgressCallback | None = None,
 ) -> dict:
+    _notify(progress, 4, "Validando arquivos recebidos")
     for file, label in (
         (base_dpp, "DPP base"),
         (wiu, "WIU"),
@@ -197,6 +207,7 @@ async def generate_monthly_dpp(
     if open_orders is not None:
         _validate_upload(open_orders, "OPEN")
 
+    _notify(progress, 7, "Carregando conteúdo das planilhas")
     base_content = await base_dpp.read()
     wiu_content = await wiu.read()
     explosion_content = await explosion.read()
@@ -216,19 +227,32 @@ async def generate_monthly_dpp(
     if open_orders is not None and not open_content:
         raise ValueError("O arquivo OPEN está vazio.")
 
+    _notify(progress, 10, "Lendo DPP base")
     historical_map, previous_models, base_diag = parse_previous_dpp(base_content)
+
+    _notify(progress, 18, "Lendo WIU e matriz Material × Modelo")
     wiu_materials, current_models, wiu_diag = _parse_wiu(wiu_content)
+
+    _notify(progress, 31, "Processando Explosão de Placas")
     explosion_map, explosion_diag = _parse_explosion(explosion_content)
+
+    _notify(progress, 42, "Processando STK SAP")
     stock_map, stock_diag = _parse_stock(stock_content)
+
+    _notify(progress, 53, "Lendo PGD do mês")
     pgd_models, pgd_diag = parse_pgd(pgd_content, reference_month)
+
     open_map: dict[str, dict] = {}
     open_diag = None
     if open_content:
+        _notify(progress, 60, "Lendo OPEN e evidências pendentes")
         open_map, open_diag = _parse_open(open_content)
 
+    _notify(progress, 66, "Mapeando PGD para os modelos do DPP")
     pgd_mapping = _map_pgd_to_models(pgd_models, current_models, previous_models, reference_month)
     mapped_models = pgd_mapping.pop("models")
 
+    _notify(progress, 72, "Consolidando base histórica com o WIU")
     merged: dict[str, dict] = {}
     for key, item in historical_map.items():
         merged[key] = {
@@ -270,6 +294,7 @@ async def generate_monthly_dpp(
         existing["used_models"] = list(current.get("used_models", []))
         existing["check"] = current.get("check", "")
 
+    _notify(progress, 78, "Cruzando STK, Explosão, OPCs e OPEN")
     explosion_matches = 0
     stock_matches = 0
     opc_with_stock = 0
@@ -424,7 +449,8 @@ async def generate_monthly_dpp(
         "automatic_solver": False,
     }
 
-    return register_monthly_scenario(
+    _notify(progress, 88, "Calculando NEC, STK TTL e SALDO")
+    result = register_monthly_scenario(
         materials=list(merged.values()),
         models=mapped_models,
         reference_month=reference_month,
@@ -440,3 +466,5 @@ async def generate_monthly_dpp(
         diagnostics=diagnostics,
         pgd_mapping=pgd_mapping,
     )
+    _notify(progress, 97, "Montando resultado do Dashboard")
+    return result
