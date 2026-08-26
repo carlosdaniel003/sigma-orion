@@ -6,64 +6,68 @@ import DppTest from './DppTest'
 const API_URL = 'http://localhost:8000'
 
 function App() {
+  const [activeWorkspace, setActiveWorkspace] = useState('dpp')
   const [activeView, setActiveView] = useState('dashboard')
-  const [dashboardExpanded, setDashboardExpanded] = useState(false)
   const [finalDppAnalysis, setFinalDppAnalysis] = useState(null)
 
-  function openView(view) {
+  function openDppView(view) {
+    setActiveWorkspace('dpp')
     setActiveView(view)
-    setDashboardExpanded(false)
   }
 
   return (
     <div className="app-shell">
+      <aside className="workspace-dock" aria-label="Áreas do SIGMA-S ORION">
+        <button
+          className={`workspace-button ${activeWorkspace === 'dpp' ? 'workspace-active' : ''}`}
+          type="button"
+          aria-label="DPP"
+          data-tooltip="DPP"
+          onClick={() => openDppView('dashboard')}
+        >
+          <DppIcon />
+        </button>
+      </aside>
+
       <header className="topbar">
-        <button className="topbar-brand" type="button" onClick={() => openView('dashboard')} aria-label="Ir para o Dashboard">
-          <span className="brand-mark">O</span>
-          <strong>ORION</strong>
+        <button className="topbar-brand" type="button" onClick={() => openDppView('dashboard')} aria-label="Ir para o Dashboard do DPP">
+          <span className="brand-mark">S</span>
+          <strong>SIGMA-S ORION</strong>
         </button>
 
-        <nav className="topbar-nav" aria-label="Navegação principal">
-          <div className={`nav-group ${dashboardExpanded ? 'expanded' : ''}`}>
+        {activeWorkspace === 'dpp' && (
+          <nav className="topbar-nav" aria-label="Navegação do DPP">
             <button
-              className={`nav-icon-button ${['dashboard', 'consolidation', 'test'].includes(activeView) ? 'nav-active' : ''}`}
+              className={`nav-icon-button ${activeView === 'dashboard' ? 'nav-active' : ''}`}
               type="button"
-              aria-label="Dashboard"
-              aria-expanded={dashboardExpanded}
-              data-tooltip="Dashboard"
-              onClick={() => {
-                setActiveView('dashboard')
-                setDashboardExpanded((current) => !current)
-              }}
+              aria-label="Dashboard do DPP"
+              data-tooltip="Dashboard do DPP"
+              onClick={() => openDppView('dashboard')}
             >
               <DashboardIcon />
-              <span className="nav-disclosure" aria-hidden="true"><ChevronIcon /></span>
             </button>
 
-            {dashboardExpanded && (
-              <div className="nav-submenu" aria-label="Opções do Dashboard">
-                <button
-                  className={`nav-icon-button nav-subitem ${activeView === 'consolidation' ? 'nav-active' : ''}`}
-                  type="button"
-                  aria-label="Gerar novo DPP"
-                  data-tooltip="Gerar novo DPP"
-                  onClick={() => openView('consolidation')}
-                >
-                  <GenerateIcon />
-                </button>
-                <button
-                  className={`nav-icon-button nav-subitem ${activeView === 'test' ? 'nav-active' : ''}`}
-                  type="button"
-                  aria-label="Testes do DPP"
-                  data-tooltip="Testes do DPP"
-                  onClick={() => openView('test')}
-                >
-                  <TestIcon />
-                </button>
-              </div>
-            )}
-          </div>
-        </nav>
+            <button
+              className={`nav-icon-button ${activeView === 'consolidation' ? 'nav-active' : ''}`}
+              type="button"
+              aria-label="Gerar DPP"
+              data-tooltip="Gerar DPP"
+              onClick={() => openDppView('consolidation')}
+            >
+              <GenerateIcon />
+            </button>
+
+            <button
+              className={`nav-icon-button ${activeView === 'test' ? 'nav-active' : ''}`}
+              type="button"
+              aria-label="Testes do DPP"
+              data-tooltip="Testes do DPP"
+              onClick={() => openDppView('test')}
+            >
+              <TestIcon />
+            </button>
+          </nav>
+        )}
 
         <div className="topbar-status" data-tooltip="Motor Python local ativo" aria-label="Motor Python local ativo">
           <span className="status-dot" />
@@ -72,18 +76,28 @@ function App() {
       </header>
 
       <main className="content">
-        {activeView === 'dashboard' && (
+        {activeWorkspace === 'dpp' && activeView === 'dashboard' && (
           <DashboardLoader
             apiUrl={API_URL}
-            onNavigate={openView}
+            onNavigate={openDppView}
             finalDppAnalysis={finalDppAnalysis}
             onFinalDppAnalysis={setFinalDppAnalysis}
           />
         )}
-        {activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
-        {activeView === 'test' && <DppTest apiUrl={API_URL} />}
+        {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
+        {activeWorkspace === 'dpp' && activeView === 'test' && <DppTest apiUrl={API_URL} />}
       </main>
     </div>
+  )
+}
+
+function DppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6.5 3.5h7.2l3.8 3.8v13.2H6.5Z" />
+      <path d="M13.5 3.8v4h3.8" />
+      <path d="M9 11h6M9 14h6M9 17h4" />
+    </svg>
   )
 }
 
@@ -114,14 +128,6 @@ function TestIcon() {
       <path d="M9 3.5h6M10 3.5v5l-5 9A2 2 0 0 0 6.8 20.5h10.4A2 2 0 0 0 19 17.5l-5-9v-5" />
       <path d="M8 14h8" />
       <path d="m9.5 17 1.5 1.5 3.5-3.5" />
-    </svg>
-  )
-}
-
-function ChevronIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m8 10 4 4 4-4" />
     </svg>
   )
 }
