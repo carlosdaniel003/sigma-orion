@@ -24,7 +24,16 @@ function mergeFiles(currentFiles, newFiles) {
 }
 
 function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, compact = false, processing = false, title = 'Adicionar arquivos em massa' }) {
-  const { files: selectedFiles, setFiles, referenceMonth: sharedReferenceMonth, setReferenceMonth: setSharedReferenceMonth } = useDppWorkspace()
+  const {
+    files: selectedFiles,
+    setFiles,
+    referenceMonth: sharedReferenceMonth,
+    setReferenceMonth: setSharedReferenceMonth,
+    setGeneratedSignature,
+    setGeneratedScenario,
+    setTestSignature,
+    setTestResult,
+  } = useDppWorkspace()
   const onBundleRef = useRef(onBundle)
   const effectiveReferenceMonth = referenceMonth || sharedReferenceMonth
   const report = useMemo(
@@ -58,6 +67,10 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
     if (processing) return
     setFiles([])
     setSharedReferenceMonth('')
+    setGeneratedSignature('')
+    setGeneratedScenario(null)
+    setTestSignature('')
+    setTestResult(null)
   }
 
   const missingLabels = report.missing.map((key) => FILE_LABELS[key])
@@ -75,7 +88,7 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
         <div>
           <span className="eyebrow">PACOTE DO MÊS</span>
           <h3>{title}</h3>
-          <p>Selecione o pacote uma única vez. Os mesmos arquivos permanecem disponíveis no Dashboard, Gerar DPP e Testes enquanto o SIGMA-S ORION estiver aberto.</p>
+          <p>Selecione o pacote uma única vez. Os mesmos arquivos e resultados permanecem disponíveis no Dashboard e nos Testes enquanto o SIGMA-S ORION estiver aberto.</p>
         </div>
         <div className="bulk-file-actions">
           <label className={`bulk-file-button ${processing ? 'disabled' : ''}`}>
