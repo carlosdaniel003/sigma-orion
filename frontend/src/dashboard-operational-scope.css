@@ -1,0 +1,35 @@
+/* Remove redundant planning-adherence summary: ORION x DPP Final already compares PGD, REAL and GAP. */
+.dpp-dashboard-view .dashboard-planning-panel {
+  display: none !important;
+}
+
+/* With the redundant card removed, material support becomes the focused operational drill-down. */
+.dpp-dashboard-view .dashboard-planning-panel + .dashboard-health-panel {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .panel-header {
+  align-items: flex-start;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .panel-header::after {
+  content: 'CENÁRIO ORION';
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 9px;
+  border: 1px solid var(--orion-border);
+  border-radius: 999px;
+  background: var(--orion-blue-soft);
+  color: var(--orion-blue);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+@media (max-width: 720px) {
+  .dpp-dashboard-view .dashboard-health-panel .panel-header::after {
+    align-self: flex-start;
+  }
+}
