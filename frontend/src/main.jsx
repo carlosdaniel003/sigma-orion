@@ -10,6 +10,7 @@ import './dashboard-kpi-polish.css'
 import './dashboard-table-polish.css'
 import './dashboard-comparison.css'
 import './dashboard-hierarchy.css'
+import './dashboard-operational-polish.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
