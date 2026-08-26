@@ -6,6 +6,9 @@ export function DppWorkspaceProvider({ children }) {
   const [files, setFiles] = useState([])
   const [referenceMonth, setReferenceMonth] = useState('')
   const [generatedSignature, setGeneratedSignature] = useState('')
+  const [generatedScenario, setGeneratedScenario] = useState(null)
+  const [testSignature, setTestSignature] = useState('')
+  const [testResult, setTestResult] = useState(null)
 
   const value = useMemo(() => ({
     files,
@@ -14,7 +17,20 @@ export function DppWorkspaceProvider({ children }) {
     setReferenceMonth,
     generatedSignature,
     setGeneratedSignature,
-  }), [files, referenceMonth, generatedSignature])
+    generatedScenario,
+    setGeneratedScenario,
+    testSignature,
+    setTestSignature,
+    testResult,
+    setTestResult,
+  }), [
+    files,
+    referenceMonth,
+    generatedSignature,
+    generatedScenario,
+    testSignature,
+    testResult,
+  ])
 
   return (
     <DppWorkspaceContext.Provider value={value}>
