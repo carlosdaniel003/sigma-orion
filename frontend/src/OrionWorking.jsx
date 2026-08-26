@@ -97,14 +97,40 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
         ref={dialogRef}
       >
         <div className="orion-robot-wrap" aria-hidden="true">
-          <img
-            className="orion-robot-image"
-            src={robotWorkingImage}
-            alt=""
-            width="480"
-            height="480"
-            decoding="async"
-          />
+          <div className="orion-robot-stage">
+            <img
+              className="orion-robot-image"
+              src={robotWorkingImage}
+              alt=""
+              width="480"
+              height="480"
+              decoding="async"
+            />
+
+            <svg className="orion-robot-overlay" viewBox="0 0 480 480" role="presentation">
+              <g className="orion-typing-hand typing-left">
+                <path d="M157 263C166 253 179 247 192 247H218" />
+                <path d="M214 247C223 247 230 254 230 263V275" />
+                <ellipse cx="228" cy="285" rx="18" ry="11" />
+                <path d="M218 286h22" />
+                <path d="M221 280h17" />
+              </g>
+
+              <g className="orion-typing-hand typing-right">
+                <path d="M206 272h54c13 0 24 10 27 23" />
+                <path d="M283 295c8 2 13 9 13 17v10" />
+                <ellipse cx="298" cy="323" rx="19" ry="12" />
+                <path d="M287 323h24" />
+                <path d="M290 317h18" />
+              </g>
+
+              <g className="orion-key-taps">
+                <circle className="tap tap-one" cx="239" cy="311" r="3" />
+                <circle className="tap tap-two" cx="258" cy="306" r="3" />
+                <circle className="tap tap-three" cx="278" cy="314" r="3" />
+              </g>
+            </svg>
+          </div>
         </div>
 
         <div className="orion-working-copy">
