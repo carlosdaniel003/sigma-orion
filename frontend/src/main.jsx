@@ -14,6 +14,7 @@ import './dashboard-operational-polish.css'
 import './sigma-orion-theme.css'
 import './sigma-orion-theme-toggle.css'
 import './dashboard-theme-runtime-fixes.css'
+import './dashboard-operational-scope.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
