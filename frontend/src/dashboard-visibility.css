@@ -1,0 +1,5 @@
+/* Dashboard: keep only operational sections relevant to the current DPP workflow. */
+.dpp-ai-bridge,
+.dashboard-footer-grid {
+  display: none !important;
+}
