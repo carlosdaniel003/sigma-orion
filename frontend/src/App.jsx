@@ -1,6 +1,7 @@
 import { useLayoutEffect, useState } from 'react'
 import DashboardLoader from './DashboardLoader'
 import DashboardKpiComparison from './DashboardKpiComparison'
+import FinalModelPlan from './FinalModelPlan'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
 
@@ -102,6 +103,7 @@ function App() {
             finalDppAnalysis={finalDppAnalysis}
             onFinalDppAnalysis={setFinalDppAnalysis}
           />
+          <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
           <DashboardKpiComparison finalDppAnalysis={finalDppAnalysis} />
         </section>
 
