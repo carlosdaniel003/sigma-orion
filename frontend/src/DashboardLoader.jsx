@@ -221,65 +221,59 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     )
   }
 
-  if (!generatedScenario) {
-    return (
-      <>
-        <header className="page-header dashboard-header">
-          <div>
-            <span className="eyebrow">VISÃO OPERACIONAL</span>
-            <h2>Dashboard do DPP</h2>
-            <p>Carregue o pacote mensal aqui uma única vez. O SIGMA-S ORION gera o cenário e prepara as demais telas usando os mesmos arquivos.</p>
-          </div>
-          <span className="status">Aguardando pacote</span>
-        </header>
-
-        {error && <div className="alert error">{error}</div>}
-
-        <BulkDppFilePicker
-          mode="generate"
-          referenceMonth={referenceMonth}
-          onBundle={() => {}}
-          processing={generating}
-          title="Carregar pacote do DPP"
-        />
-
-        <OrionWorking
-          active={generating}
-          mode="generate"
-          progress={generationProgress.progress}
-          activity={generationProgress.activity}
-        />
-      </>
-    )
-  }
-
   return (
     <>
-      {error && <div className="alert error">{error}</div>}
+      {!generatedScenario ? (
+        <>
+          <header className="page-header dashboard-header">
+            <div>
+              <span className="eyebrow">VISÃO OPERACIONAL</span>
+              <h2>Dashboard do DPP</h2>
+              <p>Carregue o pacote mensal aqui uma única vez. O SIGMA-S ORION gera o cenário e prepara as demais telas usando os mesmos arquivos.</p>
+            </div>
+            <span className="status">Aguardando pacote</span>
+          </header>
 
-      <section className="dashboard-shared-package">
-        <BulkDppFilePicker
-          mode="generate"
-          referenceMonth={referenceMonth}
-          onBundle={() => {}}
-          processing={generating}
-          compact
-          title="Pacote compartilhado do DPP"
-        />
-      </section>
+          {error && <div className="alert error">{error}</div>}
+
+          <BulkDppFilePicker
+            mode="generate"
+            referenceMonth={referenceMonth}
+            onBundle={() => {}}
+            processing={generating}
+            title="Carregar pacote do DPP"
+          />
+        </>
+      ) : (
+        <>
+          {error && <div className="alert error">{error}</div>}
+
+          <section className="dashboard-shared-package">
+            <BulkDppFilePicker
+              mode="generate"
+              referenceMonth={referenceMonth}
+              onBundle={() => {}}
+              processing={generating}
+              compact
+              title="Pacote compartilhado do DPP"
+            />
+          </section>
+
+          <Dashboard
+            apiUrl={apiUrl}
+            scenario={generatedScenario}
+            onNavigate={onNavigate}
+            finalDppAnalysis={finalDppAnalysis}
+            onFinalDppAnalysis={onFinalDppAnalysis}
+          />
+        </>
+      )}
 
       <OrionWorking
         active={generating}
         mode="generate"
         progress={generationProgress.progress}
         activity={generationProgress.activity}
-      />
-      <Dashboard
-        apiUrl={apiUrl}
-        scenario={generatedScenario}
-        onNavigate={onNavigate}
-        finalDppAnalysis={finalDppAnalysis}
-        onFinalDppAnalysis={onFinalDppAnalysis}
       />
     </>
   )
