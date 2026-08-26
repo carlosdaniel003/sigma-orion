@@ -12,15 +12,15 @@
 }
 
 .orion-working {
-  width: min(820px, 100%);
+  width: min(860px, 100%);
   display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 28px;
+  grid-template-columns: 205px minmax(0, 1fr);
+  gap: 30px;
   align-items: center;
   margin: auto;
-  padding: 28px 30px;
+  padding: 30px 32px;
   border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 26px;
+  border-radius: 28px;
   outline: none;
   background: #fff;
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.28);
@@ -28,68 +28,30 @@
 }
 
 .orion-working.compact {
-  width: min(700px, 100%);
-  grid-template-columns: 140px minmax(0, 1fr);
-  gap: 22px;
+  width: min(720px, 100%);
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 24px;
   padding: 24px;
 }
 
 .orion-robot-wrap {
-  min-height: 150px;
   display: grid;
   place-items: center;
+  min-width: 0;
+}
+
+.orion-robot-image {
+  display: block;
+  width: min(196px, 100%);
+  height: auto;
+  border-radius: 26px;
+  animation: orion-robot-idle 1.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.orion-working.compact .orion-robot-image {
+  width: min(150px, 100%);
   border-radius: 22px;
-  background: #f5f5f7;
-}
-
-.orion-working.compact .orion-robot-wrap {
-  min-height: 128px;
-}
-
-.orion-robot {
-  width: min(160px, 92%);
-  fill: none;
-  stroke: #2b2b2f;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.orion-monitor,
-.orion-keyboard {
-  fill: #fff;
-}
-
-.orion-screen-line {
-  stroke: #8e8e93;
-  stroke-width: 3;
-  animation: orion-screen-pulse 1.6s ease-in-out infinite;
-}
-
-.orion-screen-line.line-two { animation-delay: 0.2s; }
-.orion-screen-line.line-three { animation-delay: 0.4s; }
-
-.orion-robot-head {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: orion-head-nod 2.1s ease-in-out infinite;
-}
-
-.orion-robot-head rect,
-.orion-robot-body {
-  fill: #fff;
-}
-
-.orion-robot-arm.arm-right {
-  transform-box: fill-box;
-  transform-origin: left center;
-  animation: orion-type 0.72s ease-in-out infinite alternate;
-}
-
-.orion-status-light {
-  fill: #34c759;
-  stroke: none;
-  animation: orion-light 1.2s ease-in-out infinite;
 }
 
 .orion-working-copy {
@@ -173,24 +135,9 @@
   100% { transform: translateX(295%); }
 }
 
-@keyframes orion-head-nod {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(3deg); }
-}
-
-@keyframes orion-type {
-  from { transform: rotate(-4deg) translateY(0); }
-  to { transform: rotate(4deg) translateY(2px); }
-}
-
-@keyframes orion-screen-pulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
-}
-
-@keyframes orion-light {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 1; }
+@keyframes orion-robot-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 @media (max-width: 720px) {
@@ -208,16 +155,14 @@
     border-radius: 22px;
   }
 
-  .orion-robot-wrap {
-    min-height: 120px;
+  .orion-robot-image,
+  .orion-working.compact .orion-robot-image {
+    width: min(170px, 58vw);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .orion-screen-line,
-  .orion-robot-head,
-  .orion-robot-arm.arm-right,
-  .orion-status-light,
+  .orion-robot-image,
   .orion-working-progress span {
     animation: none;
   }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import robotWorkingImage from './assets/orion-working-robot.webp'
 import './orion-working.css'
 
 const STAGES = {
@@ -96,26 +97,14 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
         ref={dialogRef}
       >
         <div className="orion-robot-wrap" aria-hidden="true">
-          <svg className="orion-robot" viewBox="0 0 180 150" role="img">
-            <rect className="orion-monitor" x="76" y="36" width="78" height="54" rx="9" />
-            <path className="orion-screen-line line-one" d="M90 53h44" />
-            <path className="orion-screen-line line-two" d="M90 66h31" />
-            <path className="orion-screen-line line-three" d="M90 79h38" />
-            <path className="orion-monitor-stand" d="M115 91v16m-20 0h40" />
-            <g className="orion-robot-head">
-              <rect x="23" y="24" width="51" height="42" rx="15" />
-              <circle cx="39" cy="45" r="4" />
-              <circle cx="58" cy="45" r="4" />
-              <path d="M42 57h13" />
-              <path d="M48 24V14" />
-              <circle cx="48" cy="11" r="3" />
-            </g>
-            <path className="orion-robot-body" d="M31 71h36c9 0 16 7 16 16v34H18V87c0-9 5-16 13-16Z" />
-            <path className="orion-robot-arm arm-left" d="M24 85 8 105l20 8" />
-            <path className="orion-robot-arm arm-right" d="m70 85 20 22 18-8" />
-            <path className="orion-keyboard" d="M86 112h61l9 17H80Z" />
-            <circle className="orion-status-light" cx="50" cy="88" r="4" />
-          </svg>
+          <img
+            className="orion-robot-image"
+            src={robotWorkingImage}
+            alt=""
+            width="480"
+            height="480"
+            decoding="async"
+          />
         </div>
 
         <div className="orion-working-copy">
