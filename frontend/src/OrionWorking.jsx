@@ -45,6 +45,10 @@ const CONSTELLATION_NODES = [
   { x: 142, y: 174, start: 97 },
 ]
 
+const COMPLETION_HOLD_MS = 320
+const CONSTELLATION_CLOSE_MS = 420
+const PANEL_CLOSE_MS = 260
+
 function getMeasuredNodeIndex(progress) {
   let index = 0
   CONSTELLATION_NODES.forEach((node, nodeIndex) => {
@@ -127,11 +131,62 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
   const stages = STAGES[mode] || STAGES.generate
   const [stageIndex, setStageIndex] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [visible, setVisible] = useState(active)
+  const [exitPhase, setExitPhase] = useState('running')
   const dialogRef = useRef(null)
+  const completionTimersRef = useRef([])
+  const wasActiveRef = useRef(active)
   const blocking = mode !== 'dashboard'
   const numericProgress = Number(progress)
   const measured = progress !== null && progress !== undefined && Number.isFinite(numericProgress)
   const progressValue = measured ? Math.min(Math.max(numericProgress, 0), 100) : null
+
+  useEffect(() => {
+    completionTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+    completionTimersRef.current = []
+
+    if (active) {
+      wasActiveRef.current = true
+      setVisible(true)
+      setExitPhase('running')
+      return undefined
+    }
+
+    if (!wasActiveRef.current) {
+      if (!blocking) setVisible(false)
+      return undefined
+    }
+
+    wasActiveRef.current = false
+
+    if (!blocking) {
+      setVisible(false)
+      return undefined
+    }
+
+    setVisible(true)
+    setExitPhase('complete')
+
+    const constellationTimer = window.setTimeout(() => {
+      setExitPhase('constellation-closing')
+    }, COMPLETION_HOLD_MS)
+
+    const panelTimer = window.setTimeout(() => {
+      setExitPhase('panel-closing')
+    }, COMPLETION_HOLD_MS + CONSTELLATION_CLOSE_MS)
+
+    const hideTimer = window.setTimeout(() => {
+      setVisible(false)
+      setExitPhase('running')
+    }, COMPLETION_HOLD_MS + CONSTELLATION_CLOSE_MS + PANEL_CLOSE_MS)
+
+    completionTimersRef.current = [constellationTimer, panelTimer, hideTimer]
+
+    return () => {
+      completionTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+      completionTimersRef.current = []
+    }
+  }, [active, blocking])
 
   useEffect(() => {
     if (!active) return undefined
@@ -157,7 +212,7 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
   }, [active, mode, stages.length, measured])
 
   useEffect(() => {
-    if (!active || !blocking || typeof document === 'undefined') return undefined
+    if (!visible || !blocking || typeof document === 'undefined') return undefined
 
     const root = document.getElementById('root')
     const previousOverflow = document.body.style.overflow
@@ -186,11 +241,13 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
         else root.setAttribute('aria-hidden', previousAriaHidden)
       }
     }
-  }, [active, blocking])
+  }, [visible, blocking])
 
-  if (!active || typeof document === 'undefined') return null
+  if (!visible || typeof document === 'undefined') return null
 
-  const currentActivity = activity || stages[stageIndex]
+  const finishing = exitPhase !== 'running'
+  const displayedProgress = finishing && measured ? 100 : progressValue
+  const currentActivity = finishing ? 'Concluído' : (activity || stages[stageIndex])
 
   if (!blocking) {
     return (
@@ -205,9 +262,9 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
   }
 
   return createPortal(
-    <div className="orion-working-overlay" aria-hidden="false">
+    <div className={`orion-working-overlay ${exitPhase === 'panel-closing' ? 'closing' : ''}`} aria-hidden="false">
       <section
-        className={`orion-working ${compact ? 'compact' : ''}`}
+        className={`orion-working ${compact ? 'compact' : ''} ${exitPhase}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="orion-working-title"
@@ -215,22 +272,18 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
         tabIndex={-1}
         ref={dialogRef}
       >
-        <div className="orion-working-status">
-          <span className="orion-working-status-dot" />
-          <span>ORION</span>
-          <small>ANALISANDO DADOS</small>
-        </div>
-
         <OrionConstellation
           measured={measured}
-          progress={progressValue ?? 0}
+          progress={displayedProgress ?? 0}
           stageIndex={stageIndex}
         />
 
         <div className="orion-working-copy">
-          <h3 id="orion-working-title">{TITLES[mode] || TITLES.generate}</h3>
+          <h3 id="orion-working-title">{finishing ? 'Processamento concluído' : (TITLES[mode] || TITLES.generate)}</h3>
           <p className="orion-working-subtitle">
-            Analisando, conectando e consolidando dados reais para montar o cenário operacional.
+            {finishing
+              ? 'Cenário consolidado. Finalizando a constelação operacional.'
+              : 'Analisando, conectando e consolidando dados reais para montar o cenário operacional.'}
           </p>
 
           <div className="orion-current-stage" id="orion-working-description">
@@ -239,24 +292,26 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
               <span>{currentActivity}</span>
             </div>
             <div className="orion-stage-measures">
-              {measured && <strong className="orion-progress-percent">{Math.round(progressValue)}%</strong>}
+              {measured && <strong className="orion-progress-percent">{Math.round(displayedProgress)}%</strong>}
               <small className="orion-elapsed-time">{elapsedSeconds}s</small>
             </div>
           </div>
 
           <div
             className={`orion-working-progress ${measured ? 'measured' : ''}`}
-            aria-label={measured ? `Processamento ${Math.round(progressValue)}% concluído` : 'Processamento em andamento'}
+            aria-label={measured ? `Processamento ${Math.round(displayedProgress)}% concluído` : 'Processamento em andamento'}
             role="progressbar"
-            {...(measured ? { 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(progressValue) } : {})}
+            {...(measured ? { 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(displayedProgress) } : {})}
           >
-            <span style={measured ? { width: `${progressValue}%` } : undefined} />
+            <span style={measured ? { width: `${displayedProgress}%` } : undefined} />
           </div>
 
           <div className="orion-working-footer">
-            {measured
-              ? 'A constelação e a barra avançam somente quando o backend registra um checkpoint real.'
-              : 'O tempo varia conforme o tamanho e a complexidade das planilhas.'}
+            {finishing
+              ? 'Concluído. Preparando a visualização do Dashboard.'
+              : measured
+                ? 'A constelação e a barra avançam somente quando o backend registra um checkpoint real.'
+                : 'O tempo varia conforme o tamanho e a complexidade das planilhas.'}
           </div>
         </div>
       </section>
