@@ -29,6 +29,12 @@ const REQUIRED_BY_MODE = {
   dashboard: ['baseDpp', 'expectedDpp', 'stock', 'explosion', 'pgd', 'wiu'],
 }
 
+const SIGNATURE_KEYS_BY_MODE = {
+  generate: ['baseDpp', 'stock', 'explosion', 'openFile', 'pgd', 'wiu'],
+  test: ['baseDpp', 'expectedDpp', 'stock', 'explosion', 'openFile', 'pgd', 'wiu'],
+  dashboard: ['baseDpp', 'expectedDpp', 'stock', 'explosion', 'openFile', 'pgd', 'wiu'],
+}
+
 function normalize(value) {
   return String(value || '')
     .normalize('NFD')
@@ -161,10 +167,12 @@ export function classifyDppBundle(inputFiles, referenceMonth = '', mode = 'gener
   const requiredKeys = REQUIRED_BY_MODE[mode] || REQUIRED_BY_MODE.generate
   const missing = requiredKeys.filter((key) => !bundle[key])
   const recognized = Object.entries(bundle).filter(([, file]) => Boolean(file)).length
+  const signatureKeys = SIGNATURE_KEYS_BY_MODE[mode] || SIGNATURE_KEYS_BY_MODE.generate
+  const signatureFiles = signatureKeys.map((key) => bundle[key]).filter(Boolean)
   const signature = [
     mode,
     inferredReference,
-    ...files.map(fileIdentity).sort(),
+    ...signatureFiles.map(fileIdentity).sort(),
   ].join('|')
 
   return {
