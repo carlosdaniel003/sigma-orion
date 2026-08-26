@@ -9,6 +9,19 @@
   margin: 0 0 24px;
 }
 
+/* Remove redundant badges/labels when the same context is already visible nearby. */
+.dpp-dashboard-view > .dashboard-header .eyebrow,
+.dpp-dashboard-view > .dashboard-header > .status,
+.dpp-dashboard-view > .dashboard-operational-panel > .panel-header > .status,
+.dpp-dashboard-view > .dpp-state-panel > .panel-header > .status,
+.dpp-dashboard-view .dashboard-planning-panel > .panel-header > .status {
+  display: none !important;
+}
+
+.dpp-dashboard-view > .dashboard-header h2 {
+  margin-top: 0;
+}
+
 .dpp-dashboard-view > .alert {
   order: 5;
 }
