@@ -10,6 +10,18 @@
   contain: layout paint;
 }
 
+.final-model-plan .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .final-model-plan-heading {
   display: flex;
   align-items: flex-start;
@@ -113,10 +125,7 @@
   white-space: nowrap;
 }
 
-.final-model-plan-insights .attention strong {
-  color: var(--orion-warning);
-}
-
+.final-model-plan-insights .attention strong,
 .final-model-plan-insights .reduced strong {
   color: var(--orion-warning);
 }
