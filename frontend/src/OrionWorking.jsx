@@ -10,7 +10,7 @@ const STAGES = {
     'Cruzando STK, Explosão e OPCs',
     'Extraindo KIT disponível do PGD',
     'Calculando NEC, STK TTL e SALDO',
-    'Finalizando o cenário inicial',
+    'Consolidando o cenário e preparando o Dashboard',
   ],
   test: [
     'Identificando e validando as fontes',
@@ -18,12 +18,12 @@ const STAGES = {
     'Aplicando o REAL de referência do gabarito',
     'Comparando o cenário com o DPP final',
     'Classificando humano, legado e ORION',
-    'Montando o relatório de validação',
+    'Consolidando o relatório de validação',
   ],
   dashboard: [
     'Lendo o DPP final consolidado',
     'Extraindo PGD e REAL',
-    'Identificando materiais críticos e OPCs',
+    'Calculando os indicadores do DPP final',
     'Preparando a comparação Inicial × Final',
   ],
 }
@@ -81,21 +81,31 @@ function OrionAgentVisual() {
 function OrionWorking({ active, mode = 'generate', compact = false }) {
   const stages = STAGES[mode] || STAGES.generate
   const [stageIndex, setStageIndex] = useState(0)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const dialogRef = useRef(null)
+  const blocking = mode !== 'dashboard'
 
   useEffect(() => {
     if (!active) return undefined
 
     setStageIndex(0)
-    const timer = window.setInterval(() => {
-      setStageIndex((current) => Math.min(current + 1, stages.length - 1))
-    }, 1200)
+    setElapsedSeconds(0)
 
-    return () => window.clearInterval(timer)
+    const stageTimer = window.setInterval(() => {
+      setStageIndex((current) => Math.min(current + 1, stages.length - 1))
+    }, 2200)
+    const elapsedTimer = window.setInterval(() => {
+      setElapsedSeconds((current) => current + 1)
+    }, 1000)
+
+    return () => {
+      window.clearInterval(stageTimer)
+      window.clearInterval(elapsedTimer)
+    }
   }, [active, mode, stages.length])
 
   useEffect(() => {
-    if (!active || typeof document === 'undefined') return undefined
+    if (!active || !blocking || typeof document === 'undefined') return undefined
 
     const root = document.getElementById('root')
     const previousOverflow = document.body.style.overflow
@@ -124,9 +134,21 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
         else root.setAttribute('aria-hidden', previousAriaHidden)
       }
     }
-  }, [active])
+  }, [active, blocking])
 
   if (!active || typeof document === 'undefined') return null
+
+  if (!blocking) {
+    return (
+      <div className="orion-inline-working" role="status" aria-live="polite">
+        <span className="orion-working-status-dot" aria-hidden="true" />
+        <div>
+          <strong>{TITLES[mode]}</strong>
+          <small>{stages[stageIndex]} · {elapsedSeconds}s</small>
+        </div>
+      </div>
+    )
+  }
 
   return createPortal(
     <div className="orion-working-overlay" aria-hidden="false">
@@ -142,7 +164,7 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
         <div className="orion-working-status">
           <span className="orion-working-status-dot" />
           <span>AGENTE ORION</span>
-          <small>PROCESSANDO</small>
+          <small>EM PROCESSAMENTO</small>
         </div>
 
         <OrionAgentVisual />
@@ -152,20 +174,17 @@ function OrionWorking({ active, mode = 'generate', compact = false }) {
           <p className="orion-working-subtitle">O ORION está cruzando e validando os dados do processo.</p>
 
           <div className="orion-current-stage" id="orion-working-description">
-            <span>{stages[stageIndex]}</span>
-            <small>Etapa {stageIndex + 1} de {stages.length}</small>
+            <div>
+              <small className="orion-stage-label">ATIVIDADE EM ANDAMENTO</small>
+              <span>{stages[stageIndex]}</span>
+            </div>
+            <small className="orion-elapsed-time">{elapsedSeconds}s decorridos</small>
           </div>
 
-          <div className="orion-working-progress" aria-hidden="true"><span /></div>
-
-          <div className="orion-stage-dots" aria-hidden="true">
-            {stages.map((stage, index) => (
-              <span className={index <= stageIndex ? 'done' : ''} key={stage} />
-            ))}
-          </div>
+          <div className="orion-working-progress" aria-label="Processamento em andamento" role="progressbar"><span /></div>
 
           <div className="orion-working-footer">
-            Aguarde. A interface será liberada automaticamente quando a análise terminar.
+            O progresso permanece indeterminado até o processamento real terminar. O tempo varia conforme o tamanho e a complexidade das planilhas.
           </div>
         </div>
       </section>
