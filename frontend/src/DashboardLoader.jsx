@@ -5,7 +5,8 @@ import OrionWorking from './OrionWorking'
 import { classifyDppBundle } from './dpp-file-bundle'
 import { useDppWorkspace } from './DppWorkspaceContext'
 
-const AUTO_RUN_DELAY = 450
+const AUTO_RUN_DELAY = 120
+const BACKGROUND_TEST_DELAY = 350
 
 function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnalysis }) {
   const {
@@ -26,6 +27,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   const generationTimerRef = useRef(null)
   const generationAbortRef = useRef(null)
   const testPreparingRef = useRef(false)
+  const backgroundTestTimerRef = useRef(null)
   const bootstrappedRef = useRef(false)
 
   const bundle = useMemo(
@@ -83,9 +85,15 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   }, [loading, generating, bundle.ready, bundle.signature, generatedSignature, generatedScenario])
 
   useEffect(() => {
-    if (loading || generating || !generatedScenario || !testBundle.ready || !testBundle.signature) return
-    if (testBundle.signature === testSignature) return
-    prepareTestFromPackage()
+    window.clearTimeout(backgroundTestTimerRef.current)
+    if (loading || generating || !generatedScenario || !testBundle.ready || !testBundle.signature) return undefined
+    if (testBundle.signature === testSignature) return undefined
+
+    backgroundTestTimerRef.current = window.setTimeout(() => {
+      prepareTestFromPackage()
+    }, BACKGROUND_TEST_DELAY)
+
+    return () => window.clearTimeout(backgroundTestTimerRef.current)
   }, [loading, generating, generatedScenario, testBundle.ready, testBundle.signature, testSignature])
 
   async function prepareTestFromPackage() {
@@ -146,12 +154,10 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Não foi possível gerar o cenário mensal a partir do pacote.')
 
+      // Libera o Dashboard assim que o processamento principal termina.
+      // O teste histórico, quando disponível, é preparado depois em segundo plano
+      // e não mantém o modal bloqueante aberto.
       setGeneratedSignature(bundle.signature)
-
-      if (testBundle.ready && testBundle.signature !== testSignature) {
-        await prepareTestFromPackage()
-      }
-
       setGeneratedScenario(data)
     } catch (requestError) {
       if (requestError.name !== 'AbortError') {
@@ -168,7 +174,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       <section className="panel">
         <span className="eyebrow">VISÃO OPERACIONAL</span>
         <h3 style={{ marginTop: 14 }}>Carregando cenário mais recente...</h3>
-        <p>Consultando o motor Python local.</p>
+        <p>Consultando o cenário local já processado.</p>
       </section>
     )
   }
