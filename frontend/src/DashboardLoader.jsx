@@ -7,6 +7,11 @@ import { useDppWorkspace } from './DppWorkspaceContext'
 
 const AUTO_RUN_DELAY = 120
 const BACKGROUND_TEST_DELAY = 350
+const JOB_POLL_INTERVAL = 250
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
 
 function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnalysis }) {
   const {
@@ -23,6 +28,10 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   } = useDppWorkspace()
   const [loading, setLoading] = useState(!generatedScenario)
   const [generating, setGenerating] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState({
+    progress: 0,
+    activity: 'Preparando processamento',
+  })
   const [error, setError] = useState('')
   const generationTimerRef = useRef(null)
   const generationAbortRef = useRef(null)
@@ -127,6 +136,32 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     }
   }
 
+  async function waitForGenerationJob(jobId, controller) {
+    let job = null
+
+    while (!controller.signal.aborted) {
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/generate/jobs/${jobId}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Não foi possível consultar o progresso do processamento.')
+
+      job = data
+      setGenerationProgress({
+        progress: Number(job.progress) || 0,
+        activity: job.activity || 'Processando DPP',
+      })
+
+      if (job.status === 'completed') return job.result
+      if (job.status === 'failed') throw new Error(job.error || 'O processamento do DPP foi interrompido.')
+
+      await sleep(JOB_POLL_INTERVAL)
+    }
+
+    throw new DOMException('Processamento cancelado', 'AbortError')
+  }
+
   async function generateFromPackage() {
     const month = bundle.referenceMonth || referenceMonth
     if (!bundle.baseDpp || !bundle.wiu || !bundle.explosion || !bundle.stock || !bundle.pgd || !month || generating) return
@@ -134,6 +169,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     const controller = new AbortController()
     generationAbortRef.current = controller
     setGenerating(true)
+    setGenerationProgress({ progress: 1, activity: 'Enviando arquivos ao ORION' })
     setError('')
 
     const form = new FormData()
@@ -146,17 +182,23 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     if (bundle.openFile) form.append('open_orders', bundle.openFile)
 
     try {
-      const response = await fetch(`${apiUrl}/api/dpp/monthly/generate`, {
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/generate/jobs`, {
         method: 'POST',
         body: form,
         signal: controller.signal,
       })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.detail || 'Não foi possível gerar o cenário mensal a partir do pacote.')
+      const job = await response.json()
+      if (!response.ok) throw new Error(job.detail || 'Não foi possível iniciar a geração mensal do DPP.')
+      if (!job.job_id) throw new Error('O backend não retornou o identificador do processamento.')
 
-      // Libera o Dashboard assim que o processamento principal termina.
-      // O teste histórico, quando disponível, é preparado depois em segundo plano
-      // e não mantém o modal bloqueante aberto.
+      setGenerationProgress({
+        progress: Number(job.progress) || 0,
+        activity: job.activity || 'Processamento iniciado',
+      })
+
+      const data = await waitForGenerationJob(job.job_id, controller)
+      if (!data) throw new Error('O processamento terminou sem retornar o cenário mensal.')
+
       setGeneratedSignature(bundle.signature)
       setGeneratedScenario(data)
     } catch (requestError) {
@@ -201,7 +243,12 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
           title="Carregar pacote do DPP"
         />
 
-        <OrionWorking active={generating} mode="generate" />
+        <OrionWorking
+          active={generating}
+          mode="generate"
+          progress={generationProgress.progress}
+          activity={generationProgress.activity}
+        />
       </>
     )
   }
@@ -221,7 +268,12 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
         />
       </section>
 
-      <OrionWorking active={generating} mode="generate" />
+      <OrionWorking
+        active={generating}
+        mode="generate"
+        progress={generationProgress.progress}
+        activity={generationProgress.activity}
+      />
       <Dashboard
         apiUrl={apiUrl}
         scenario={generatedScenario}
