@@ -105,6 +105,9 @@ def test_final_dashboard_summary_uses_consolidated_excel_state() -> None:
     assert summary["real_total"] == 120
     assert summary["model_count"] == 2
     assert summary["active_models"] == 1
+    assert summary["changed_models"] == 2
+    assert summary["below_pgd_models"] == 1
+    assert summary["above_pgd_models"] == 1
     assert summary["total_materials"] == 3
     assert summary["critical_materials"] == 1
     assert summary["opc_count"] == 1
@@ -113,3 +116,28 @@ def test_final_dashboard_summary_uses_consolidated_excel_state() -> None:
     assert summary["material_coverage"] == 0
     assert summary["pgd_exposed"] == 100
     assert summary["shared_critical"] == 0
+
+
+def test_final_dashboard_exposes_model_by_model_pgd_real_and_delta() -> None:
+    result = summarize_final_dpp_content(_final_dpp_workbook_bytes(), "DPP JULHO.xlsx")
+
+    assert result["models"] == [
+        {
+            "name": "MODELO A",
+            "pgd": 100,
+            "real": 120,
+            "delta": 20,
+            "active": True,
+            "changed": True,
+            "at_risk": True,
+        },
+        {
+            "name": "MODELO B",
+            "pgd": 50,
+            "real": 0,
+            "delta": -50,
+            "active": False,
+            "changed": True,
+            "at_risk": False,
+        },
+    ]
