@@ -48,16 +48,6 @@ function App() {
             </button>
 
             <button
-              className={`nav-icon-button ${activeView === 'consolidation' ? 'nav-active' : ''}`}
-              type="button"
-              aria-label="Gerar DPP"
-              data-tooltip="Gerar DPP"
-              onClick={() => openDppView('consolidation')}
-            >
-              <GenerateIcon />
-            </button>
-
-            <button
               className={`nav-icon-button ${activeView === 'test' ? 'nav-active' : ''}`}
               type="button"
               aria-label="Testes do DPP"
@@ -76,14 +66,15 @@ function App() {
       </header>
 
       <main className="content">
-        {activeWorkspace === 'dpp' && activeView === 'dashboard' && (
+        <section hidden={activeWorkspace !== 'dpp' || activeView !== 'dashboard'}>
           <DashboardLoader
             apiUrl={API_URL}
             onNavigate={openDppView}
             finalDppAnalysis={finalDppAnalysis}
             onFinalDppAnalysis={setFinalDppAnalysis}
           />
-        )}
+        </section>
+
         {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
         {activeWorkspace === 'dpp' && activeView === 'test' && <DppTest apiUrl={API_URL} />}
       </main>
@@ -108,16 +99,6 @@ function DashboardIcon() {
       <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
       <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
       <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
-    </svg>
-  )
-}
-
-function GenerateIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
-      <path d="M14 3.5V8h4" />
-      <path d="M12 11v6M9 14h6" />
     </svg>
   )
 }
