@@ -40,18 +40,82 @@
   min-width: 0;
 }
 
+.orion-robot-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(196px, 100%);
+}
+
 .orion-robot-image {
   display: block;
-  width: min(196px, 100%);
+  width: 100%;
   height: auto;
   border-radius: 26px;
   animation: orion-robot-idle 1.8s ease-in-out infinite;
   will-change: transform;
 }
 
-.orion-working.compact .orion-robot-image {
+.orion-working.compact .orion-robot-stage {
   width: min(150px, 100%);
+}
+
+.orion-working.compact .orion-robot-image {
   border-radius: 22px;
+}
+
+.orion-robot-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: #3b3b40;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.orion-typing-hand {
+  transform-box: fill-box;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.orion-typing-hand ellipse {
+  fill: #fff;
+}
+
+.orion-typing-hand.typing-left {
+  animation: orion-left-type 0.62s ease-in-out infinite alternate;
+}
+
+.orion-typing-hand.typing-right {
+  animation: orion-right-type 0.62s ease-in-out infinite alternate;
+  animation-delay: 0.12s;
+}
+
+.orion-key-taps .tap {
+  fill: #3b3b40;
+  stroke: none;
+  transform-box: fill-box;
+  transform-origin: center center;
+}
+
+.orion-key-taps .tap-one {
+  animation: orion-tap 0.84s ease-in-out infinite;
+}
+
+.orion-key-taps .tap-two {
+  animation: orion-tap 0.84s ease-in-out infinite;
+  animation-delay: 0.16s;
+}
+
+.orion-key-taps .tap-three {
+  animation: orion-tap 0.84s ease-in-out infinite;
+  animation-delay: 0.32s;
 }
 
 .orion-working-copy {
@@ -137,7 +201,23 @@
 
 @keyframes orion-robot-idle {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes orion-left-type {
+  from { transform: translate(-2px, 0) rotate(-7deg); }
+  to { transform: translate(4px, 8px) rotate(5deg); }
+}
+
+@keyframes orion-right-type {
+  from { transform: translate(3px, 0) rotate(6deg); }
+  to { transform: translate(-4px, 8px) rotate(-5deg); }
+}
+
+@keyframes orion-tap {
+  0%, 100% { opacity: 0; transform: translateY(4px) scale(0.8); }
+  42% { opacity: 1; transform: translateY(-2px) scale(1); }
+  72% { opacity: 0.35; transform: translateY(-6px) scale(1.1); }
 }
 
 @media (max-width: 720px) {
@@ -155,14 +235,16 @@
     border-radius: 22px;
   }
 
-  .orion-robot-image,
-  .orion-working.compact .orion-robot-image {
+  .orion-robot-stage,
+  .orion-working.compact .orion-robot-stage {
     width: min(170px, 58vw);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .orion-robot-image,
+  .orion-typing-hand,
+  .orion-key-taps .tap,
   .orion-working-progress span {
     animation: none;
   }
