@@ -63,21 +63,36 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
     real_total = 0.0
     model_count = 0
     active_models = 0
+    model_states: list[dict] = []
 
     for column in range(model_start, model_end + 1):
         model_name = _as_text(_cell(rows, header_row, column))
         if not model_name:
             continue
+
         model_count += 1
-        pgd_total += max(_number(_cell(rows, kit_row, column), 0.0) or 0.0, 0.0) if kit_row else 0.0
+        pgd = max(_number(_cell(rows, kit_row, column), 0.0) or 0.0, 0.0) if kit_row else 0.0
         real = max(_number(_cell(rows, real_row, column), 0.0) or 0.0, 0.0)
+        pgd_total += pgd
         real_total += real
         if real > 1e-9:
             active_models += 1
 
+        model_states.append(
+            {
+                "name": model_name,
+                "column": column,
+                "pgd": pgd,
+                "real": real,
+                "active": real > 1e-9,
+            }
+        )
+
     total_materials = 0
     critical_materials = 0
     opc_count = 0
+    shared_critical = 0
+    risk_model_names: set[str] = set()
 
     for excel_row in range(header_row + 1, len(rows) + 1):
         material = _as_text(_cell(rows, excel_row, material_col))
@@ -91,8 +106,30 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
 
         unit = _normalize(_cell(rows, excel_row, um_col)).upper()
         balance = _number(_cell(rows, excel_row, balance_col), None)
-        if unit == "UN" and balance is not None and balance < -1e-4:
-            critical_materials += 1
+        if unit != "UN" or balance is None or balance >= -1e-4:
+            continue
+
+        critical_materials += 1
+        affected_models = []
+        for model in model_states:
+            if not model["active"]:
+                continue
+            usage = _number(_cell(rows, excel_row, model["column"]), 0.0) or 0.0
+            if usage > 1e-9:
+                affected_models.append(model["name"])
+                risk_model_names.add(model["name"])
+
+        if len(affected_models) > 1:
+            shared_critical += 1
+
+    risk_models = len(risk_model_names)
+    safe_models = max(active_models - risk_models, 0)
+    material_coverage = (safe_models / active_models * 100.0) if active_models else 0.0
+    pgd_exposed = sum(
+        model["pgd"]
+        for model in model_states
+        if model["name"] in risk_model_names
+    )
 
     return {
         "filename": filename,
@@ -105,6 +142,11 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
             "total_materials": total_materials,
             "critical_materials": critical_materials,
             "opc_count": opc_count,
+            "risk_models": risk_models,
+            "safe_models": safe_models,
+            "material_coverage": material_coverage,
+            "pgd_exposed": pgd_exposed,
+            "shared_critical": shared_critical,
         },
     }
 
