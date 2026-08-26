@@ -11,10 +11,21 @@
   letter-spacing: 0.08em;
 }
 
+.orion-stage-measures {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .orion-current-stage .orion-elapsed-time,
 .orion-current-stage .orion-progress-percent {
-  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
   padding: 5px 8px;
+  border: 1px solid #ececef;
   border-radius: 999px;
   background: #ffffff;
   color: #747478;
@@ -28,6 +39,10 @@
   font-size: 0.78rem;
   font-weight: 800;
   text-align: center;
+}
+
+.orion-current-stage .orion-elapsed-time {
+  min-width: 46px;
 }
 
 .orion-working-progress.measured span {
@@ -77,9 +92,8 @@
 }
 
 @media (max-width: 720px) {
-  .orion-current-stage .orion-elapsed-time,
-  .orion-current-stage .orion-progress-percent {
-    align-self: flex-start;
+  .orion-stage-measures {
+    width: 100%;
   }
 }
 
