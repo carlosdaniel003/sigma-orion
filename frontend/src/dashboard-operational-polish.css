@@ -1,0 +1,257 @@
+/* PGD x REAL + Situação dos modelos: visual leve, hierárquico e coerente com o restante do Dashboard. */
+.dpp-dashboard-view .dashboard-planning-panel,
+.dpp-dashboard-view .dashboard-health-panel {
+  height: 100%;
+  min-height: 390px;
+  padding: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.075);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.04);
+  color: #1d1d1f;
+  contain: layout paint;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header,
+.dpp-dashboard-view .dashboard-health-panel .panel-header {
+  margin-bottom: 26px;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header > div,
+.dpp-dashboard-view .dashboard-health-panel .panel-header > div {
+  max-width: 620px;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header h3,
+.dpp-dashboard-view .dashboard-health-panel .panel-header h3 {
+  margin: 0;
+  color: #1d1d1f;
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header p,
+.dpp-dashboard-view .dashboard-health-panel .panel-header p {
+  max-width: 520px;
+  margin: 8px 0 0;
+  color: #6e6e73;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* PGD x REAL */
+.dpp-dashboard-view .dashboard-planning-panel .planning-bars {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid #e7e7eb;
+  border-radius: 18px;
+  background: #f7f7f9;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row > div:first-child {
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row > div:first-child strong {
+  color: #86868b;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row > div:first-child span {
+  color: #1d1d1f;
+  font-size: clamp(1.4rem, 2.5vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-track {
+  height: 6px;
+  background: #e3e3e8;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-fill {
+  background: #8e8e93;
+  transition: width 180ms ease-out;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-fill.real {
+  background: #007aff;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row {
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div {
+  min-width: 0;
+  gap: 6px;
+  padding: 13px 14px;
+  border: 1px solid #ececef;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row small {
+  color: #86868b;
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row strong {
+  overflow: hidden;
+  color: #3a3a3c;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+/* Situação dos modelos */
+.dpp-dashboard-view .dashboard-health-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-score {
+  justify-items: start;
+  gap: 6px;
+  padding: 20px;
+  border: 1px solid #e7e7eb;
+  border-radius: 18px;
+  background: #f7f7f9;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-score strong {
+  color: #1d1d1f;
+  font-size: clamp(2.7rem, 4vw, 3.6rem);
+  font-weight: 720;
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-score span {
+  color: #6e6e73;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-progress {
+  height: 6px;
+  margin-top: 14px;
+  background: #e3e3e8;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-progress > span {
+  background: #34c759;
+  transition: width 180ms ease-out;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-split {
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-split > div {
+  position: relative;
+  gap: 6px;
+  min-height: 94px;
+  padding: 16px 16px 15px 18px;
+  border: 1px solid #e7e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #1d1d1f;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-split > div::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 9px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-safe::before {
+  background: #34c759;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-risk::before {
+  background: #ff9f0a;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-split strong {
+  color: #1d1d1f;
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-split span {
+  color: #6e6e73;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .dashboard-method-note {
+  margin: auto 0 0;
+  padding: 16px 2px 0;
+  border-top: 1px solid #ececef;
+  border-radius: 0;
+  background: transparent;
+  color: #86868b !important;
+  font-size: 0.72rem;
+  line-height: 1.45 !important;
+}
+
+@media (max-width: 900px) {
+  .dpp-dashboard-view .dashboard-planning-panel,
+  .dpp-dashboard-view .dashboard-health-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .dpp-dashboard-view .dashboard-planning-panel,
+  .dpp-dashboard-view .dashboard-health-panel {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .dpp-dashboard-view .dashboard-planning-panel .planning-bar-row {
+    padding: 16px;
+  }
+
+  .dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row,
+  .dpp-dashboard-view .dashboard-health-panel .health-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dpp-dashboard-view .dashboard-planning-panel .planning-bar-fill,
+  .dpp-dashboard-view .dashboard-health-panel .health-progress > span {
+    transition: none;
+  }
+}
