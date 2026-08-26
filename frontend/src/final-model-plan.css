@@ -1,0 +1,380 @@
+.final-model-plan {
+  order: 25;
+  margin: 0 0 38px;
+  padding: 28px;
+  border: 1px solid var(--orion-border);
+  border-radius: 24px;
+  background: var(--orion-surface);
+  color: var(--orion-text);
+  box-shadow: var(--orion-shadow);
+  contain: layout paint;
+}
+
+.final-model-plan-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.final-model-plan-eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--orion-success);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.final-model-plan-heading h3 {
+  margin: 0;
+  color: var(--orion-text);
+  font-size: clamp(1.45rem, 2.2vw, 1.9rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.final-model-plan-heading p {
+  max-width: 720px;
+  margin: 9px 0 0;
+  color: var(--orion-text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.final-model-plan-source {
+  min-width: 180px;
+  display: grid;
+  gap: 4px;
+  padding: 11px 13px;
+  border: 1px solid var(--orion-border);
+  border-radius: 13px;
+  background: var(--orion-surface-elevated);
+}
+
+.final-model-plan-source span {
+  color: var(--orion-text-secondary);
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.final-model-plan-source strong {
+  overflow: hidden;
+  color: var(--orion-text);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.final-model-plan-insights {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.final-model-plan-insights article {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 17px;
+  border: 1px solid var(--orion-border);
+  border-radius: 16px;
+  background: var(--orion-surface-elevated);
+}
+
+.final-model-plan-insights span,
+.final-model-plan-insights small {
+  color: var(--orion-text-secondary);
+}
+
+.final-model-plan-insights span {
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.final-model-plan-insights strong {
+  color: var(--orion-text);
+  font-size: clamp(1.65rem, 2.7vw, 2.2rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.final-model-plan-insights small {
+  overflow: hidden;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.final-model-plan-insights .attention strong {
+  color: var(--orion-warning);
+}
+
+.final-model-plan-insights .reduced strong {
+  color: var(--orion-warning);
+}
+
+.final-model-plan-insights .increased strong {
+  color: var(--orion-blue);
+}
+
+.final-model-plan-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.final-model-plan-filters {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--orion-border);
+  border-radius: 12px;
+  background: var(--orion-surface-elevated);
+}
+
+.final-model-plan-filters button {
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--orion-text-secondary);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.final-model-plan-filters button.active {
+  background: var(--orion-blue);
+  color: var(--orion-bg);
+}
+
+.final-model-plan-search {
+  width: min(260px, 100%);
+}
+
+.final-model-plan-search input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--orion-border);
+  border-radius: 10px;
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text);
+  outline: none;
+}
+
+.final-model-plan-search input:focus {
+  border-color: var(--orion-blue);
+  box-shadow: 0 0 0 3px var(--orion-blue-soft);
+}
+
+.final-model-plan-table-wrap {
+  margin-top: 14px;
+  overflow: auto;
+  border: 1px solid var(--orion-border);
+  border-radius: 16px;
+  background: var(--orion-surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--orion-border) transparent;
+}
+
+.final-model-plan-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.final-model-plan-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--orion-border);
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text-secondary);
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.final-model-plan-table td {
+  height: 54px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--orion-border-soft);
+  background: var(--orion-surface);
+  color: var(--orion-text);
+  font-size: 0.8rem;
+}
+
+.final-model-plan-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.final-model-plan-table tbody tr:hover td {
+  background: var(--orion-blue-soft);
+}
+
+.final-model-plan-table tr.changed td:first-child {
+  box-shadow: inset 2px 0 0 var(--orion-warning);
+}
+
+.final-model-plan-table th:nth-child(1),
+.final-model-plan-table td:nth-child(1) { width: 29%; }
+.final-model-plan-table th:nth-child(2),
+.final-model-plan-table td:nth-child(2) { width: 19%; }
+.final-model-plan-table th:nth-child(3),
+.final-model-plan-table td:nth-child(3) { width: 17%; }
+.final-model-plan-table th:nth-child(4),
+.final-model-plan-table td:nth-child(4) { width: 19%; }
+.final-model-plan-table th:nth-child(5),
+.final-model-plan-table td:nth-child(5) { width: 16%; }
+
+.final-model-plan-table td strong {
+  color: var(--orion-text);
+  font-size: 0.82rem;
+}
+
+.final-model-plan-table .number-cell {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.final-model-plan-table .real-value {
+  color: var(--orion-blue);
+  font-weight: 750;
+}
+
+.final-model-plan-table .delta-value {
+  font-weight: 800;
+}
+
+.final-model-plan-table .delta-value.negative {
+  color: var(--orion-warning);
+}
+
+.final-model-plan-table .delta-value.positive {
+  color: var(--orion-blue);
+}
+
+.final-model-plan-table .delta-value.neutral {
+  color: var(--orion-text-secondary);
+}
+
+.final-model-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid var(--orion-border);
+  border-radius: 999px;
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text-secondary);
+  font-size: 0.66rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.final-model-status.stable {
+  border-color: color-mix(in srgb, var(--orion-success) 35%, transparent);
+  background: var(--orion-success-soft);
+  color: var(--orion-success);
+}
+
+.final-model-status.reduced {
+  border-color: color-mix(in srgb, var(--orion-warning) 35%, transparent);
+  background: var(--orion-warning-soft);
+  color: var(--orion-warning);
+}
+
+.final-model-status.increased {
+  border-color: color-mix(in srgb, var(--orion-blue) 35%, transparent);
+  background: var(--orion-blue-soft);
+  color: var(--orion-blue);
+}
+
+.final-model-plan-empty {
+  padding: 30px;
+  color: var(--orion-text-secondary);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.final-model-plan-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 13px;
+  color: var(--orion-text-secondary);
+  font-size: 0.69rem;
+  line-height: 1.4;
+}
+
+.final-model-plan-footnote strong {
+  color: var(--orion-text);
+}
+
+:root[data-theme='light'] .final-model-plan-filters button.active {
+  background: #1d1d1f;
+  color: #fff;
+}
+
+:root[data-theme='light'] .final-model-plan-table .real-value,
+:root[data-theme='light'] .final-model-plan-table .delta-value.positive,
+:root[data-theme='light'] .final-model-plan-insights .increased strong {
+  color: #1d1d1f;
+}
+
+@media (max-width: 980px) {
+  .final-model-plan-insights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .final-model-plan {
+    margin-bottom: 28px;
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .final-model-plan-heading,
+  .final-model-plan-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .final-model-plan-source,
+  .final-model-plan-search {
+    width: 100%;
+  }
+
+  .final-model-plan-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .final-model-plan-filters {
+    width: 100%;
+  }
+
+  .final-model-plan-filters button {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .final-model-plan-filters button,
+  .final-model-plan-table td {
+    transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  }
+}
