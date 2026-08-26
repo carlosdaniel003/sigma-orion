@@ -23,6 +23,7 @@ from app.services.agent_service import (
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
 from app.services.dpp_dashboard_service import summarize_final_dpp
 from app.services.dpp_monthly_service import generate_monthly_dpp
+from app.services.dpp_progress_service import get_monthly_generation_job, start_monthly_generation_job
 from app.services.dpp_scenario_service import get_latest_monthly_scenario, recalculate_monthly_scenario
 from app.services.dpp_service import analyze_dpp_file
 from app.services.dpp_test_service import test_monthly_dpp_reconstruction
@@ -189,6 +190,42 @@ async def generate_monthly_dpp_route(
             status_code=422,
             detail=f"Não foi possível gerar o novo DPP mensal: {exc}",
         ) from exc
+
+
+@router.post("/dpp/monthly/generate/jobs", status_code=202)
+async def start_monthly_dpp_generation_job(
+    base_dpp: UploadFile = File(...),
+    wiu: UploadFile = File(...),
+    explosion: UploadFile = File(...),
+    stock: UploadFile = File(...),
+    pgd: UploadFile = File(...),
+    reference_month: str = Form(...),
+    open_orders: UploadFile | None = File(default=None),
+) -> dict:
+    try:
+        payload = {
+            "base_dpp": (base_dpp.filename, await base_dpp.read()),
+            "wiu": (wiu.filename, await wiu.read()),
+            "explosion": (explosion.filename, await explosion.read()),
+            "stock": (stock.filename, await stock.read()),
+            "pgd": (pgd.filename, await pgd.read()),
+            "reference_month": reference_month,
+            "open_orders": (open_orders.filename, await open_orders.read()) if open_orders is not None else None,
+        }
+        return start_monthly_generation_job(payload=payload)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível iniciar o processamento do DPP mensal: {exc}",
+        ) from exc
+
+
+@router.get("/dpp/monthly/generate/jobs/{job_id}")
+def monthly_dpp_generation_job(job_id: str) -> dict:
+    job = get_monthly_generation_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Processamento do DPP não encontrado ou expirado.")
+    return job
 
 
 @router.get("/dpp/monthly/latest")
