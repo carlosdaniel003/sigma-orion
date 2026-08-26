@@ -6,6 +6,7 @@ import { DppWorkspaceProvider } from './DppWorkspaceContext.jsx'
 import './styles.css'
 import './navigation.css'
 import './dashboard-visibility.css'
+import './dashboard-kpi-polish.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
