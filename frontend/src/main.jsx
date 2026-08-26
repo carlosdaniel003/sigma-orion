@@ -12,6 +12,7 @@ import './dashboard-comparison.css'
 import './dashboard-hierarchy.css'
 import './dashboard-operational-polish.css'
 import './sigma-orion-theme.css'
+import './sigma-orion-theme-toggle.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
