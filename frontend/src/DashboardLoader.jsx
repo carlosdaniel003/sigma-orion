@@ -40,7 +40,10 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   })
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
-  const [exportElapsedSeconds, setExportElapsedSeconds] = useState(0)
+  const [exportProgress, setExportProgress] = useState({
+    progress: 0,
+    activity: 'Aguardando geração do Excel',
+  })
   const [exportError, setExportError] = useState('')
   const generationTimerRef = useRef(null)
   const generationAbortRef = useRef(null)
@@ -115,19 +118,6 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     return () => window.clearTimeout(backgroundTestTimerRef.current)
   }, [workspaceReady, loading, generating, generatedScenario, testBundle.ready, testBundle.signature, testSignature])
 
-  useEffect(() => {
-    if (!exporting) {
-      setExportElapsedSeconds(0)
-      return undefined
-    }
-
-    const startedAt = Date.now()
-    const updateElapsed = () => setExportElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000))
-    updateElapsed()
-    const timer = window.setInterval(updateElapsed, 250)
-    return () => window.clearInterval(timer)
-  }, [exporting])
-
   async function prepareTestFromPackage() {
     if (!testBundle.ready || !testBundle.signature || testPreparingRef.current) return
     if (testBundle.signature === testSignature) return
@@ -185,6 +175,26 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     throw new DOMException('Processamento cancelado', 'AbortError')
   }
 
+  async function waitForExportJob(jobId) {
+    while (true) {
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/export/jobs/${jobId}`, {
+        cache: 'no-store',
+      })
+      const job = await response.json()
+      if (!response.ok) throw new Error(job.detail || 'Não foi possível consultar o progresso do Excel.')
+
+      setExportProgress({
+        progress: Math.min(Math.max(Number(job.progress) || 0, 0), 100),
+        activity: job.activity || 'Gerando Excel ORION',
+      })
+
+      if (job.status === 'completed') return job
+      if (job.status === 'failed') throw new Error(job.error || 'A geração do Excel foi interrompida.')
+
+      await sleep(JOB_POLL_INTERVAL)
+    }
+  }
+
   async function generateFromPackage() {
     const month = bundle.referenceMonth || referenceMonth
     if (!bundle.baseDpp || !bundle.wiu || !bundle.explosion || !bundle.stock || !bundle.pgd || !month || generating) return
@@ -239,19 +249,34 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     if (!generatedScenario?.scenario_id || !bundle.baseDpp || exporting) return
 
     setExporting(true)
+    setExportProgress({ progress: 0, activity: 'Enviando DPP base ao backend' })
     setExportError('')
     const form = new FormData()
     form.append('scenario_id', generatedScenario.scenario_id)
     form.append('base_dpp', bundle.baseDpp)
 
     try {
-      const response = await fetch(`${apiUrl}/api/dpp/monthly/export`, {
+      const startResponse = await fetch(`${apiUrl}/api/dpp/monthly/export/jobs`, {
         method: 'POST',
         body: form,
       })
+      const startedJob = await startResponse.json()
+      if (!startResponse.ok) throw new Error(startedJob.detail || 'Não foi possível iniciar a geração do Excel ORION.')
+      if (!startedJob.job_id) throw new Error('O backend não retornou o identificador da geração do Excel.')
 
+      setExportProgress({
+        progress: Math.min(Math.max(Number(startedJob.progress) || 0, 0), 100),
+        activity: startedJob.activity || 'Geração do Excel iniciada',
+      })
+
+      const completedJob = await waitForExportJob(startedJob.job_id)
+      setExportProgress({ progress: 100, activity: completedJob.activity || 'Excel pronto para download' })
+
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/export/jobs/${startedJob.job_id}/download`, {
+        cache: 'no-store',
+      })
       if (!response.ok) {
-        let message = 'Não foi possível gerar o Excel do cenário ORION.'
+        let message = 'O Excel foi gerado, mas não foi possível iniciar o download.'
         try {
           const payload = await response.json()
           if (payload.detail) message = payload.detail
@@ -262,7 +287,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       }
 
       const blob = await response.blob()
-      const fallback = `DPP_ORION_${generatedScenario.reference_month || 'cenario'}.xlsx`
+      const fallback = completedJob.result?.filename || `DPP_ORION_${generatedScenario.reference_month || 'cenario'}.xlsx`
       const filename = downloadFilename(response.headers.get('Content-Disposition'), fallback)
       const url = window.URL.createObjectURL(blob)
       const anchor = document.createElement('a')
@@ -287,6 +312,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       </section>
     )
   }
+
+  const exportPercent = Math.round(exportProgress.progress)
 
   return (
     <>
@@ -342,13 +369,21 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
               onClick={exportOrionScenario}
               disabled={!bundle.baseDpp || exporting || generating}
               aria-busy={exporting}
+              aria-label={exporting ? `Gerando Excel ORION, ${exportPercent}% concluído` : 'Baixar Excel ORION'}
+              title={exporting ? exportProgress.activity : undefined}
             >
               <span className="dashboard-export-button-label">
-                {exporting ? `Gerando Excel · ${exportElapsedSeconds}s` : 'Baixar Excel ORION'}
+                {exporting ? `Gerando Excel · ${exportPercent}%` : 'Baixar Excel ORION'}
               </span>
               {exporting && (
-                <span className="dashboard-export-progress" aria-hidden="true">
-                  <span />
+                <span
+                  className="dashboard-export-progress"
+                  role="progressbar"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow={exportPercent}
+                >
+                  <span style={{ width: `${exportPercent}%` }} />
                 </span>
               )}
             </button>
