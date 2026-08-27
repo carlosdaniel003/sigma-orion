@@ -1,0 +1,68 @@
+/* Dashboard ORION export — action row, not another card. */
+.dpp-dashboard-view > .dashboard-scenario-export {
+  order: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: 10px 0 12px;
+  margin: 0 0 var(--space-6);
+  border-bottom: 1px solid var(--orion-border);
+  color: var(--orion-text);
+}
+
+.dashboard-scenario-export > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.dashboard-scenario-export > div > span {
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.dashboard-scenario-export > div > strong {
+  color: var(--orion-text);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.dashboard-scenario-export > div > small {
+  max-width: 820px;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.dashboard-export-button {
+  flex: 0 0 auto;
+  min-width: 158px;
+}
+
+.dashboard-export-button:not(:disabled):hover,
+.dashboard-export-button:not(:disabled):focus-visible {
+  border-color: var(--orion-blue) !important;
+  color: var(--orion-blue) !important;
+}
+
+.dpp-dashboard-view > .dashboard-export-error {
+  order: 26;
+  margin: calc(var(--space-5) * -1) 0 var(--space-5);
+}
+
+@media (max-width: 760px) {
+  .dpp-dashboard-view > .dashboard-scenario-export {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+
+  .dashboard-export-button {
+    width: 100%;
+  }
+}
