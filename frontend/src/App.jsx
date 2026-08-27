@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from 'react'
 import BrandLogo from './BrandLogo'
+import DashboardInfoLayer from './DashboardInfoLayer'
 import DashboardLoader from './DashboardLoader'
 import DashboardKpiComparison from './DashboardKpiComparison'
 import FinalModelPlan from './FinalModelPlan'
@@ -105,6 +106,7 @@ function App() {
           />
           <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
           <DashboardKpiComparison finalDppAnalysis={finalDppAnalysis} />
+          <DashboardInfoLayer />
         </section>
 
         {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
