@@ -30,6 +30,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     testSignature,
     setTestSignature,
     setTestResult,
+    workspaceReady,
   } = useDppWorkspace()
   const [loading, setLoading] = useState(!generatedScenario)
   const [generating, setGenerating] = useState(false)
@@ -39,6 +40,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   })
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [exportElapsedSeconds, setExportElapsedSeconds] = useState(0)
   const [exportError, setExportError] = useState('')
   const generationTimerRef = useRef(null)
   const generationAbortRef = useRef(null)
@@ -73,23 +75,24 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   }, [apiUrl, setGeneratedScenario])
 
   useEffect(() => {
-    if (bootstrappedRef.current) return
+    if (!workspaceReady || bootstrappedRef.current) return
     bootstrappedRef.current = true
     if (generatedScenario) {
       setLoading(false)
       return
     }
     loadLatest()
-  }, [generatedScenario, loadLatest])
+  }, [workspaceReady, generatedScenario, loadLatest])
 
   useEffect(() => {
+    if (!workspaceReady) return
     if (bundle.referenceMonth && bundle.referenceMonth !== referenceMonth) {
       setReferenceMonth(bundle.referenceMonth)
     }
-  }, [bundle.referenceMonth, referenceMonth, setReferenceMonth])
+  }, [workspaceReady, bundle.referenceMonth, referenceMonth, setReferenceMonth])
 
   useEffect(() => {
-    if (loading || generating || !bundle.ready || !bundle.signature) return undefined
+    if (!workspaceReady || loading || generating || !bundle.ready || !bundle.signature) return undefined
     if (bundle.signature === generatedSignature && generatedScenario) return undefined
 
     window.clearTimeout(generationTimerRef.current)
@@ -98,11 +101,11 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     }, AUTO_RUN_DELAY)
 
     return () => window.clearTimeout(generationTimerRef.current)
-  }, [loading, generating, bundle.ready, bundle.signature, generatedSignature, generatedScenario])
+  }, [workspaceReady, loading, generating, bundle.ready, bundle.signature, generatedSignature, generatedScenario])
 
   useEffect(() => {
     window.clearTimeout(backgroundTestTimerRef.current)
-    if (loading || generating || !generatedScenario || !testBundle.ready || !testBundle.signature) return undefined
+    if (!workspaceReady || loading || generating || !generatedScenario || !testBundle.ready || !testBundle.signature) return undefined
     if (testBundle.signature === testSignature) return undefined
 
     backgroundTestTimerRef.current = window.setTimeout(() => {
@@ -110,7 +113,20 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     }, BACKGROUND_TEST_DELAY)
 
     return () => window.clearTimeout(backgroundTestTimerRef.current)
-  }, [loading, generating, generatedScenario, testBundle.ready, testBundle.signature, testSignature])
+  }, [workspaceReady, loading, generating, generatedScenario, testBundle.ready, testBundle.signature, testSignature])
+
+  useEffect(() => {
+    if (!exporting) {
+      setExportElapsedSeconds(0)
+      return undefined
+    }
+
+    const startedAt = Date.now()
+    const updateElapsed = () => setExportElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000))
+    updateElapsed()
+    const timer = window.setInterval(updateElapsed, 250)
+    return () => window.clearInterval(timer)
+  }, [exporting])
 
   async function prepareTestFromPackage() {
     if (!testBundle.ready || !testBundle.signature || testPreparingRef.current) return
@@ -220,13 +236,13 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   }
 
   async function exportOrionScenario() {
-    if (!generatedScenario?.scenario_id || !bundle.expectedDpp || exporting) return
+    if (!generatedScenario?.scenario_id || !bundle.baseDpp || exporting) return
 
     setExporting(true)
     setExportError('')
     const form = new FormData()
     form.append('scenario_id', generatedScenario.scenario_id)
-    form.append('template_dpp', bundle.expectedDpp)
+    form.append('base_dpp', bundle.baseDpp)
 
     try {
       const response = await fetch(`${apiUrl}/api/dpp/monthly/export`, {
@@ -263,12 +279,11 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     }
   }
 
-  if (loading) {
+  if (!workspaceReady || loading) {
     return (
       <section className="panel">
-        <span className="eyebrow">VISÃO OPERACIONAL</span>
-        <h3 style={{ marginTop: 14 }}>Carregando cenário mais recente...</h3>
-        <p>Consultando o cenário local já processado.</p>
+        <h3 style={{ marginTop: 0 }}>{workspaceReady ? 'Carregando cenário mais recente...' : 'Restaurando pacote do DPP...'}</h3>
+        <p>{workspaceReady ? 'Consultando o cenário local já processado.' : 'Recuperando os arquivos mantidos no armazenamento local deste navegador.'}</p>
       </section>
     )
   }
@@ -316,18 +331,26 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
               <span>ARQUIVO DO CENÁRIO</span>
               <strong>Excel do cenário ORION</strong>
               <small>
-                {bundle.expectedDpp
-                  ? 'Usa o DPP Final do pacote somente como modelo visual e substitui os dados da aba DPP pelos valores calculados pelo ORION.'
-                  : 'Adicione o DPP Final ao pacote para usar exatamente o mesmo layout do arquivo consolidado.'}
+                {bundle.baseDpp
+                  ? `Usa ${bundle.baseDpp.name} somente como estrutura visual. Todos os dados operacionais da aba DPP são preenchidos com o Cenário ORION.`
+                  : 'O DPP do mês anterior precisa estar no pacote para fornecer somente a estrutura visual do arquivo.'}
               </small>
             </div>
             <button
-              className="secondary-button dashboard-export-button"
+              className={`secondary-button dashboard-export-button ${exporting ? 'is-exporting' : ''}`}
               type="button"
               onClick={exportOrionScenario}
-              disabled={!bundle.expectedDpp || exporting || generating}
+              disabled={!bundle.baseDpp || exporting || generating}
+              aria-busy={exporting}
             >
-              {exporting ? 'Gerando Excel...' : 'Baixar Excel ORION'}
+              <span className="dashboard-export-button-label">
+                {exporting ? `Gerando Excel · ${exportElapsedSeconds}s` : 'Baixar Excel ORION'}
+              </span>
+              {exporting && (
+                <span className="dashboard-export-progress" aria-hidden="true">
+                  <span />
+                </span>
+              )}
             </button>
           </section>
           {exportError && <div className="alert error dashboard-export-error">{exportError}</div>}
