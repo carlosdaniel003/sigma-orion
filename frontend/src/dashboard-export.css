@@ -1,4 +1,8 @@
 /* Dashboard ORION export — action row, not another card. */
+.dpp-dashboard-view > .dashboard-shared-package {
+  margin-bottom: var(--space-3) !important;
+}
+
 .dpp-dashboard-view > .dashboard-scenario-export {
   order: 25;
   display: flex;
@@ -55,6 +59,10 @@
 }
 
 @media (max-width: 760px) {
+  .dpp-dashboard-view > .dashboard-shared-package {
+    margin-bottom: var(--space-3) !important;
+  }
+
   .dpp-dashboard-view > .dashboard-scenario-export {
     align-items: stretch;
     flex-direction: column;
