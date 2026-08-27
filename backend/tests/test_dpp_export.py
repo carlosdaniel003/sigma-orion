@@ -7,17 +7,17 @@ from app.services.dpp_export_service import export_monthly_scenario_excel
 from app.services.dpp_scenario_service import register_monthly_scenario
 
 
-def _template_workbook() -> bytes:
+def _previous_dpp_workbook() -> bytes:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "DPP"
 
-    sheet["A1"] = "KIT Disponivel PGD (JULHO)"
-    sheet["E1"] = 999
-    sheet["F1"] = 999
+    sheet["A1"] = "KIT Disponivel PGD (JUNHO)"
+    sheet["E1"] = 111
+    sheet["F1"] = 222
     sheet["A2"] = "REAL"
-    sheet["E2"] = 999
-    sheet["F2"] = 999
+    sheet["E2"] = 111
+    sheet["F2"] = 222
     sheet.append([])
     sheet.append([
         "Material",
@@ -37,13 +37,13 @@ def _template_workbook() -> bytes:
     ])
     sheet.append([
         "1001",
-        "Descrição final que deve ser substituída",
+        "Descrição histórica",
         "UN",
-        "FINAL",
+        "ANTERIOR",
         99,
         99,
-        "FINAL",
-        "FINAL-OPC",
+        "ANTERIOR",
+        "OPC-ANTERIOR",
         999,
         999,
         999,
@@ -53,6 +53,7 @@ def _template_workbook() -> bytes:
     ])
 
     sheet["A4"].fill = PatternFill(fill_type="solid", fgColor="123456")
+    sheet["A5"].fill = PatternFill(fill_type="solid", fgColor="654321")
     sheet.column_dimensions["A"].width = 18
     workbook.create_sheet("Resumo de Análise")["A1"] = "Layout preservado"
 
@@ -79,7 +80,22 @@ def _scenario_id() -> str:
                 "explosion": 5,
                 "stock_op": 5,
                 "stock_total": 50,
-            }
+            },
+            {
+                "material": "1002",
+                "material_key": "1002",
+                "description": "Material novo ORION",
+                "um": "UN",
+                "group_origin": "IMPORTADO",
+                "optional_material": None,
+                "check": "OK",
+                "consumption_by_model": {"MODELO A": 1},
+                "stock_sap": 20,
+                "stock_sap_effective": 20,
+                "explosion": 0,
+                "stock_op": 0,
+                "stock_total": 20,
+            },
         ],
         models=[
             {"name": "MODELO A", "code": "A-01", "kit_pgd": 10, "real": 10},
@@ -97,11 +113,11 @@ def _scenario_id() -> str:
     return scenario["scenario_id"]
 
 
-def test_export_preserves_workbook_layout_and_replaces_final_values_with_orion_scenario():
+def test_export_uses_previous_dpp_only_as_layout_and_writes_orion_values():
     content, filename, media_type = export_monthly_scenario_excel(
         scenario_id=_scenario_id(),
-        template_content=_template_workbook(),
-        template_filename="DPP JUL_2026.xlsx",
+        template_content=_previous_dpp_workbook(),
+        template_filename="DPP JUN_2026.xlsx",
     )
 
     assert filename == "DPP_ORION_2026_07.xlsx"
@@ -112,11 +128,13 @@ def test_export_preserves_workbook_layout_and_replaces_final_values_with_orion_s
         assert workbook.sheetnames == ["DPP", "Resumo de Análise"]
         sheet = workbook["DPP"]
 
+        # O cabeçalho/estrutura visual é o do arquivo anterior, mas KIT e REAL são do ORION.
         assert sheet["E1"].value == 10
         assert sheet["F1"].value == 20
         assert sheet["E2"].value == 10
         assert sheet["F2"].value == 20
 
+        # Material já existente: todos os valores operacionais antigos foram substituídos.
         assert sheet["B5"].value == "Material ORION"
         assert sheet["D5"].value == "LOCAL"
         assert sheet["E5"].value == 2
@@ -128,6 +146,15 @@ def test_export_preserves_workbook_layout_and_replaces_final_values_with_orion_s
         assert sheet["L5"].value == 50
         assert sheet["M5"].value == 30
         assert sheet["N5"].value == 20
+
+        # Material novo do mês é incluído copiando apenas o layout da linha anterior.
+        assert sheet["A6"].value == "1002"
+        assert sheet["B6"].value == "Material novo ORION"
+        assert sheet["D6"].value == "IMPORTADO"
+        assert sheet["E6"].value == 1
+        assert sheet["M6"].value == 10
+        assert sheet["N6"].value == 10
+        assert sheet["A6"].fill.fgColor.rgb.endswith("654321")
 
         assert sheet["A4"].fill.fgColor.rgb.endswith("123456")
         assert sheet.column_dimensions["A"].width == 18
