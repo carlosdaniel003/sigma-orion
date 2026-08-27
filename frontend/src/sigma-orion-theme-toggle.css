@@ -16,7 +16,7 @@
   --orion-success-soft: rgba(29, 112, 70, 0.08);
   --orion-warning-soft: rgba(138, 93, 23, 0.08);
   --orion-danger-soft: rgba(180, 35, 47, 0.07);
-  --orion-shadow: 0 14px 36px rgba(0, 0, 0, 0.055);
+  --orion-shadow: none;
 }
 
 :root[data-theme='dark'] {
@@ -37,7 +37,6 @@
   color-scheme: dark;
 }
 
-/* Left dock theme control */
 .workspace-dock-separator {
   width: 22px;
   height: 1px;
@@ -60,7 +59,6 @@
   color: var(--orion-blue) !important;
 }
 
-/* Restore the restrained black-and-white Apple language in light mode. */
 :root[data-theme='light'] .topbar {
   background: rgba(245, 245, 247, 0.98) !important;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.045) !important;
@@ -69,12 +67,7 @@
 :root[data-theme='light'] .topbar-nav,
 :root[data-theme='light'] .workspace-dock {
   background: #ffffff !important;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.075) !important;
-}
-
-:root[data-theme='light'] .brand-mark {
-  background: #1d1d1f !important;
-  color: #ffffff !important;
+  box-shadow: var(--shadow-control, 0 1px 2px rgba(0, 0, 0, 0.08)) !important;
 }
 
 :root[data-theme='light'] .nav-icon-button:hover,
@@ -98,7 +91,7 @@
   border-color: #1d1d1f !important;
   background: #1d1d1f !important;
   color: #ffffff !important;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14) !important;
 }
 
 :root[data-theme='light'] .primary-button,
@@ -140,13 +133,12 @@
   stroke: #1d1d1f !important;
 }
 
-:root[data-theme='light'] .orion-constellation-node.active .node-dot,
-:root[data-theme='light'] .orion-constellation-core .orion-core-point {
+:root[data-theme='light'] .orion-constellation-node.active .node-dot {
   fill: #1d1d1f !important;
 }
 
 :root[data-theme='light'] .orion-working-overlay {
-  background: rgba(29, 29, 31, 0.48) !important;
+  background: var(--orion-bg) !important;
 }
 
 :root[data-theme='light'] ::selection {
