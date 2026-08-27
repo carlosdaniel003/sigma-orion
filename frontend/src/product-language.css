@@ -58,7 +58,6 @@ body {
   line-height: 1.45;
 }
 
-/* Density: this is an operating surface, not a landing page. */
 .content {
   padding-top: var(--space-5) !important;
   padding-bottom: 64px !important;
@@ -106,7 +105,6 @@ body {
   line-height: 1.5 !important;
 }
 
-/* Content hierarchy comes from borders, surfaces and typography; not elevation. */
 .panel,
 .metric,
 .result-card,
@@ -169,7 +167,6 @@ body {
   border-radius: var(--radius-sm) !important;
 }
 
-/* Controls stay compact. Pill geometry remains reserved for actual status chips. */
 button,
 input,
 textarea,
@@ -202,7 +199,6 @@ select {
   font-size: var(--text-sm) !important;
 }
 
-/* Navigation may float, but only with subtle physical separation. */
 .workspace-dock,
 .topbar-nav {
   border-radius: var(--radius-md) !important;
@@ -216,7 +212,6 @@ select {
   border-radius: var(--radius-sm) !important;
 }
 
-/* Estado do DPP: one comparison section, not cards nested inside a card. */
 .dpp-state-grid {
   gap: 0 !important;
   overflow: hidden;
@@ -268,7 +263,6 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
-/* Evolution is a list: keep rows dense and flat. */
 .dpp-evolution-list {
   overflow: hidden;
 }
@@ -284,7 +278,6 @@ select {
   font-size: var(--text-sm) !important;
 }
 
-/* Comparison: one structured matrix instead of eight floating cards. */
 .dashboard-kpi-comparison {
   padding: var(--space-5) !important;
 }
@@ -333,7 +326,6 @@ select {
   font-size: var(--text-xs) !important;
 }
 
-/* Construction facts become a compact data strip rather than six standalone cards. */
 .dashboard-fact-grid {
   gap: 0 !important;
   overflow: hidden;
@@ -365,7 +357,6 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
-/* Final model plan: insights are one band with dividers. */
 .final-model-plan {
   padding: var(--space-5) !important;
 }
@@ -415,7 +406,6 @@ select {
   font-size: var(--text-sm) !important;
 }
 
-/* Risk tables: engineering density, minimal decoration. */
 .dashboard-risk-grid {
   gap: var(--space-4) !important;
 }
@@ -443,7 +433,6 @@ select {
   font-size: var(--text-sm) !important;
 }
 
-/* Package controls: reduce card-within-card effect. */
 .bulk-file-picker {
   padding: var(--space-4) !important;
 }
@@ -453,7 +442,6 @@ select {
   box-shadow: none !important;
 }
 
-/* Status chips remain intentionally compact/pill-like because the shape encodes status. */
 .status,
 .eyebrow,
 .source-state,
@@ -464,7 +452,6 @@ select {
   font-size: var(--text-xs) !important;
 }
 
-/* Tables are first-class; numeric columns should scan cleanly. */
 table td.number-cell,
 table .number-cell,
 .real-value,
@@ -474,17 +461,53 @@ table .number-cell,
   font-variant-numeric: tabular-nums;
 }
 
-/* No ornamental glow. Keep semantic focus ring only. */
 .status-dot,
 .readiness-marker,
 .pipeline-marker {
   box-shadow: none !important;
 }
 
-/* Light mode stays neutral; no large elevation is reintroduced. */
 :root[data-theme='light'] .workspace-dock,
 :root[data-theme='light'] .topbar-nav {
   box-shadow: var(--shadow-control) !important;
+}
+
+/* Loader is a full-screen operating state, not a floating marketing card. */
+.orion-working-overlay,
+:root[data-theme='light'] .orion-working-overlay {
+  background: var(--orion-bg) !important;
+}
+
+.orion-working,
+.orion-working.compact {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.orion-working-progress span {
+  background: var(--orion-blue) !important;
+}
+
+.orion-working.complete .orion-working-progress span,
+.orion-working.constellation-closing .orion-working-progress span {
+  background: var(--orion-success) !important;
+}
+
+.orion-constellation-node.done .node-dot {
+  fill: var(--orion-success) !important;
+  stroke: none !important;
+}
+
+.orion-constellation-node.active .node-dot {
+  fill: var(--orion-blue) !important;
+  stroke: none !important;
+}
+
+.orion-constellation-node.future .node-dot {
+  fill: var(--orion-neutral) !important;
+  stroke: none !important;
 }
 
 @media (max-width: 1000px) {
