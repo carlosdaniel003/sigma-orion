@@ -26,6 +26,7 @@ A prioridade atual é manter os cálculos objetivos fora da LLM e construir um f
 - Backend: Python + FastAPI
 - Planilhas: OpenPyXL + Pandas
 - Persistência local: SQLite + SQLAlchemy
+- Persistência do pacote no navegador: IndexedDB
 - Conhecimento: Markdown versionado
 - RAG atual: recuperação lexical local
 - LLM padrão: mock
@@ -62,7 +63,7 @@ OPEN é evidência auxiliar e não altera estoque.
 
 ## Pacote compartilhado do mês
 
-O frontend aceita uma única seleção de arquivos e reutiliza o mesmo pacote enquanto a aplicação permanece aberta:
+O frontend aceita uma única seleção de arquivos e reutiliza o mesmo pacote:
 
 - DPP do mês anterior;
 - DPP final/consolidado do mês;
@@ -72,9 +73,11 @@ O frontend aceita uma única seleção de arquivos e reutiliza o mesmo pacote en
 - PGD;
 - WIU.
 
-O workspace React mantém os arquivos e resultados em memória entre Dashboard e Testes do DPP.
+Os `File` objects não ficam mais apenas no estado React. O pacote e o mês de referência são persistidos em **IndexedDB** e restaurados antes de o Dashboard decidir se precisa carregar ou reconstruir um cenário. As assinaturas de geração/teste são mantidas em `localStorage` para evitar recomputações desnecessárias do mesmo pacote.
 
-Limitação atual: recarregar/fechar a página perde os `File` objects; persistência entre sessões exigirá workspace temporário no backend.
+O navegador também solicita armazenamento persistente quando a API `navigator.storage.persist()` está disponível. Assim, troca de tela, tempo prolongado de uso e atualização da página não devem fazer o sistema voltar ao estado de “nenhuma planilha carregada”. Se o cache de cenários do backend tiver expirado ou o backend tiver reiniciado, os arquivos locais continuam disponíveis para reconstruir o cenário automaticamente.
+
+O botão **Limpar pacote** continua sendo a ação explícita que remove o conjunto atual do workspace.
 
 ## Geração mensal
 
@@ -113,7 +116,7 @@ Componentes atuais incluem:
 
 - pacote compartilhado do mês;
 - contexto do cenário atual;
-- exportação do cenário ORION para Excel usando o layout do DPP Final como modelo visual;
+- exportação do Cenário ORION para Excel usando o **DPP do mês anterior somente como base visual**;
 - Estado do DPP — ORION vs Final;
 - Evolução do DPP;
 - indicadores comparados ORION vs DPP Final;
@@ -125,25 +128,27 @@ Componentes atuais incluem:
 
 ### Exportação Excel do cenário ORION
 
-O Dashboard disponibiliza **Baixar Excel ORION** quando existe um DPP Final no pacote.
+O Dashboard disponibiliza **Baixar Excel ORION** sempre que o Cenário ORION e o DPP do mês anterior estão disponíveis no pacote.
 
 Fluxo:
 
 ```text
 Cenário ORION em memória
         +
-DPP Final do pacote usado apenas como template de layout
+DPP do mês anterior usado somente como molde visual
         ↓
 backend OpenPyXL
         ↓
 mesmo workbook / mesmas folhas / estilos / larguras / formatação
         ↓
-aba DPP reescrita com dados do Cenário ORION
+aba DPP preenchida somente com dados do Cenário ORION
         ↓
 DPP_ORION_AAAA_MM.xlsx ou .xlsm
 ```
 
-O exportador substitui no layout atual:
+O **DPP Final não participa da geração do Excel ORION**.
+
+O exportador substitui no layout anterior:
 
 - KIT disponível PGD por modelo;
 - REAL ORION por modelo;
@@ -158,7 +163,9 @@ O exportador substitui no layout atual:
 - NEC;
 - SALDO.
 
-O DPP Final é usado como **template visual**, não como fonte desses valores. Materiais do Cenário ORION precisam existir no template para evitar gerar um arquivo visualmente compatível porém incompleto. O workbook é marcado para recálculo automático ao abrir no Excel.
+Materiais novos do Cenário ORION que não existiam no DPP anterior são adicionados copiando somente o estilo estrutural de uma linha de material existente; os valores preenchidos continuam vindo do cenário atual. Linhas históricas que não pertencem ao cenário atual têm os valores operacionais anteriores limpos para não carregar informação do mês passado como se fosse ORION.
+
+O workbook é marcado para recálculo automático ao abrir no Excel.
 
 Endpoint:
 
@@ -166,7 +173,16 @@ Endpoint:
 POST /api/dpp/monthly/export
 ```
 
+Campos principais:
+
+```text
+scenario_id
+base_dpp   ← DPP do mês anterior
+```
+
 A geração é feita em memória; nenhum Excel corporativo exportado é gravado no repositório.
+
+Como a exportação ainda é uma única resposta HTTP e não possui checkpoints percentuais próprios, o botão apresenta uma **barra indeterminada honesta** e contador de segundos durante `Gerando Excel`, em vez de inventar uma porcentagem falsa.
 
 ## Plano consolidado por modelo
 
@@ -339,14 +355,16 @@ Nunca versionar:
 - uploads;
 - dados sensíveis.
 
+Os arquivos persistidos em IndexedDB permanecem somente no navegador/origem local do usuário; não são enviados para serviços externos por causa dessa persistência.
+
 ## Limitações atuais
 
 - solver automático do REAL ainda não está habilitado;
 - conversões `KG→G`, `M→CM` e `L→ML` ainda não estão formalizadas no motor operacional;
 - investigação automática completa ainda será construída;
-- jobs de geração são mantidos em memória e se perdem com reinício do backend;
+- jobs e cenários calculados são mantidos em memória no backend e se perdem com reinício do backend;
 - não há cancelamento de job no backend;
-- workspace de arquivos do frontend não persiste após F5;
+- o pacote persistido em IndexedDB pode ser removido se o usuário limpar os dados do site/navegador;
 - preparação automática de Testes pode repetir processamento pesado em alguns fluxos;
 - o DPP Final é analisado por endpoint separado para comparação do Dashboard.
 
@@ -355,7 +373,7 @@ Nunca versionar:
 1. formalizar e validar cálculo de capacidade real por modelo/material;
 2. evoluir investigação automática de críticos;
 3. reduzir recomputações desnecessárias do pacote mensal;
-4. persistir workspace temporário de arquivos/resultados no backend;
+4. persistir resultados/cenários temporários no backend sem duplicar planilhas corporativas permanentemente;
 5. manter Dashboard orientado às perguntas do analista, evitando redundância;
 6. integrar RAG/LLM somente sobre fatos já consolidados pelo motor determinístico;
 7. integrar n8n quando a orquestração externa trouxer valor real.
