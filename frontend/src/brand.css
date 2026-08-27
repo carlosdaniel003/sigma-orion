@@ -1,0 +1,126 @@
+.topbar-brand {
+  min-width: 0;
+  height: 44px;
+  padding: 3px 8px 3px 5px;
+  color: var(--orion-text) !important;
+}
+
+.brand-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.brand-logo {
+  display: block;
+  color: var(--orion-text);
+  overflow: visible;
+}
+
+.brand-logo-full {
+  width: 238px;
+  height: 38px;
+}
+
+.brand-logo-compact {
+  display: none;
+  width: 36px;
+  height: 36px;
+}
+
+.orion-brand-ring {
+  fill: none;
+  stroke: var(--orion-blue);
+  stroke-width: 3.2;
+}
+
+.orion-brand-orbit {
+  fill: none;
+  stroke: var(--orion-blue);
+  stroke-width: 2.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orion-brand-constellation {
+  fill: none;
+  stroke: var(--orion-blue);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  opacity: 0.72;
+}
+
+.orion-brand-star,
+.orion-brand-nucleus {
+  stroke: var(--orion-surface);
+  stroke-width: 1.05;
+}
+
+.orion-brand-star-blue,
+.orion-brand-star-core,
+.orion-brand-nucleus {
+  fill: var(--orion-blue);
+}
+
+.orion-brand-star-green {
+  fill: var(--orion-success);
+}
+
+.brand-logo-word {
+  fill: currentColor;
+  font-family: "Arial Black", "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 15.4px;
+  font-weight: 900;
+  letter-spacing: 1.25px;
+  paint-order: stroke fill;
+  stroke: currentColor;
+  stroke-width: 0.12px;
+}
+
+.brand-logo-sigma {
+  letter-spacing: 1.45px;
+}
+
+.brand-logo-rion {
+  letter-spacing: 1.35px;
+}
+
+.topbar-brand:hover .orion-brand-ring,
+.topbar-brand:hover .orion-brand-orbit,
+.topbar-brand:focus-visible .orion-brand-ring,
+.topbar-brand:focus-visible .orion-brand-orbit {
+  stroke: var(--orion-blue);
+}
+
+:root[data-theme='light'] .topbar-brand,
+:root[data-theme='light'] .brand-logo {
+  color: #1d1d1f !important;
+}
+
+:root[data-theme='light'] .orion-brand-star,
+:root[data-theme='light'] .orion-brand-nucleus {
+  stroke: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .topbar-brand {
+    width: 40px;
+    padding: 2px;
+  }
+
+  .brand-logo-full {
+    display: none;
+  }
+
+  .brand-logo-compact {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .orion-brand-ring,
+  .orion-brand-orbit,
+  .brand-logo-word {
+    transition: stroke 140ms ease, fill 140ms ease, color 140ms ease;
+  }
+}
