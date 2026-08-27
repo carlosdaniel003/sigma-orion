@@ -35,19 +35,33 @@ const TITLES = {
   dashboard: 'Analisando o DPP final',
 }
 
+// Geometria simplificada da constelação de Órion:
+// cabeça, ombros, Três Marias e dois pés principais.
 const CONSTELLATION_NODES = [
-  { x: 38, y: 126, start: 0 },
-  { x: 92, y: 54, start: 10 },
-  { x: 157, y: 88, start: 31 },
-  { x: 214, y: 38, start: 60 },
-  { x: 300, y: 88, start: 72 },
-  { x: 252, y: 160, start: 88 },
-  { x: 142, y: 174, start: 97 },
+  { id: 'meissa', x: 170, y: 20, start: 0 },
+  { id: 'betelgeuse', x: 103, y: 61, start: 10 },
+  { id: 'bellatrix', x: 235, y: 62, start: 31 },
+  { id: 'mintaka', x: 132, y: 104, start: 42 },
+  { id: 'alnilam', x: 170, y: 111, start: 60 },
+  { id: 'alnitak', x: 210, y: 118, start: 72 },
+  { id: 'saiph', x: 103, y: 193, start: 88 },
+  { id: 'rigel', x: 246, y: 188, start: 97 },
 ]
 
-const COMPLETION_HOLD_MS = 320
-const CONSTELLATION_CLOSE_MS = 420
-const PANEL_CLOSE_MS = 260
+const CONSTELLATION_EDGES = [
+  { from: 'meissa', to: 'betelgeuse', start: 10 },
+  { from: 'meissa', to: 'bellatrix', start: 31 },
+  { from: 'betelgeuse', to: 'mintaka', start: 42 },
+  { from: 'mintaka', to: 'alnilam', start: 60 },
+  { from: 'alnilam', to: 'alnitak', start: 72 },
+  { from: 'bellatrix', to: 'alnitak', start: 72 },
+  { from: 'mintaka', to: 'saiph', start: 88 },
+  { from: 'alnitak', to: 'rigel', start: 97 },
+]
+
+const COMPLETION_HOLD_MS = 620
+const CONSTELLATION_CLOSE_MS = 460
+const PANEL_CLOSE_MS = 240
 
 function getMeasuredNodeIndex(progress) {
   let index = 0
@@ -57,67 +71,69 @@ function getMeasuredNodeIndex(progress) {
   return index
 }
 
-function OrionConstellation({ measured, progress, stageIndex }) {
+function OrionConstellation({ measured, progress, stageIndex, complete = false }) {
   const activeIndex = measured
     ? getMeasuredNodeIndex(progress)
     : Math.min(stageIndex, CONSTELLATION_NODES.length - 1)
 
+  const nodesById = Object.fromEntries(CONSTELLATION_NODES.map((node) => [node.id, node]))
+
   function nodeState(index) {
-    if (measured && progress >= 100) return 'done'
+    if (complete || (measured && progress >= 100)) return 'done'
     if (index < activeIndex) return 'done'
     if (index === activeIndex) return 'active'
     return 'future'
   }
 
-  function segmentState(index) {
-    if (measured && progress >= 100) return 'done'
-    if (index < activeIndex) return 'done'
-    if (index === activeIndex) return 'active'
+  function edgeState(edge) {
+    if (complete || (measured && progress >= 100)) return 'done'
+    if (measured) {
+      if (progress > edge.start) return 'done'
+      if (progress >= edge.start - 1) return 'active'
+      return 'future'
+    }
+
+    const targetIndex = CONSTELLATION_NODES.findIndex((node) => node.id === edge.to)
+    if (targetIndex < activeIndex) return 'done'
+    if (targetIndex === activeIndex) return 'active'
     return 'future'
   }
 
   return (
     <div className="orion-constellation" aria-hidden="true">
-      <svg viewBox="0 0 340 214" role="presentation">
+      <svg viewBox="0 0 340 218" role="presentation">
         <g className="orion-constellation-structure">
-          <line x1="38" y1="126" x2="176" y2="116" />
-          <line x1="157" y1="88" x2="176" y2="116" />
-          <line x1="214" y1="38" x2="176" y2="116" />
-          <line x1="300" y1="88" x2="176" y2="116" />
-          <line x1="252" y1="160" x2="176" y2="116" />
-          <line x1="142" y1="174" x2="176" y2="116" />
-        </g>
-
-        <g className="orion-constellation-path">
-          {CONSTELLATION_NODES.slice(0, -1).map((node, index) => {
-            const next = CONSTELLATION_NODES[index + 1]
-            return (
-              <line
-                key={`segment-${index}`}
-                className={`orion-constellation-segment ${segmentState(index)}`}
-                x1={node.x}
-                y1={node.y}
-                x2={next.x}
-                y2={next.y}
-              />
-            )
+          {CONSTELLATION_EDGES.map((edge) => {
+            const from = nodesById[edge.from]
+            const to = nodesById[edge.to]
+            return <line key={`structure-${edge.from}-${edge.to}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
           })}
         </g>
 
-        <g className="orion-constellation-core">
-          <circle className="orion-core-aura" cx="176" cy="116" r="27" />
-          <circle className="orion-core-disc" cx="176" cy="116" r="18" />
-          <path className="orion-core-mark" d="M168 116h16M176 108v16" />
-          <circle className="orion-core-point" cx="176" cy="116" r="3.5" />
+        <g className="orion-constellation-path">
+          {CONSTELLATION_EDGES.map((edge) => {
+            const from = nodesById[edge.from]
+            const to = nodesById[edge.to]
+            return (
+              <line
+                key={`${edge.from}-${edge.to}`}
+                className={`orion-constellation-segment ${edgeState(edge)}`}
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
+              />
+            )
+          })}
         </g>
 
         <g className="orion-constellation-nodes">
           {CONSTELLATION_NODES.map((node, index) => {
             const state = nodeState(index)
             return (
-              <g key={`node-${index}`} className={`orion-constellation-node ${state}`}>
-                <circle className="node-halo" cx={node.x} cy={node.y} r="10" />
-                <circle className="node-dot" cx={node.x} cy={node.y} r="4.5" />
+              <g key={node.id} className={`orion-constellation-node ${state}`}>
+                <circle className="node-halo" cx={node.x} cy={node.y} r="9" />
+                <circle className="node-dot" cx={node.x} cy={node.y} r={node.id === 'alnilam' ? 4.8 : 4.2} />
               </g>
             )
           })}
@@ -276,13 +292,14 @@ function OrionWorking({ active, mode = 'generate', compact = false, progress = n
           measured={measured}
           progress={displayedProgress ?? 0}
           stageIndex={stageIndex}
+          complete={finishing}
         />
 
         <div className="orion-working-copy">
           <h3 id="orion-working-title">{finishing ? 'Processamento concluído' : (TITLES[mode] || TITLES.generate)}</h3>
           <p className="orion-working-subtitle">
             {finishing
-              ? 'Cenário consolidado. Finalizando a constelação operacional.'
+              ? 'Cenário consolidado. A constelação de Órion está completa.'
               : 'Analisando, conectando e consolidando dados reais para montar o cenário operacional.'}
           </p>
 
