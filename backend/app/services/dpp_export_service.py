@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import copy
 from io import BytesIO
 from pathlib import Path
@@ -18,6 +19,12 @@ from app.services.dpp_monthly_base import (
 from app.services.dpp_scenario_service import get_monthly_scenario
 
 SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm"}
+ProgressCallback = Callable[[int, str], None]
+
+
+def _notify(progress: ProgressCallback | None, value: int, activity: str) -> None:
+    if progress is not None:
+        progress(value, activity)
 
 
 def _number(value: object) -> float:
@@ -104,7 +111,12 @@ def _allocate_missing_material_rows(
     return template_rows
 
 
-def _write_orion_scenario_to_dpp(workbook, scenario: dict) -> None:
+def _write_orion_scenario_to_dpp(
+    workbook,
+    scenario: dict,
+    progress: ProgressCallback | None = None,
+) -> None:
+    _notify(progress, 18, "Lendo estrutura da aba DPP")
     if SOURCE_SHEET not in workbook.sheetnames:
         raise ValueError("O DPP do mês anterior usado como modelo não possui a aba 'DPP'.")
 
@@ -139,21 +151,33 @@ def _write_orion_scenario_to_dpp(workbook, scenario: dict) -> None:
     if model_end < origin_col + 1:
         raise ValueError("Não foi possível localizar as colunas de modelos no layout do DPP do mês anterior.")
 
+    _notify(progress, 24, "Mapeando modelos no layout do Excel")
     scenario_models = {
         _normalize(model.get("name")): model
         for model in scenario.get("models", [])
         if model.get("name")
     }
+    template_model_columns = [
+        column
+        for column in range(origin_col + 1, model_end + 1)
+        if sheet.cell(header_row, column).value not in (None, "")
+    ]
     model_columns: dict[int, dict | None] = {}
-    for column in range(origin_col + 1, model_end + 1):
+    total_model_columns = max(len(template_model_columns), 1)
+    last_model_progress = -1
+    for index, column in enumerate(template_model_columns, start=1):
         template_name = sheet.cell(header_row, column).value
-        if template_name in (None, ""):
-            continue
         model = scenario_models.get(_normalize(template_name))
         model_columns[column] = model
         sheet.cell(kit_row, column).value = _number(model.get("kit_pgd")) if model else 0.0
         sheet.cell(real_row, column).value = _number(model.get("real")) if model else 0.0
 
+        current_progress = 24 + int((index / total_model_columns) * 10)
+        if current_progress != last_model_progress:
+            _notify(progress, current_progress, f"Preenchendo KIT e REAL · {index}/{len(template_model_columns)} modelos")
+            last_model_progress = current_progress
+
+    _notify(progress, 36, "Preparando linhas de materiais")
     scenario_materials = {
         _material_key(material.get("material")): material
         for material in scenario.get("materials", [])
@@ -166,7 +190,10 @@ def _write_orion_scenario_to_dpp(workbook, scenario: dict) -> None:
         scenario_material_keys=list(scenario_materials),
     )
 
-    for key, row in template_material_rows.items():
+    _notify(progress, 38, "Preenchendo dados calculados pelo ORION")
+    total_material_rows = max(len(template_material_rows), 1)
+    last_material_progress = -1
+    for index, (key, row) in enumerate(template_material_rows.items(), start=1):
         material = scenario_materials.get(key)
         if material is None:
             # O arquivo anterior é apenas molde. Linhas históricas que não pertencem ao cenário atual
@@ -185,44 +212,57 @@ def _write_orion_scenario_to_dpp(workbook, scenario: dict) -> None:
             ):
                 if column:
                     sheet.cell(row, column).value = None
-            continue
+        else:
+            sheet.cell(row, material_col).value = material.get("material")
+            sheet.cell(row, description_col).value = material.get("description")
+            sheet.cell(row, um_col).value = material.get("um")
+            sheet.cell(row, origin_col).value = material.get("group_origin")
 
-        sheet.cell(row, material_col).value = material.get("material")
-        sheet.cell(row, description_col).value = material.get("description")
-        sheet.cell(row, um_col).value = material.get("um")
-        sheet.cell(row, origin_col).value = material.get("group_origin")
+            consumption = material.get("consumption_by_model") or {}
+            normalized_consumption = {_normalize(name): _number(value) for name, value in consumption.items()}
+            for column, model in model_columns.items():
+                model_name = _normalize(model.get("name")) if model else _normalize(sheet.cell(header_row, column).value)
+                sheet.cell(row, column).value = normalized_consumption.get(model_name, 0.0)
 
-        consumption = material.get("consumption_by_model") or {}
-        normalized_consumption = {_normalize(name): _number(value) for name, value in consumption.items()}
-        for column, model in model_columns.items():
-            model_name = _normalize(model.get("name")) if model else _normalize(sheet.cell(header_row, column).value)
-            sheet.cell(row, column).value = normalized_consumption.get(model_name, 0.0)
+            if check_col:
+                sheet.cell(row, check_col).value = material.get("check") or material.get("status")
+            if optional_col:
+                sheet.cell(row, optional_col).value = material.get("optional_material")
+            if stock_sap_col:
+                sheet.cell(row, stock_sap_col).value = _number(material.get("stock_sap_effective", material.get("stock_sap")))
+            if explosion_col:
+                sheet.cell(row, explosion_col).value = _number(material.get("explosion"))
+            if stock_op_col:
+                sheet.cell(row, stock_op_col).value = _number(material.get("stock_op"))
+            if stock_total_col:
+                sheet.cell(row, stock_total_col).value = _number(material.get("stock_total"))
+            if nec_col:
+                sheet.cell(row, nec_col).value = _number(material.get("nec"))
+            if balance_col:
+                sheet.cell(row, balance_col).value = _number(material.get("balance"))
 
-        if check_col:
-            sheet.cell(row, check_col).value = material.get("check") or material.get("status")
-        if optional_col:
-            sheet.cell(row, optional_col).value = material.get("optional_material")
-        if stock_sap_col:
-            sheet.cell(row, stock_sap_col).value = _number(material.get("stock_sap_effective", material.get("stock_sap")))
-        if explosion_col:
-            sheet.cell(row, explosion_col).value = _number(material.get("explosion"))
-        if stock_op_col:
-            sheet.cell(row, stock_op_col).value = _number(material.get("stock_op"))
-        if stock_total_col:
-            sheet.cell(row, stock_total_col).value = _number(material.get("stock_total"))
-        if nec_col:
-            sheet.cell(row, nec_col).value = _number(material.get("nec"))
-        if balance_col:
-            sheet.cell(row, balance_col).value = _number(material.get("balance"))
+        current_progress = 38 + int((index / total_material_rows) * 50)
+        if current_progress != last_material_progress:
+            _notify(progress, current_progress, f"Preenchendo materiais · {index}/{len(template_material_rows)}")
+            last_material_progress = current_progress
 
+    _notify(progress, 90, "Configurando recálculo das fórmulas")
     _set_recalculation(workbook)
 
 
-def export_monthly_scenario_excel(*, scenario_id: str, template_content: bytes, template_filename: str) -> tuple[bytes, str, str]:
+def export_monthly_scenario_excel(
+    *,
+    scenario_id: str,
+    template_content: bytes,
+    template_filename: str,
+    progress: ProgressCallback | None = None,
+) -> tuple[bytes, str, str]:
+    _notify(progress, 4, "Validando cenário ORION")
     scenario = get_monthly_scenario(scenario_id)
     if scenario is None:
         raise ValueError("Cenário ORION não encontrado ou expirado. Gere o cenário mensal novamente.")
 
+    _notify(progress, 8, "Validando DPP do mês anterior")
     extension = Path(template_filename or "dpp.xlsx").suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
         raise ValueError("Use como modelo o DPP do mês anterior em formato .xlsx ou .xlsm.")
@@ -230,11 +270,15 @@ def export_monthly_scenario_excel(*, scenario_id: str, template_content: bytes, 
         raise ValueError("O DPP do mês anterior usado como modelo está vazio.")
 
     keep_vba = extension == ".xlsm"
+    _notify(progress, 12, "Abrindo workbook do mês anterior")
     workbook = load_workbook(BytesIO(template_content), data_only=False, keep_vba=keep_vba)
+    _notify(progress, 16, "Workbook carregado")
     try:
-        _write_orion_scenario_to_dpp(workbook, scenario)
+        _write_orion_scenario_to_dpp(workbook, scenario, progress=progress)
+        _notify(progress, 94, "Serializando workbook para Excel")
         output = BytesIO()
         workbook.save(output)
+        _notify(progress, 99, "Finalizando arquivo para download")
     finally:
         workbook.close()
 
