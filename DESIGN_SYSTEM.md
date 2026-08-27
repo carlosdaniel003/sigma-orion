@@ -297,6 +297,15 @@ Permitido:
 - feedback de hover/focus;
 - entrada/saída funcional de overlay.
 
+### Regra de progresso
+
+Quando a interface exibir um **percentual numérico**, esse valor deve vir de telemetria real do processamento no backend ou de uma contagem objetiva de trabalho concluído. Não interpolar, estimar ou animar uma porcentagem falsa apenas para transmitir sensação de avanço.
+
+- percentual disponível = barra determinada + número real;
+- apenas etapas conhecidas = usar checkpoints reais e documentar o que representam;
+- sem telemetria suficiente = usar progresso indeterminado, sem percentual inventado;
+- `100%` somente depois que o backend concluir de fato o artefato/operação correspondente.
+
 ### Tela de carregamento
 
 A animação de progresso deve usar uma geometria simplificada da **constelação real de Órion**. A forma final precisa ser reconhecível por:
