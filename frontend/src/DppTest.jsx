@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
+import InfoHint from './InfoHint'
 import OrionWorking from './OrionWorking'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './dpp-consolidation.css'
@@ -22,6 +23,81 @@ const CHECK_LABELS = {
   stock_total: 'STK TTL',
   nec: 'NEC',
   balance: 'SALDO',
+}
+
+const TEST_INFO = {
+  overview: {
+    title: 'Testes do DPP',
+    what: 'Reconstrói um mês conhecido com o motor determinístico do ORION e compara o resultado contra o DPP consolidado usado como gabarito.',
+    source: 'DPP do mês anterior, WIU, Explosão, STK SAP, PGD e OPEN opcional; o DPP Final do mês é usado como referência esperada da comparação.',
+    purpose: 'Validar se as regras Python reproduzem corretamente o processo mensal antes de usar o motor como base operacional.',
+  },
+  month: {
+    title: 'Mês que será reconstruído',
+    what: 'Define o mês de referência do teste que o ORION deve reconstruir.',
+    source: 'Mês selecionado pelo usuário ou detectado a partir do pacote carregado.',
+    purpose: 'Garantir que PGD, fontes mensais e DPP esperado sejam comparados no mesmo período.',
+  },
+  sharedPackage: {
+    title: 'Pacote compartilhado',
+    what: 'Confirma que a tela de Testes reutiliza os mesmos arquivos carregados no workspace do Dashboard.',
+    source: 'Workspace local do DPP, persistido no navegador e compartilhado entre Dashboard e Testes.',
+    purpose: 'Evitar selecionar arquivos repetidamente e impedir que cada tela valide um conjunto de fontes diferente.',
+  },
+  package: {
+    title: 'Pacote atual do DPP',
+    what: 'Lista as fontes reconhecidas para reconstruir e validar o mês: DPP anterior, DPP Final esperado, STK SAP, Explosão, PGD, WIU e OPEN quando disponível.',
+    source: 'Arquivos selecionados pelo usuário e classificados pelo frontend conforme a função de cada planilha.',
+    purpose: 'Permitir conferir rapidamente se o teste está usando todas as entradas obrigatórias e qual arquivo atua como gabarito.',
+  },
+  execution: {
+    title: 'Execução do teste',
+    what: 'Informa se o resultado já pertence ao pacote atual, se uma nova reconstrução é necessária e permite executar novamente sob demanda.',
+    source: 'Assinatura do pacote compartilhado, resultado armazenado no workspace e endpoint /api/dpp/monthly/test.',
+    purpose: 'Evitar processamento pesado repetido sem esconder quando o teste precisa ser executado de novo.',
+  },
+  verdict: {
+    title: 'Resultado do teste',
+    what: 'Resume se existem divergências atribuídas ao motor ORION após separar diferenças humanas e correções conhecidas do legado.',
+    source: 'Classificação final produzida pelo serviço de reconstrução e comparação campo a campo.',
+    purpose: 'Responder primeiro se o motor determinístico reproduziu corretamente os campos críticos do DPP.',
+  },
+  controlledReal: {
+    title: 'REAL controlado',
+    what: 'Durante este teste, o REAL do DPP esperado é aplicado ao cenário reconstruído para isolar a validação dos cálculos derivados.',
+    source: 'Linha REAL do DPP Final usado como gabarito do mês conhecido.',
+    purpose: 'Testar NEC, SALDO, estoques e demais regras sem confundir o resultado com um futuro solver automático de REAL, que ainda não está sendo validado aqui.',
+  },
+  validationSummary: {
+    title: 'Resumo das validações',
+    what: 'Mostra rapidamente a relação iguais/comparados nos principais grupos: Materiais, Matriz, KIT PGD, STK SAP, Explosão, NEC e SALDO.',
+    source: 'Contadores gerados durante a comparação do Cenário ORION reconstruído contra o DPP esperado.',
+    purpose: 'Localizar de imediato qual grupo precisa ser investigado antes de abrir o detalhamento campo a campo.',
+  },
+  fieldComparison: {
+    title: 'Comparação campo a campo',
+    what: 'Consolida, para cada grupo de validação, quantos valores foram comparados, quantos ficaram iguais e quantos foram classificados como intervenção humana, correção do legado ou divergência ORION.',
+    source: 'Resultado detalhado do serviço de teste após reconstruir o mês e comparar cada campo suportado com o DPP esperado.',
+    purpose: 'Dar rastreabilidade quantitativa ao veredito e mostrar exatamente em qual regra estão concentradas as diferenças.',
+  },
+  orionDifferences: {
+    title: 'Divergências do ORION',
+    what: 'Lista somente diferenças que continuam atribuídas ao motor determinístico depois de excluir intervenções humanas e correções conhecidas do legado.',
+    source: 'Amostras classificadas como divergência ORION pelo serviço de teste.',
+    purpose: 'Direcionar correções de regra, leitura de fonte ou cálculo que ainda impedem a reprodução correta do DPP.',
+  },
+  humanInterventions: {
+    title: 'Intervenções humanas',
+    what: 'Separa alterações do DPP Final que resultam de decisões do analista, principalmente criação, remoção, reassociação ou realocação de OPCs.',
+    source: 'Comparação entre base histórica, cenário reconstruído e DPP Final esperado, usando as regras conservadoras de classificação de intervenção humana.',
+    purpose: 'Impedir que uma decisão humana legítima seja registrada como falha do motor ORION.',
+  },
+  legacyCorrections: {
+    title: 'Correções do legado',
+    what: 'Mostra diferenças em que o ORION preserva uma fonte ou cálculo considerado correto em vez de reproduzir uma falha histórica conhecida da planilha.',
+    source: 'Regras de classificação de legado aplicadas durante a comparação com o DPP esperado.',
+    purpose: 'Distinguir melhoria/correção determinística de uma regressão real do motor.',
+  },
 }
 
 function DppTest({ apiUrl }) {
@@ -152,7 +228,10 @@ function DppTest({ apiUrl }) {
       <header className="page-header consolidation-header">
         <div>
           <span className="eyebrow">VALIDAÇÃO DE RECONSTRUÇÃO</span>
-          <h2>Testes do DPP</h2>
+          <div className="test-heading-with-info test-heading-main">
+            <h2>Testes do DPP</h2>
+            <InfoHint {...TEST_INFO.overview} />
+          </div>
           <p>Esta tela reutiliza o pacote carregado no Dashboard. Quando o teste já foi preparado para o mesmo pacote, o resultado abre imediatamente sem novo processamento.</p>
         </div>
         <span className="status">Reconstrução → Comparação</span>
@@ -161,12 +240,18 @@ function DppTest({ apiUrl }) {
       {error && <div className="alert error">{error}</div>}
 
       <section className="monthly-controls panel">
-        <label>
-          <span>Mês que será reconstruído</span>
-          <input type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} disabled={loading} />
-        </label>
+        <div className="test-month-control">
+          <div className="test-control-label-row">
+            <label htmlFor="dpp-test-reference-month">Mês que será reconstruído</label>
+            <InfoHint {...TEST_INFO.month} />
+          </div>
+          <input id="dpp-test-reference-month" type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} disabled={loading} />
+        </div>
         <div>
-          <strong>Pacote compartilhado</strong>
+          <div className="test-heading-with-info test-inline-heading">
+            <strong>Pacote compartilhado</strong>
+            <InfoHint {...TEST_INFO.sharedPackage} />
+          </div>
           <p>Os arquivos selecionados no Dashboard continuam disponíveis aqui. Só há novo processamento se o pacote mudar ou se você solicitar uma nova execução.</p>
         </div>
       </section>
@@ -177,13 +262,17 @@ function DppTest({ apiUrl }) {
         onBundle={applyFileBundle}
         processing={loading}
         title="Pacote atual do DPP"
+        info={TEST_INFO.package}
       />
 
       <OrionWorking active={loading} mode="test" onCancel={cancelTest} />
 
       <section className="panel consolidation-action-panel">
         <div>
-          <strong>{loading ? 'ORION reconstruindo e comparando' : result ? 'Resultado preparado' : requiredReady ? 'Pacote pronto para teste' : 'Aguardando arquivo necessário para o teste'}</strong>
+          <div className="test-heading-with-info test-inline-heading">
+            <strong>{loading ? 'ORION reconstruindo e comparando' : result ? 'Resultado preparado' : requiredReady ? 'Pacote pronto para teste' : 'Aguardando arquivo necessário para o teste'}</strong>
+            <InfoHint {...TEST_INFO.execution} />
+          </div>
           <p>{loading ? 'O relatório aparece automaticamente ao terminar.' : result ? 'Este resultado pertence ao pacote já processado. Navegar entre Dashboard e Testes não executa novamente.' : requiredReady ? 'O teste será executado somente se ainda não existir resultado para este pacote.' : 'Se o DPP final não estiver no pacote, adicione apenas esse arquivo; os demais continuam preservados.'}</p>
         </div>
         <button className="secondary-button consolidation-button" type="button" onClick={rerunTest} disabled={!requiredReady || loading}>
@@ -196,14 +285,28 @@ function DppTest({ apiUrl }) {
           <section className={`panel test-verdict ${result.pass ? 'test-pass' : 'test-fail'}`}>
             <div>
               <span className="eyebrow">RESULTADO</span>
-              <h3>{result.status}</h3>
+              <div className="test-heading-with-info">
+                <h3>{result.status}</h3>
+                <InfoHint {...TEST_INFO.verdict} />
+              </div>
               <p>{verdictText()}</p>
             </div>
             <div className="test-verdict-note">
-              <strong>REAL controlado</strong>
+              <div className="test-heading-with-info test-inline-heading">
+                <strong>REAL controlado</strong>
+                <InfoHint {...TEST_INFO.controlledReal} align="right" />
+              </div>
               <p>{result.note}</p>
             </div>
           </section>
+
+          <div className="test-summary-heading">
+            <div className="test-heading-with-info">
+              <h3>Resumo das validações</h3>
+              <InfoHint {...TEST_INFO.validationSummary} />
+            </div>
+            <p>Leitura rápida dos principais grupos antes do detalhamento completo.</p>
+          </div>
 
           <section className="metrics-grid consolidation-metrics monthly-metrics">
             <TestMetric label="Materiais" check={result.checks.materials} />
@@ -215,16 +318,28 @@ function DppTest({ apiUrl }) {
             <TestMetric label="SALDO" check={result.checks.balance} />
           </section>
 
-          <section className="panel">
+          <section className="panel test-field-comparison">
             <div className="panel-header">
               <div>
-                <h3>Comparação campo a campo</h3>
+                <div className="test-heading-with-info">
+                  <h3>Comparação campo a campo</h3>
+                  <InfoHint {...TEST_INFO.fieldComparison} />
+                </div>
                 <p>{result.summary.generated_materials.toLocaleString('pt-BR')} materiais gerados × {result.summary.expected_materials.toLocaleString('pt-BR')} materiais no gabarito.</p>
               </div>
               <span className={`source-state ${result.pass ? 'ready' : 'required'}`}>{result.status}</span>
             </div>
             <div className="table-scroll">
               <table className="dpp-table">
+                <colgroup>
+                  <col className="test-col-validation" />
+                  <col className="test-col-compared" />
+                  <col className="test-col-matches" />
+                  <col className="test-col-human" />
+                  <col className="test-col-legacy" />
+                  <col className="test-col-orion" />
+                  <col className="test-col-result" />
+                </colgroup>
                 <thead><tr><th>Validação</th><th>Comparados</th><th>Iguais</th><th>Intervenções humanas</th><th>Correções legado</th><th>Divergências ORION</th><th>Resultado</th></tr></thead>
                 <tbody>
                   {Object.entries(result.checks).map(([name, check]) => (
@@ -245,7 +360,13 @@ function DppTest({ apiUrl }) {
 
           <section className="panel">
             <div className="panel-header">
-              <div><h3>Divergências do ORION</h3><p>Diferenças que continuam indicando regra ausente ou comportamento incorreto no motor determinístico.</p></div>
+              <div>
+                <div className="test-heading-with-info">
+                  <h3>Divergências do ORION</h3>
+                  <InfoHint {...TEST_INFO.orionDifferences} />
+                </div>
+                <p>Diferenças que continuam indicando regra ausente ou comportamento incorreto no motor determinístico.</p>
+              </div>
               <span className="status">{result.summary.orion_mismatches_total.toLocaleString('pt-BR')} total · {result.mismatches.length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.mismatches.length ? (
@@ -258,7 +379,13 @@ function DppTest({ apiUrl }) {
 
           <section className="panel">
             <div className="panel-header">
-              <div><h3>Intervenções humanas</h3><p>OPCs criados, removidos ou reassociados durante a análise do mês e os efeitos diretamente derivados dessas decisões.</p></div>
+              <div>
+                <div className="test-heading-with-info">
+                  <h3>Intervenções humanas</h3>
+                  <InfoHint {...TEST_INFO.humanInterventions} />
+                </div>
+                <p>OPCs criados, removidos ou reassociados durante a análise do mês e os efeitos diretamente derivados dessas decisões.</p>
+              </div>
               <span className="status">{(result.summary.human_interventions_total || 0).toLocaleString('pt-BR')} total · {(result.human_interventions || []).length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.human_interventions?.length ? (
@@ -271,7 +398,13 @@ function DppTest({ apiUrl }) {
 
           <section className="panel">
             <div className="panel-header">
-              <div><h3>Correções do legado</h3><p>Diferenças conhecidas em que o ORION mantém a fonte ou o cálculo correto em vez de reproduzir uma falha histórica do Excel.</p></div>
+              <div>
+                <div className="test-heading-with-info">
+                  <h3>Correções do legado</h3>
+                  <InfoHint {...TEST_INFO.legacyCorrections} />
+                </div>
+                <p>Diferenças conhecidas em que o ORION mantém a fonte ou o cálculo correto em vez de reproduzir uma falha histórica do Excel.</p>
+              </div>
               <span className="status">{result.summary.legacy_corrections_total.toLocaleString('pt-BR')} total · {result.legacy_corrections.length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.legacy_corrections.length ? (
