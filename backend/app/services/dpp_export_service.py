@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import copy
 from io import BytesIO
 from pathlib import Path
 
@@ -53,14 +54,64 @@ def _set_recalculation(workbook) -> None:
         calculation.forceFullCalc = True
 
 
+def _copy_row_layout(sheet, source_row: int, target_row: int) -> None:
+    source_dimension = sheet.row_dimensions[source_row]
+    target_dimension = sheet.row_dimensions[target_row]
+    target_dimension.height = source_dimension.height
+    target_dimension.hidden = source_dimension.hidden
+    target_dimension.outlineLevel = source_dimension.outlineLevel
+
+    for column in range(1, sheet.max_column + 1):
+        source = sheet.cell(source_row, column)
+        target = sheet.cell(target_row, column)
+        if source.has_style:
+            target._style = copy(source._style)
+        if source.number_format:
+            target.number_format = source.number_format
+        if source.alignment:
+            target.alignment = copy(source.alignment)
+        if source.protection:
+            target.protection = copy(source.protection)
+
+
+def _allocate_missing_material_rows(
+    sheet,
+    *,
+    header_row: int,
+    material_col: int,
+    scenario_material_keys: list[str],
+) -> dict[str, int]:
+    template_rows: dict[str, int] = {}
+    for row in range(header_row + 1, sheet.max_row + 1):
+        key = _material_key(sheet.cell(row, material_col).value)
+        if key:
+            template_rows[key] = row
+
+    missing = [key for key in scenario_material_keys if key not in template_rows]
+    if not missing:
+        return template_rows
+
+    last_material_row = max(template_rows.values(), default=header_row + 1)
+    style_source_row = last_material_row if last_material_row > header_row else header_row + 1
+
+    for key in missing:
+        target_row = last_material_row + 1
+        sheet.insert_rows(target_row, 1)
+        _copy_row_layout(sheet, style_source_row, target_row)
+        template_rows[key] = target_row
+        last_material_row = target_row
+
+    return template_rows
+
+
 def _write_orion_scenario_to_dpp(workbook, scenario: dict) -> None:
     if SOURCE_SHEET not in workbook.sheetnames:
-        raise ValueError("O arquivo usado como modelo não possui a aba 'DPP'.")
+        raise ValueError("O DPP do mês anterior usado como modelo não possui a aba 'DPP'.")
 
     sheet = workbook[SOURCE_SHEET]
     rows = list(sheet.iter_rows(values_only=True))
     if not rows:
-        raise ValueError("A aba 'DPP' do arquivo usado como modelo está vazia.")
+        raise ValueError("A aba 'DPP' do arquivo-base está vazia.")
 
     header_row = _find_header_row(rows)
     headers = _headers(rows, header_row)
@@ -82,13 +133,17 @@ def _write_orion_scenario_to_dpp(workbook, scenario: dict) -> None:
     kit_row = _find_label_row(rows, header_row, "KIT Disponivel PGD", contains=True)
     real_row = _find_label_row(rows, header_row, "REAL")
     if kit_row is None or real_row is None:
-        raise ValueError("O layout do DPP final não contém as linhas KIT Disponível PGD e REAL esperadas.")
+        raise ValueError("O layout do DPP do mês anterior não contém as linhas KIT Disponível PGD e REAL esperadas.")
 
     model_end = (check_col - 1) if check_col else origin_col
     if model_end < origin_col + 1:
-        raise ValueError("Não foi possível localizar as colunas de modelos no layout do DPP final.")
+        raise ValueError("Não foi possível localizar as colunas de modelos no layout do DPP do mês anterior.")
 
-    scenario_models = {_normalize(model.get("name")): model for model in scenario.get("models", []) if model.get("name")}
+    scenario_models = {
+        _normalize(model.get("name")): model
+        for model in scenario.get("models", [])
+        if model.get("name")
+    }
     model_columns: dict[int, dict | None] = {}
     for column in range(origin_col + 1, model_end + 1):
         template_name = sheet.cell(header_row, column).value
@@ -99,32 +154,35 @@ def _write_orion_scenario_to_dpp(workbook, scenario: dict) -> None:
         sheet.cell(kit_row, column).value = _number(model.get("kit_pgd")) if model else 0.0
         sheet.cell(real_row, column).value = _number(model.get("real")) if model else 0.0
 
-    template_material_rows: dict[str, int] = {}
-    for row in range(header_row + 1, sheet.max_row + 1):
-        key = _material_key(sheet.cell(row, material_col).value)
-        if key:
-            template_material_rows[key] = row
-
     scenario_materials = {
         _material_key(material.get("material")): material
         for material in scenario.get("materials", [])
         if _material_key(material.get("material"))
     }
-    missing_materials = [key for key in scenario_materials if key not in template_material_rows]
-    if missing_materials:
-        sample = ", ".join(missing_materials[:5])
-        raise ValueError(
-            "O DPP final usado como modelo não possui todos os materiais do cenário ORION. "
-            f"Ausentes: {sample}{'…' if len(missing_materials) > 5 else ''}"
-        )
+    template_material_rows = _allocate_missing_material_rows(
+        sheet,
+        header_row=header_row,
+        material_col=material_col,
+        scenario_material_keys=list(scenario_materials),
+    )
 
     for key, row in template_material_rows.items():
         material = scenario_materials.get(key)
         if material is None:
-            # Não carregar valores do DPP Final para um material que não pertence ao cenário ORION.
+            # O arquivo anterior é apenas molde. Linhas históricas que não pertencem ao cenário atual
+            # não podem manter valores operacionais do mês passado.
             for column in model_columns:
                 sheet.cell(row, column).value = 0.0
-            for column in (check_col, optional_col, stock_sap_col, explosion_col, stock_op_col, stock_total_col, nec_col, balance_col):
+            for column in (
+                check_col,
+                optional_col,
+                stock_sap_col,
+                explosion_col,
+                stock_op_col,
+                stock_total_col,
+                nec_col,
+                balance_col,
+            ):
                 if column:
                     sheet.cell(row, column).value = None
             continue
@@ -167,9 +225,9 @@ def export_monthly_scenario_excel(*, scenario_id: str, template_content: bytes, 
 
     extension = Path(template_filename or "dpp.xlsx").suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
-        raise ValueError("Use como modelo um DPP final em formato .xlsx ou .xlsm.")
+        raise ValueError("Use como modelo o DPP do mês anterior em formato .xlsx ou .xlsm.")
     if not template_content:
-        raise ValueError("O arquivo do DPP final usado como modelo está vazio.")
+        raise ValueError("O DPP do mês anterior usado como modelo está vazio.")
 
     keep_vba = extension == ".xlsm"
     workbook = load_workbook(BytesIO(template_content), data_only=False, keep_vba=keep_vba)
