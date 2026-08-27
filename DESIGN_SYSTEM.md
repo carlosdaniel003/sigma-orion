@@ -253,19 +253,44 @@ Regras:
 - sticky header quando a tabela for longa;
 - priorizar colunas que respondem às decisões do analista.
 
-## 13. Ícones e marca
+## 13. Ícones, informação contextual e marca
 
-Usar ícones apenas quando ajudam a reconhecer ou executar uma ação.
+Usar ícones apenas quando ajudam a reconhecer, executar ou compreender uma ação/informação.
 
 Permitidos:
 
 - navegação compacta;
 - tema claro/escuro;
 - ação cujo símbolo é universal;
+- informação contextual `i`;
 - marca ORION;
 - status excepcional quando texto sozinho não basta.
 
 Evitar ícone + título + subtítulo + badge + seta simultaneamente.
+
+### Informação contextual do Dashboard
+
+Cada **bloco analítico ou operacional principal** do Dashboard deve disponibilizar um pequeno `i` de informação junto ao título. O objetivo é explicar a lógica sem poluir permanentemente a tela.
+
+O tooltip deve responder sempre a três perguntas:
+
+```text
+O que mostra
+Origem
+Finalidade
+```
+
+Regras:
+
+- um `i` por bloco coerente; não colocar um ícone em cada célula, linha ou métrica individual;
+- a origem deve citar a fonte real: Cenário ORION/Python, DPP Final, DPP anterior, PGD, WIU, STK, Explosão etc.;
+- a finalidade deve explicar por que a informação ajuda a análise do DPP;
+- não inventar origem ou cálculo que o backend não sustenta;
+- o ícone deve ser pequeno, neutro e discreto; azul ORION somente em hover/foco;
+- tooltip usa superfície elevada, borda e `--shadow-control`, pois existe elevação espacial real;
+- deve funcionar com mouse e teclado (`focus`/`focus-within`), não somente hover;
+- texto do tooltip usa a escala `11–12px` e microcopy do domínio;
+- não usar biblioteca de ícones para representar o `i`; o caractere simples é suficiente.
 
 ### Marca SIGMA-S ORION
 
@@ -378,6 +403,7 @@ Evitar conteúdo genérico como “Revenue”, “Growth”, “Insights”, “
 - Gargalos devem mostrar material, déficit, modelos afetados e OPC quando disponível.
 - Não repetir a mesma métrica em múltiplos componentes sem oferecer uma leitura adicional.
 - Ações de exportação/download devem aparecer como controle contextual ou faixa operacional compacta, não como um card isolado. O texto deve deixar explícito qual cenário será exportado e qual arquivo/layout serve apenas como modelo visual.
+- Todo bloco principal visível do Dashboard deve possuir informação contextual `i` com **O que mostra / Origem / Finalidade**.
 
 ## 18. Checklist obrigatório antes de alterar frontend
 
@@ -395,6 +421,7 @@ Antes de implementar:
 - [ ] Mantive tema claro e escuro.
 - [ ] Mantive `prefers-reduced-motion`.
 - [ ] Evitei impacto desnecessário de renderização.
+- [ ] Se alterei/criei bloco do Dashboard, revisei seu tooltip e a origem dos dados.
 
 Depois de implementar:
 
@@ -403,6 +430,7 @@ Depois de implementar:
 - [ ] O componente não parece uma landing page.
 - [ ] Não existe redundância de informação.
 - [ ] O estado ORION vs Final está explícito.
+- [ ] Tooltips não inventam cálculos nem fontes.
 - [ ] Se uma nova regra visual foi aprovada, atualizei este documento.
 
 ## 19. Protocolo de manutenção
