@@ -113,6 +113,7 @@ Componentes atuais incluem:
 
 - pacote compartilhado do mês;
 - contexto do cenário atual;
+- exportação do cenário ORION para Excel usando o layout do DPP Final como modelo visual;
 - Estado do DPP — ORION vs Final;
 - Evolução do DPP;
 - indicadores comparados ORION vs DPP Final;
@@ -121,6 +122,51 @@ Componentes atuais incluem:
 - modelos com maior risco;
 - estado da construção da base;
 - Plano consolidado por modelo do DPP Final.
+
+### Exportação Excel do cenário ORION
+
+O Dashboard disponibiliza **Baixar Excel ORION** quando existe um DPP Final no pacote.
+
+Fluxo:
+
+```text
+Cenário ORION em memória
+        +
+DPP Final do pacote usado apenas como template de layout
+        ↓
+backend OpenPyXL
+        ↓
+mesmo workbook / mesmas folhas / estilos / larguras / formatação
+        ↓
+aba DPP reescrita com dados do Cenário ORION
+        ↓
+DPP_ORION_AAAA_MM.xlsx ou .xlsm
+```
+
+O exportador substitui no layout atual:
+
+- KIT disponível PGD por modelo;
+- REAL ORION por modelo;
+- matriz Material × Modelo;
+- descrição, UM e origem;
+- Check/estado disponível;
+- OPC;
+- STK SAP;
+- Explosão;
+- STK OP;
+- STK TTL;
+- NEC;
+- SALDO.
+
+O DPP Final é usado como **template visual**, não como fonte desses valores. Materiais do Cenário ORION precisam existir no template para evitar gerar um arquivo visualmente compatível porém incompleto. O workbook é marcado para recálculo automático ao abrir no Excel.
+
+Endpoint:
+
+```text
+POST /api/dpp/monthly/export
+```
+
+A geração é feita em memória; nenhum Excel corporativo exportado é gravado no repositório.
 
 ## Plano consolidado por modelo
 
