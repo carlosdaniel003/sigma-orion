@@ -128,6 +128,14 @@ def get_latest_monthly_scenario() -> dict | None:
     return _payload(scenario_id, _SCENARIOS[scenario_id])
 
 
+def get_monthly_scenario(scenario_id: str) -> dict | None:
+    """Retorna um cenário específico sem alterar seus valores ou a ordem do cache."""
+    scenario = _SCENARIOS.get(scenario_id)
+    if scenario is None:
+        return None
+    return _payload(scenario_id, scenario)
+
+
 def register_monthly_scenario(
     *,
     materials: list[dict],
