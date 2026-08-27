@@ -368,6 +368,7 @@ Evitar conteúdo genérico como “Revenue”, “Growth”, “Insights”, “
 - O plano por modelo deve priorizar alterações no REAL e diferenças contra KIT disponível PGD.
 - Gargalos devem mostrar material, déficit, modelos afetados e OPC quando disponível.
 - Não repetir a mesma métrica em múltiplos componentes sem oferecer uma leitura adicional.
+- Ações de exportação/download devem aparecer como controle contextual ou faixa operacional compacta, não como um card isolado. O texto deve deixar explícito qual cenário será exportado e qual arquivo/layout serve apenas como modelo visual.
 
 ## 18. Checklist obrigatório antes de alterar frontend
 
