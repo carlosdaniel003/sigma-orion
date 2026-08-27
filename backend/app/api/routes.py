@@ -242,13 +242,13 @@ def latest_monthly_dpp_route() -> dict:
 @router.post("/dpp/monthly/export")
 async def export_monthly_dpp_route(
     scenario_id: str = Form(...),
-    template_dpp: UploadFile = File(...),
+    base_dpp: UploadFile = File(...),
 ) -> Response:
     try:
         content, filename, media_type = export_monthly_scenario_excel(
             scenario_id=scenario_id,
-            template_content=await template_dpp.read(),
-            template_filename=template_dpp.filename or "dpp.xlsx",
+            template_content=await base_dpp.read(),
+            template_filename=base_dpp.filename or "dpp.xlsx",
         )
         return Response(
             content=content,
