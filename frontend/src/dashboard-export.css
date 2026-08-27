@@ -74,12 +74,11 @@
 
 .dashboard-export-progress > span {
   display: block;
-  width: 38%;
+  width: 0;
   height: 100%;
   border-radius: inherit;
   background: var(--orion-blue);
-  transform: translateX(-110%);
-  animation: dashboard-export-progress 1.15s ease-in-out infinite;
+  transition: width 180ms linear;
 }
 
 .dashboard-export-button:not(:disabled):hover,
@@ -93,17 +92,9 @@
   margin: calc(var(--space-5) * -1) 0 var(--space-5);
 }
 
-@keyframes dashboard-export-progress {
-  0% { transform: translateX(-110%); }
-  55% { transform: translateX(105%); }
-  100% { transform: translateX(265%); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .dashboard-export-progress > span {
-    width: 100%;
-    transform: none;
-    animation: none;
+    transition: none;
   }
 }
 
