@@ -108,7 +108,11 @@ function App() {
         </section>
 
         {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
-        {activeWorkspace === 'dpp' && activeView === 'test' && <DppTest apiUrl={API_URL} />}
+        {activeWorkspace === 'dpp' && activeView === 'test' && (
+          <section className="dpp-test-view" aria-label="Testes do DPP">
+            <DppTest apiUrl={API_URL} />
+          </section>
+        )}
       </main>
     </div>
   )
