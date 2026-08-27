@@ -1,8 +1,10 @@
 from io import BytesIO
+from time import monotonic, sleep
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
 
+from app.services.dpp_export_progress_service import get_export_download, get_export_job, start_export_job
 from app.services.dpp_export_service import export_monthly_scenario_excel
 from app.services.dpp_scenario_service import register_monthly_scenario
 
@@ -161,3 +163,50 @@ def test_export_uses_previous_dpp_only_as_layout_and_writes_orion_values():
         assert workbook["Resumo de Análise"]["A1"].value == "Layout preservado"
     finally:
         workbook.close()
+
+
+def test_export_reports_monotonic_progress_from_real_processing_stages():
+    updates: list[tuple[int, str]] = []
+
+    export_monthly_scenario_excel(
+        scenario_id=_scenario_id(),
+        template_content=_previous_dpp_workbook(),
+        template_filename="DPP JUN_2026.xlsx",
+        progress=lambda value, activity: updates.append((value, activity)),
+    )
+
+    values = [value for value, _activity in updates]
+    assert values
+    assert values == sorted(values)
+    assert values[0] == 4
+    assert values[-1] == 99
+    assert 90 in values
+    assert 94 in values
+    assert any("Preenchendo materiais" in activity for _value, activity in updates)
+
+
+def test_export_job_finishes_at_100_and_keeps_generated_file_for_download():
+    job = start_export_job(
+        scenario_id=_scenario_id(),
+        base_filename="DPP JUN_2026.xlsx",
+        base_content=_previous_dpp_workbook(),
+    )
+    job_id = job["job_id"]
+    deadline = monotonic() + 5
+    snapshot = job
+
+    while snapshot["status"] not in {"completed", "failed"} and monotonic() < deadline:
+        sleep(0.02)
+        snapshot = get_export_job(job_id)
+        assert snapshot is not None
+
+    assert snapshot["status"] == "completed"
+    assert snapshot["progress"] == 100
+    assert snapshot["result"]["filename"] == "DPP_ORION_2026_07.xlsx"
+
+    download = get_export_download(job_id)
+    assert download is not None
+    content, filename, media_type = download
+    assert content
+    assert filename == "DPP_ORION_2026_07.xlsx"
+    assert media_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
