@@ -43,8 +43,43 @@
 }
 
 .dashboard-export-button {
+  position: relative;
   flex: 0 0 auto;
-  min-width: 158px;
+  min-width: 172px;
+  min-height: 36px;
+  overflow: hidden;
+}
+
+.dashboard-export-button.is-exporting {
+  padding-bottom: 12px;
+  cursor: progress;
+}
+
+.dashboard-export-button-label {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.dashboard-export-progress {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background: var(--orion-border);
+}
+
+.dashboard-export-progress > span {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--orion-blue);
+  transform: translateX(-110%);
+  animation: dashboard-export-progress 1.15s ease-in-out infinite;
 }
 
 .dashboard-export-button:not(:disabled):hover,
@@ -56,6 +91,20 @@
 .dpp-dashboard-view > .dashboard-export-error {
   order: 26;
   margin: calc(var(--space-5) * -1) 0 var(--space-5);
+}
+
+@keyframes dashboard-export-progress {
+  0% { transform: translateX(-110%); }
+  55% { transform: translateX(105%); }
+  100% { transform: translateX(265%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-export-progress > span {
+    width: 100%;
+    transform: none;
+    animation: none;
+  }
 }
 
 @media (max-width: 760px) {
