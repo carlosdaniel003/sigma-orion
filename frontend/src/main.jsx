@@ -16,6 +16,7 @@ import './sigma-orion-theme-toggle.css'
 import './dashboard-theme-runtime-fixes.css'
 import './dashboard-operational-scope.css'
 import './brand.css'
+import './dpp-test.css'
 import './product-language.css'
 
 createRoot(document.getElementById('root')).render(
