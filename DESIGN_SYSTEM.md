@@ -102,11 +102,13 @@ Nenhuma nova cor, radius, sombra ou espaçamento deve ser criada fora destes tok
 
 ### 6.1 Tema escuro — identidade ORION
 
+O tema escuro deve permanecer técnico e azul-marinho, mas não pode ser preto demais. A leitura precisa continuar confortável em uso prolongado.
+
 ```css
---orion-bg: #08111F;
---orion-surface: #101C2C;
---orion-surface-elevated: #17263A;
---orion-border: #24364A;
+--orion-bg: #0D1826;
+--orion-surface: #142235;
+--orion-surface-elevated: #1B2D43;
+--orion-border: #2B4057;
 
 --orion-blue: #46D9FF;
 --orion-success: #27F29A;
@@ -251,7 +253,7 @@ Regras:
 - sticky header quando a tabela for longa;
 - priorizar colunas que respondem às decisões do analista.
 
-## 13. Ícones
+## 13. Ícones e marca
 
 Usar ícones apenas quando ajudam a reconhecer ou executar uma ação.
 
@@ -265,6 +267,25 @@ Permitidos:
 
 Evitar ícone + título + subtítulo + badge + seta simultaneamente.
 
+### Marca SIGMA-S ORION
+
+A marca principal deve ser simples e reconhecível em tamanho pequeno.
+
+Regra atual:
+
+```text
+SIGMA-S  ★RION
+         ↑
+   estrela substitui o O de ORION
+```
+
+- não usar símbolo de planeta/órbita como letra `O`;
+- usar uma estrela geométrica simples como o `O` de ORION;
+- o favicon e a marca compacta usam a mesma estrela;
+- a estrela usa o azul ORION;
+- o wordmark acompanha `--orion-text`;
+- não adicionar glow, órbitas ou detalhes decorativos à marca.
+
 ## 14. Movimento
 
 Animação deve comunicar estado ou progresso.
@@ -275,6 +296,24 @@ Permitido:
 - transição curta de tema;
 - feedback de hover/focus;
 - entrada/saída funcional de overlay.
+
+### Tela de carregamento
+
+A animação de progresso deve usar uma geometria simplificada da **constelação real de Órion**. A forma final precisa ser reconhecível por:
+
+- cabeça;
+- dois ombros;
+- as três estrelas do cinturão (Três Marias);
+- dois pés principais.
+
+Durante o processamento:
+
+- futuro = neutro;
+- etapa atual = azul ORION;
+- concluído = verde;
+- cada avanço deve continuar ligado a checkpoint real quando houver telemetria.
+
+Ao chegar a `100%`, todas as conexões devem se completar e a constelação de Órion deve permanecer visível brevemente antes do fechamento da tela.
 
 Evitar:
 
