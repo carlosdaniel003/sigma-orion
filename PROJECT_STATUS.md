@@ -201,6 +201,20 @@ São verificados, entre outros:
 
 O REAL esperado pode ser injetado no teste para isolar a validação do motor de cálculo. Isso não valida um solver automático de REAL.
 
+### Interface atual dos Testes
+
+A tela de Testes foi alinhada ao `DESIGN_SYSTEM.md` e funciona como relatório técnico de validação, não como coleção de cards:
+
+- configuração e mês em faixa operacional compacta;
+- pacote de arquivos mostrado como lista técnica dentro de um único agrupamento;
+- veredito do teste destacado primeiro, por borda semântica e texto;
+- Materiais, Matriz, KIT PGD, STK SAP, Explosão, NEC e SALDO em uma única faixa de resumo com divisores;
+- comparação campo a campo como tabela principal;
+- Divergências ORION, Intervenções humanas e Correções do legado em seções separadas por divisores;
+- estados vazios apresentados como notas técnicas, sem card dentro de card;
+- tabelas densas, cabeçalho sticky, números tabulares e suporte aos temas claro/escuro;
+- verde reservado a validação concluída/OK e vermelho a divergência confirmada do motor.
+
 ## Regras determinísticas principais
 
 ```text
