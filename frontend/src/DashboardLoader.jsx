@@ -13,6 +13,11 @@ function sleep(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 }
 
+function downloadFilename(disposition, fallback) {
+  const match = disposition?.match(/filename="?([^";]+)"?/i)
+  return match?.[1] || fallback
+}
+
 function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnalysis }) {
   const {
     files,
@@ -33,6 +38,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     activity: 'Preparando processamento',
   })
   const [error, setError] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
   const generationTimerRef = useRef(null)
   const generationAbortRef = useRef(null)
   const testPreparingRef = useRef(false)
@@ -171,6 +178,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     setGenerating(true)
     setGenerationProgress({ progress: 1, activity: 'Enviando arquivos ao ORION' })
     setError('')
+    setExportError('')
 
     const form = new FormData()
     form.append('base_dpp', bundle.baseDpp)
@@ -208,6 +216,50 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     } finally {
       generationAbortRef.current = null
       setGenerating(false)
+    }
+  }
+
+  async function exportOrionScenario() {
+    if (!generatedScenario?.scenario_id || !bundle.expectedDpp || exporting) return
+
+    setExporting(true)
+    setExportError('')
+    const form = new FormData()
+    form.append('scenario_id', generatedScenario.scenario_id)
+    form.append('template_dpp', bundle.expectedDpp)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/dpp/monthly/export`, {
+        method: 'POST',
+        body: form,
+      })
+
+      if (!response.ok) {
+        let message = 'Não foi possível gerar o Excel do cenário ORION.'
+        try {
+          const payload = await response.json()
+          if (payload.detail) message = payload.detail
+        } catch {
+          // Mantém a mensagem padrão quando a resposta não for JSON.
+        }
+        throw new Error(message)
+      }
+
+      const blob = await response.blob()
+      const fallback = `DPP_ORION_${generatedScenario.reference_month || 'cenario'}.xlsx`
+      const filename = downloadFilename(response.headers.get('Content-Disposition'), fallback)
+      const url = window.URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (requestError) {
+      setExportError(requestError.message || 'Falha ao baixar o cenário ORION.')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -258,6 +310,27 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
               title="Pacote compartilhado do DPP"
             />
           </section>
+
+          <section className="dashboard-scenario-export" aria-label="Exportar cenário ORION">
+            <div>
+              <span>ARQUIVO DO CENÁRIO</span>
+              <strong>Excel do cenário ORION</strong>
+              <small>
+                {bundle.expectedDpp
+                  ? 'Usa o DPP Final do pacote somente como modelo visual e substitui os dados da aba DPP pelos valores calculados pelo ORION.'
+                  : 'Adicione o DPP Final ao pacote para usar exatamente o mesmo layout do arquivo consolidado.'}
+              </small>
+            </div>
+            <button
+              className="secondary-button dashboard-export-button"
+              type="button"
+              onClick={exportOrionScenario}
+              disabled={!bundle.expectedDpp || exporting || generating}
+            >
+              {exporting ? 'Gerando Excel...' : 'Baixar Excel ORION'}
+            </button>
+          </section>
+          {exportError && <div className="alert error dashboard-export-error">{exportError}</div>}
 
           <Dashboard
             apiUrl={apiUrl}
