@@ -90,8 +90,10 @@ O backend mantém checkpoints reais do processamento. O frontend consulta o prog
 - etapa real;
 - percentual real por checkpoint;
 - contador de segundos;
-- constelação operacional vinculada ao progresso;
+- constelação de Órion vinculada ao progresso;
 - conclusão visual antes de fechar o loader.
+
+A geometria final da animação representa de forma simplificada a constelação real de Órion: cabeça, ombros, Três Marias e pés principais. No `100%`, todas as conexões são concluídas antes do fechamento da tela.
 
 O percentual representa checkpoints ponderados do pipeline, não percentual exato de CPU/linhas processadas.
 
@@ -217,14 +219,16 @@ A identidade visual possui dois temas:
 
 ### Escuro ORION
 
-- fundo `#08111F`;
-- superfície `#101C2C`;
-- elevada `#17263A`;
+O tema foi clareado para melhorar leitura em uso prolongado sem perder a identidade azul-marinho:
+
+- fundo `#0D1826`;
+- superfície `#142235`;
+- elevada `#1B2D43`;
+- borda `#2B4057`;
 - azul `#46D9FF`;
 - verde `#27F29A`;
 - texto `#F4F8FC`;
-- secundário `#91A4B8`;
-- borda `#24364A`.
+- secundário `#91A4B8`.
 
 ### Claro
 
@@ -232,7 +236,15 @@ Linguagem Apple preto/branco, mantendo cores semânticas apenas onde têm signif
 
 Existe alternância Sol/Lua na barra lateral e a preferência é persistida no `localStorage`.
 
-A marca SIGMA-S ORION possui símbolo próprio de constelação/orbita e favicon correspondente.
+### Marca
+
+A marca principal foi simplificada para reduzir aparência decorativa:
+
+```text
+SIGMA-S ★RION
+```
+
+A estrela geométrica substitui o `O` de ORION. A mesma estrela é usada como marca compacta e favicon. O antigo símbolo de planeta/órbita não faz mais parte do wordmark.
 
 As regras normativas de design estão em **`DESIGN_SYSTEM.md`**.
 
