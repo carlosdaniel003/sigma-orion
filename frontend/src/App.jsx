@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react'
+import BrandLogo from './BrandLogo'
 import DashboardLoader from './DashboardLoader'
 import DashboardKpiComparison from './DashboardKpiComparison'
 import FinalModelPlan from './FinalModelPlan'
@@ -66,8 +67,7 @@ function App() {
 
       <header className="topbar">
         <button className="topbar-brand" type="button" onClick={() => openDppView('dashboard')} aria-label="Ir para o Dashboard do DPP">
-          <span className="brand-mark">S</span>
-          <strong>SIGMA-S ORION</strong>
+          <BrandLogo />
         </button>
 
         {activeWorkspace === 'dpp' && (
