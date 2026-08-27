@@ -1,0 +1,551 @@
+/*
+ * SIGMA-S ORION product language.
+ * Normative source: /DESIGN_SYSTEM.md
+ * Keep this file loaded last so legacy styles cannot reintroduce the old AI/SaaS visual language.
+ */
+
+:root {
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --title: 20px;
+  --display: 28px;
+
+  --shadow-none: none;
+  --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --orion-shadow: none;
+}
+
+:root[data-theme='light'] {
+  --orion-shadow: none;
+}
+
+html,
+body,
+#root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  font-size: var(--text-md);
+  line-height: 1.45;
+}
+
+/* Density: this is an operating surface, not a landing page. */
+.content {
+  padding-top: var(--space-5) !important;
+  padding-bottom: 64px !important;
+}
+
+.page-header {
+  margin-bottom: var(--space-4) !important;
+}
+
+.page-header h1,
+.page-header h2 {
+  margin-top: 0 !important;
+  margin-bottom: var(--space-1) !important;
+  font-size: var(--title) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.page-header p {
+  max-width: 780px;
+  margin-top: 0 !important;
+  font-size: var(--text-sm) !important;
+  line-height: 1.5 !important;
+}
+
+.panel-header {
+  gap: var(--space-4) !important;
+  margin-bottom: var(--space-4) !important;
+}
+
+.panel-header h3,
+.dashboard-comparison-heading h3,
+.final-model-plan-heading h3,
+.bulk-file-picker h3 {
+  font-size: var(--text-lg) !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.panel-header p,
+.dashboard-comparison-heading p,
+.final-model-plan-heading p,
+.bulk-file-picker p {
+  font-size: var(--text-sm) !important;
+  line-height: 1.5 !important;
+}
+
+/* Content hierarchy comes from borders, surfaces and typography; not elevation. */
+.panel,
+.metric,
+.result-card,
+.risk-card,
+.recommendation,
+.source-card,
+.bulk-file-picker,
+.material-detail-panel,
+.model-card,
+.open-entry-list article,
+.open-entry-card,
+.dashboard-kpi,
+.dashboard-mini-kpi,
+.dashboard-fact,
+.dpp-state-card,
+.dashboard-kpi-comparison,
+.dashboard-comparison-card,
+.dashboard-planning-panel,
+.dashboard-health-panel,
+.dashboard-table-panel,
+.final-model-plan {
+  box-shadow: none !important;
+}
+
+.panel,
+.bulk-file-picker,
+.dashboard-kpi-comparison,
+.dashboard-planning-panel,
+.dashboard-health-panel,
+.dashboard-table-panel,
+.final-model-plan,
+.dashboard-context-strip,
+.dpp-evolution-list,
+.table-scroll,
+.final-model-plan-table-wrap {
+  border-radius: var(--radius-md) !important;
+}
+
+.metric,
+.result-card,
+.risk-card,
+.recommendation,
+.source-card,
+.dashboard-kpi,
+.dashboard-mini-kpi,
+.dashboard-fact,
+.dpp-state-card,
+.dashboard-comparison-card,
+.model-card,
+.flow-step,
+.evidence,
+.chat-answer,
+.capability-list > div,
+.rule-box,
+.unit-warning,
+.source-result-list article,
+.detail-kpis > div,
+.dpp-final-placeholder,
+.final-model-plan-insights article {
+  border-radius: var(--radius-sm) !important;
+}
+
+/* Controls stay compact. Pill geometry remains reserved for actual status chips. */
+button,
+input,
+textarea,
+select,
+.primary-button,
+.secondary-button,
+.bulk-file-button,
+.bulk-file-clear,
+.detail-close,
+.consolidation-tabs button,
+.final-model-plan-filters button,
+.final-model-plan-search input {
+  border-radius: var(--radius-sm) !important;
+}
+
+.primary-button,
+.secondary-button,
+.bulk-file-button,
+.bulk-file-clear,
+.detail-close,
+.consolidation-tabs button {
+  min-height: 32px;
+  padding: 7px 11px !important;
+  font-size: var(--text-sm) !important;
+}
+
+input,
+textarea,
+select {
+  font-size: var(--text-sm) !important;
+}
+
+/* Navigation may float, but only with subtle physical separation. */
+.workspace-dock,
+.topbar-nav {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-control) !important;
+}
+
+.workspace-button,
+.nav-icon-button,
+.topbar-status,
+.topbar-brand {
+  border-radius: var(--radius-sm) !important;
+}
+
+/* Estado do DPP: one comparison section, not cards nested inside a card. */
+.dpp-state-grid {
+  gap: 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-md);
+  background: var(--orion-surface);
+}
+
+.dpp-state-card,
+.dpp-state-card.initial,
+.dpp-state-card.final,
+.dpp-state-card.final.loaded {
+  min-height: 0 !important;
+  padding: var(--space-4) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-state-card + .dpp-state-card {
+  border-left: 1px solid var(--orion-border) !important;
+}
+
+.dpp-state-metrics {
+  gap: 0 !important;
+  border-top: 1px solid var(--orion-border-soft);
+}
+
+.dpp-state-metric,
+.dpp-dashboard-view .dpp-state-metric {
+  padding: 10px 8px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.dpp-state-metric:last-child {
+  border-right: 0 !important;
+}
+
+.dpp-state-metric span {
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-state-metric strong {
+  font-size: var(--text-lg) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Evolution is a list: keep rows dense and flat. */
+.dpp-evolution-list {
+  overflow: hidden;
+}
+
+.dpp-evolution-row {
+  padding: 11px 12px !important;
+  background: transparent !important;
+}
+
+.dpp-evolution-row strong,
+.dpp-evolution-row span,
+.dpp-evolution-row small {
+  font-size: var(--text-sm) !important;
+}
+
+/* Comparison: one structured matrix instead of eight floating cards. */
+.dashboard-kpi-comparison {
+  padding: var(--space-5) !important;
+}
+
+.dashboard-comparison-heading {
+  margin-bottom: var(--space-4) !important;
+}
+
+.dashboard-comparison-grid {
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+  border-top: 1px solid var(--orion-border);
+}
+
+.dashboard-comparison-card,
+.dashboard-kpi-comparison .dashboard-comparison-card {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(0, 1.6fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding: 12px 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dashboard-comparison-card:last-child {
+  border-bottom: 0 !important;
+}
+
+.dashboard-comparison-label {
+  margin: 0 !important;
+  font-size: var(--text-sm) !important;
+}
+
+.dashboard-comparison-values strong {
+  font-size: var(--text-lg) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-comparison-values p,
+.dashboard-comparison-values small,
+.dashboard-comparison-legend {
+  font-size: var(--text-xs) !important;
+}
+
+/* Construction facts become a compact data strip rather than six standalone cards. */
+.dashboard-fact-grid {
+  gap: 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-md);
+}
+
+.dashboard-fact,
+.dpp-dashboard-view .dashboard-fact {
+  padding: 12px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dashboard-fact:last-child {
+  border-right: 0 !important;
+}
+
+.dashboard-fact > span,
+.dashboard-fact small {
+  font-size: var(--text-xs) !important;
+}
+
+.dashboard-fact strong {
+  font-size: var(--text-lg) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Final model plan: insights are one band with dividers. */
+.final-model-plan {
+  padding: var(--space-5) !important;
+}
+
+.final-model-plan-insights {
+  gap: 0 !important;
+  overflow: hidden;
+  border-top: 1px solid var(--orion-border);
+  border-bottom: 1px solid var(--orion-border);
+}
+
+.final-model-plan-insights article {
+  padding: 12px 14px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.final-model-plan-insights article:last-child {
+  border-right: 0 !important;
+}
+
+.final-model-plan-insights strong {
+  font-size: var(--title) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.final-model-plan-insights span,
+.final-model-plan-insights small {
+  font-size: var(--text-xs) !important;
+}
+
+.final-model-plan-toolbar {
+  margin-top: var(--space-4) !important;
+}
+
+.final-model-plan-table th {
+  height: 34px;
+  padding: 8px 10px !important;
+  font-size: var(--text-xs) !important;
+}
+
+.final-model-plan-table td {
+  height: 42px !important;
+  padding: 8px 10px !important;
+  font-size: var(--text-sm) !important;
+}
+
+/* Risk tables: engineering density, minimal decoration. */
+.dashboard-risk-grid {
+  gap: var(--space-4) !important;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel {
+  margin-top: 0 !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .panel-header {
+  min-height: 0 !important;
+  padding: 14px 16px 12px !important;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table th {
+  height: 34px !important;
+  padding: 8px 10px !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dashboard-risk-grid > .dashboard-table-panel .dashboard-table td {
+  height: 48px !important;
+  padding: 9px 10px !important;
+  font-size: var(--text-sm) !important;
+}
+
+/* Package controls: reduce card-within-card effect. */
+.bulk-file-picker {
+  padding: var(--space-4) !important;
+}
+
+.bulk-file-check {
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
+}
+
+/* Status chips remain intentionally compact/pill-like because the shape encodes status. */
+.status,
+.eyebrow,
+.source-state,
+.unit-badge,
+.bulk-package-status,
+.final-model-status {
+  min-height: 0;
+  font-size: var(--text-xs) !important;
+}
+
+/* Tables are first-class; numeric columns should scan cleanly. */
+table td.number-cell,
+table .number-cell,
+.real-value,
+.delta-value,
+.evolution-value,
+.dashboard-negative {
+  font-variant-numeric: tabular-nums;
+}
+
+/* No ornamental glow. Keep semantic focus ring only. */
+.status-dot,
+.readiness-marker,
+.pipeline-marker {
+  box-shadow: none !important;
+}
+
+/* Light mode stays neutral; no large elevation is reintroduced. */
+:root[data-theme='light'] .workspace-dock,
+:root[data-theme='light'] .topbar-nav {
+  box-shadow: var(--shadow-control) !important;
+}
+
+@media (max-width: 1000px) {
+  .dpp-state-card + .dpp-state-card {
+    border-left: 0 !important;
+    border-top: 1px solid var(--orion-border) !important;
+  }
+
+  .final-model-plan-insights {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .final-model-plan-insights article:nth-child(2) {
+    border-right: 0 !important;
+  }
+
+  .final-model-plan-insights article:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .content {
+    padding-top: var(--space-4) !important;
+  }
+
+  .dashboard-comparison-card,
+  .dashboard-kpi-comparison .dashboard-comparison-card {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .dashboard-comparison-values {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .dashboard-fact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dashboard-fact:nth-child(even) {
+    border-right: 0 !important;
+  }
+
+  .final-model-plan,
+  .dashboard-kpi-comparison {
+    padding: var(--space-4) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .final-model-plan-insights {
+    grid-template-columns: 1fr !important;
+  }
+
+  .final-model-plan-insights article {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+
+  .final-model-plan-insights article:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .dashboard-comparison-values {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
