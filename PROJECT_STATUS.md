@@ -126,6 +126,35 @@ Componentes atuais incluem:
 - estado da construção da base;
 - Plano consolidado por modelo do DPP Final.
 
+### Informação contextual dos componentes
+
+Os principais blocos visíveis do Dashboard possuem um pequeno botão `i` junto ao título. O conteúdo aparece por hover ou foco de teclado e segue sempre a mesma estrutura:
+
+```text
+O que mostra
+Origem
+Finalidade
+```
+
+A camada `DashboardInfoLayer.jsx` injeta os pontos de informação sem duplicar a lógica dos componentes. `InfoHint.jsx` é o componente visual/acessível compartilhado.
+
+Atualmente existem explicações específicas para:
+
+- Visão Geral do cenário ORION;
+- Cenário atual;
+- Pacote compartilhado do DPP;
+- Excel do cenário ORION;
+- Estado do DPP;
+- Evolução do DPP;
+- Cenário ORION × DPP Final;
+- Situação dos modelos;
+- Principais gargalos;
+- Modelos com maior risco;
+- Estado da construção do DPP;
+- Plano consolidado por modelo.
+
+As descrições registram a fonte real utilizada em cada bloco — cenário Python, DPP Final, DPP anterior, matriz Material × Modelo, PGD, WIU, STK SAP, Explosão e demais fontes quando aplicável — e não devem atribuir ao backend cálculos que ele não realiza.
+
 ### Exportação Excel do cenário ORION
 
 O Dashboard disponibiliza **Baixar Excel ORION** sempre que o Cenário ORION e o DPP do mês anterior estão disponíveis no pacote.
@@ -344,6 +373,7 @@ Resumo; a especificação completa está em `DESIGN_SYSTEM.md`:
 - tabelas como componentes de primeira classe;
 - movimento somente com propósito;
 - percentual numérico somente quando existe telemetria real do processamento;
+- informação contextual `i` por bloco principal do Dashboard, com O que mostra / Origem / Finalidade;
 - não repetir métricas sem acrescentar leitura nova.
 
 ## Segurança
