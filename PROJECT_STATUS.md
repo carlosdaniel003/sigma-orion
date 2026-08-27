@@ -137,7 +137,9 @@ Cenário ORION em memória
         +
 DPP do mês anterior usado somente como molde visual
         ↓
-backend OpenPyXL
+job de exportação no backend
+        ↓
+OpenPyXL atualiza workbook e reporta progresso real
         ↓
 mesmo workbook / mesmas folhas / estilos / larguras / formatação
         ↓
@@ -167,22 +169,24 @@ Materiais novos do Cenário ORION que não existiam no DPP anterior são adicion
 
 O workbook é marcado para recálculo automático ao abrir no Excel.
 
-Endpoint:
+Endpoints:
 
 ```text
-POST /api/dpp/monthly/export
+POST /api/dpp/monthly/export/jobs
+GET  /api/dpp/monthly/export/jobs/{job_id}
+GET  /api/dpp/monthly/export/jobs/{job_id}/download
 ```
 
-Campos principais:
+Campos de início:
 
 ```text
 scenario_id
 base_dpp   ← DPP do mês anterior
 ```
 
-A geração é feita em memória; nenhum Excel corporativo exportado é gravado no repositório.
+O percentual exibido em **Gerando Excel · NN%** vem do job real do backend. O progresso avança somente quando etapas efetivas terminam: validação do cenário, abertura do workbook, leitura da estrutura, preenchimento de KIT/REAL, processamento real das linhas de materiais, configuração de recálculo, serialização do workbook e arquivo concluído. Durante o preenchimento das linhas, o avanço é calculado pela quantidade efetivamente processada; `100%` é atribuído apenas quando o arquivo final já está pronto para download.
 
-Como a exportação ainda é uma única resposta HTTP e não possui checkpoints percentuais próprios, o botão apresenta uma **barra indeterminada honesta** e contador de segundos durante `Gerando Excel`, em vez de inventar uma porcentagem falsa.
+A geração é feita em memória; nenhum Excel corporativo exportado é gravado no repositório. Os últimos jobs de exportação e seus bytes ficam temporariamente em memória para permitir o endpoint de download e são descartados conforme o limite do cache local do processo.
 
 ## Plano consolidado por modelo
 
@@ -339,6 +343,7 @@ Resumo; a especificação completa está em `DESIGN_SYSTEM.md`:
 - microcopy específica do DPP;
 - tabelas como componentes de primeira classe;
 - movimento somente com propósito;
+- percentual numérico somente quando existe telemetria real do processamento;
 - não repetir métricas sem acrescentar leitura nova.
 
 ## Segurança
