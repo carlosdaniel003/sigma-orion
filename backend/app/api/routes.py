@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.db.database import SessionLocal
@@ -22,6 +23,7 @@ from app.services.agent_service import (
 )
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
 from app.services.dpp_dashboard_service import summarize_final_dpp
+from app.services.dpp_export_service import export_monthly_scenario_excel
 from app.services.dpp_monthly_service import generate_monthly_dpp
 from app.services.dpp_progress_service import get_monthly_generation_job, start_monthly_generation_job
 from app.services.dpp_scenario_service import get_latest_monthly_scenario, recalculate_monthly_scenario
@@ -235,6 +237,31 @@ def latest_monthly_dpp_route() -> dict:
         "available": scenario is not None,
         "scenario": scenario,
     }
+
+
+@router.post("/dpp/monthly/export")
+async def export_monthly_dpp_route(
+    scenario_id: str = Form(...),
+    template_dpp: UploadFile = File(...),
+) -> Response:
+    try:
+        content, filename, media_type = export_monthly_scenario_excel(
+            scenario_id=scenario_id,
+            template_content=await template_dpp.read(),
+            template_filename=template_dpp.filename or "dpp.xlsx",
+        )
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível gerar o Excel do cenário ORION: {exc}",
+        ) from exc
 
 
 @router.post("/dpp/dashboard/final")
