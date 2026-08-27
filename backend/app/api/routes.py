@@ -23,6 +23,7 @@ from app.services.agent_service import (
 )
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
 from app.services.dpp_dashboard_service import summarize_final_dpp
+from app.services.dpp_export_progress_service import get_export_download, get_export_job, start_export_job
 from app.services.dpp_export_service import export_monthly_scenario_excel
 from app.services.dpp_monthly_service import generate_monthly_dpp
 from app.services.dpp_progress_service import get_monthly_generation_job, start_monthly_generation_job
@@ -262,6 +263,58 @@ async def export_monthly_dpp_route(
             status_code=422,
             detail=f"Não foi possível gerar o Excel do cenário ORION: {exc}",
         ) from exc
+
+
+@router.post("/dpp/monthly/export/jobs", status_code=202)
+async def start_monthly_dpp_export_job(
+    scenario_id: str = Form(...),
+    base_dpp: UploadFile = File(...),
+) -> dict:
+    try:
+        content = await base_dpp.read()
+        if not content:
+            raise ValueError("O DPP do mês anterior usado como modelo está vazio.")
+        return start_export_job(
+            scenario_id=scenario_id,
+            base_filename=base_dpp.filename,
+            base_content=content,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Não foi possível iniciar a geração do Excel ORION: {exc}",
+        ) from exc
+
+
+@router.get("/dpp/monthly/export/jobs/{job_id}")
+def monthly_dpp_export_job(job_id: str) -> dict:
+    job = get_export_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Geração do Excel não encontrada ou expirada.")
+    return job
+
+
+@router.get("/dpp/monthly/export/jobs/{job_id}/download")
+def monthly_dpp_export_download(job_id: str) -> Response:
+    job = get_export_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Geração do Excel não encontrada ou expirada.")
+    if job["status"] == "failed":
+        raise HTTPException(status_code=409, detail=job.get("error") or "A geração do Excel falhou.")
+    if job["status"] != "completed":
+        raise HTTPException(status_code=409, detail="O Excel ainda está sendo gerado.")
+
+    download = get_export_download(job_id)
+    if download is None:
+        raise HTTPException(status_code=410, detail="O arquivo gerado não está mais disponível.")
+    content, filename, media_type = download
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/dpp/dashboard/final")
