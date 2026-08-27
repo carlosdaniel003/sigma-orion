@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import InfoHint from './InfoHint'
 import { classifyDppBundle, FILE_LABELS } from './dpp-file-bundle'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './bulk-file-picker.css'
@@ -23,7 +24,15 @@ function mergeFiles(currentFiles, newFiles) {
   return merged
 }
 
-function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, compact = false, processing = false, title = 'Adicionar arquivos em massa' }) {
+function BulkDppFilePicker({
+  mode = 'generate',
+  referenceMonth = '',
+  onBundle,
+  compact = false,
+  processing = false,
+  title = 'Adicionar arquivos em massa',
+  info = null,
+}) {
   const {
     files: selectedFiles,
     setFiles,
@@ -87,7 +96,14 @@ function BulkDppFilePicker({ mode = 'generate', referenceMonth = '', onBundle, c
       <div className="bulk-file-picker-head">
         <div>
           <span className="eyebrow">PACOTE DO MÊS</span>
-          <h3>{title}</h3>
+          {info ? (
+            <div className="bulk-file-title-with-info">
+              <h3>{title}</h3>
+              <InfoHint {...info} />
+            </div>
+          ) : (
+            <h3>{title}</h3>
+          )}
           <p>Selecione o pacote uma única vez. Os mesmos arquivos e resultados permanecem disponíveis no Dashboard e nos Testes enquanto o SIGMA-S ORION estiver aberto.</p>
         </div>
         <div className="bulk-file-actions">
