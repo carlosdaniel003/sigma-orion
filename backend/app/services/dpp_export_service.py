@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 
 from openpyxl import load_workbook
+from openpyxl.formula.translate import Translator
 
 from app.services.dpp_consolidation_service import _material_key
 from app.services.dpp_monthly_base import (
@@ -20,6 +21,12 @@ from app.services.dpp_scenario_service import get_monthly_scenario
 
 SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm"}
 ProgressCallback = Callable[[int, str], None]
+
+# Estas colunas pertencem à lógica estrutural do DPP. Quando o arquivo-base possui
+# fórmula nelas, o ORION preserva a fórmula e a traduz para cada linha do cenário.
+# Campos não calculados pelo ORION (Preço, Amount e Coments) não são herdados do
+# mês anterior para não misturar dados históricos com o cenário atual.
+FORMULA_PREFERRED_HEADERS = {"check", "wiu", "nec", "stk ttl", "saldo"}
 
 
 def _notify(progress: ProgressCallback | None, value: int, activity: str) -> None:
@@ -38,6 +45,21 @@ def _find_any_column(headers: dict[int, str], *names: str) -> int | None:
     normalized = {_normalize(name) for name in names}
     for column, value in headers.items():
         if _normalize(value) in normalized:
+            return column
+    return None
+
+
+def _find_stock_source_column(headers: dict[int, str]) -> int | None:
+    for column, value in headers.items():
+        normalized = _normalize(value)
+        if normalized.startswith("stk ") and normalized not in {"stk op", "stk ttl"}:
+            return column
+    return None
+
+
+def _find_explosion_column(headers: dict[int, str]) -> int | None:
+    for column, value in headers.items():
+        if _normalize(value).startswith("explosao"):
             return column
     return None
 
@@ -81,69 +103,180 @@ def _copy_row_layout(sheet, source_row: int, target_row: int) -> None:
             target.protection = copy(source.protection)
 
 
-def _allocate_missing_material_rows(
+def _material_rows(sheet, *, header_row: int, material_col: int) -> list[int]:
+    return [
+        row
+        for row in range(header_row + 1, sheet.max_row + 1)
+        if _material_key(sheet.cell(row, material_col).value)
+    ]
+
+
+def _formula_templates(sheet, *, headers: dict[int, str], material_rows: list[int]) -> dict[int, tuple[str, str]]:
+    templates: dict[int, tuple[str, str]] = {}
+    wanted_columns = {
+        column
+        for column, header in headers.items()
+        if _normalize(header) in FORMULA_PREFERRED_HEADERS
+    }
+    if not wanted_columns:
+        return templates
+
+    for row in material_rows:
+        for column in wanted_columns:
+            if column in templates:
+                continue
+            cell = sheet.cell(row, column)
+            value = cell.value
+            if isinstance(value, str) and value.startswith("="):
+                templates[column] = (cell.coordinate, value)
+        if len(templates) == len(wanted_columns):
+            break
+    return templates
+
+
+def _translated_formula(formula: str, *, origin: str, target: str) -> str:
+    try:
+        return Translator(formula, origin=origin).translate_formula(target)
+    except Exception:
+        # Fórmulas fora do subconjunto compreendido pelo Translator continuam sendo
+        # preservadas em vez de desaparecerem. O Excel fará o recálculo ao abrir.
+        return formula
+
+
+def _restore_formula_templates(sheet, row: int, templates: dict[int, tuple[str, str]]) -> None:
+    for column, (origin, formula) in templates.items():
+        target = sheet.cell(row, column)
+        target.value = _translated_formula(formula, origin=origin, target=target.coordinate)
+
+
+def _ordered_scenario_materials(sheet, *, scenario: dict, header_row: int, material_col: int) -> list[dict]:
+    scenario_materials = [
+        material
+        for material in (scenario.get("materials") or [])
+        if _material_key(material.get("material"))
+    ]
+    scenario_by_key = {
+        _material_key(material.get("material")): material
+        for material in scenario_materials
+    }
+    if len(scenario_by_key) != len(scenario_materials):
+        raise ValueError(
+            "O cenário ORION contém materiais duplicados após a normalização. "
+            "A exportação foi interrompida para não gerar um Excel diferente do Dashboard."
+        )
+
+    existing_order: list[str] = []
+    seen: set[str] = set()
+    for row in _material_rows(sheet, header_row=header_row, material_col=material_col):
+        key = _material_key(sheet.cell(row, material_col).value)
+        if key and key not in seen:
+            existing_order.append(key)
+            seen.add(key)
+
+    ordered_keys = [key for key in existing_order if key in scenario_by_key]
+    ordered_keys.extend(key for key in scenario_by_key if key not in seen)
+    return [scenario_by_key[key] for key in ordered_keys]
+
+
+def _prepare_exact_material_rows(
     sheet,
     *,
     header_row: int,
     material_col: int,
-    scenario_material_keys: list[str],
-) -> dict[str, int]:
-    template_rows: dict[str, int] = {}
-    for row in range(header_row + 1, sheet.max_row + 1):
-        key = _material_key(sheet.cell(row, material_col).value)
-        if key:
-            template_rows[key] = row
+    target_count: int,
+    formula_templates: dict[int, tuple[str, str]],
+) -> list[int]:
+    existing_material_rows = _material_rows(sheet, header_row=header_row, material_col=material_col)
+    existing_end = max(existing_material_rows, default=header_row)
+    existing_slots = max(existing_end - header_row, 0)
+    style_source_row = existing_material_rows[0] if existing_material_rows else header_row + 1
 
-    missing = [key for key in scenario_material_keys if key not in template_rows]
-    if not missing:
-        return template_rows
+    if target_count > existing_slots:
+        insert_at = existing_end + 1 if existing_end > header_row else header_row + 1
+        amount = target_count - existing_slots
+        sheet.insert_rows(insert_at, amount)
+        for row in range(insert_at, insert_at + amount):
+            _copy_row_layout(sheet, style_source_row, row)
+            _restore_formula_templates(sheet, row, formula_templates)
+    elif target_count < existing_slots:
+        delete_at = header_row + target_count + 1
+        sheet.delete_rows(delete_at, existing_slots - target_count)
 
-    last_material_row = max(template_rows.values(), default=header_row + 1)
-    style_source_row = last_material_row if last_material_row > header_row else header_row + 1
+    return list(range(header_row + 1, header_row + target_count + 1))
 
-    for key in missing:
-        target_row = last_material_row + 1
-        sheet.insert_rows(target_row, 1)
-        _copy_row_layout(sheet, style_source_row, target_row)
-        template_rows[key] = target_row
-        last_material_row = target_row
 
-    return template_rows
+def _audit_material_projection(sheet, *, rows: list[int], material_col: int, materials: list[dict]) -> None:
+    expected_keys = [_material_key(material.get("material")) for material in materials]
+    exported_keys = [_material_key(sheet.cell(row, material_col).value) for row in rows]
+
+    if len(exported_keys) != len(expected_keys) or any(not key for key in exported_keys):
+        raise ValueError(
+            f"Falha de consistência do Excel ORION: o cenário possui {len(expected_keys)} materiais, "
+            f"mas a faixa exportada possui {sum(1 for key in exported_keys if key)} materiais preenchidos."
+        )
+    if exported_keys != expected_keys:
+        raise ValueError(
+            "Falha de consistência do Excel ORION: a sequência de materiais exportada não corresponde ao cenário do Dashboard."
+        )
+
+
+def _audit_formula_projection(
+    sheet,
+    *,
+    rows: list[int],
+    formula_templates: dict[int, tuple[str, str]],
+) -> None:
+    for column in formula_templates:
+        missing = [
+            row
+            for row in rows
+            if not (
+                isinstance(sheet.cell(row, column).value, str)
+                and sheet.cell(row, column).value.startswith("=")
+            )
+        ]
+        if missing:
+            header = sheet.cell(rows[0] - 1, column).value if rows else column
+            raise ValueError(
+                f"Falha de consistência do Excel ORION: a fórmula estrutural da coluna '{header}' "
+                f"não foi propagada para {len(missing)} linha(s)."
+            )
 
 
 def _write_orion_scenario_to_dpp(
     workbook,
     scenario: dict,
     progress: ProgressCallback | None = None,
-) -> None:
+) -> dict:
     _notify(progress, 18, "Lendo estrutura da aba DPP")
     if SOURCE_SHEET not in workbook.sheetnames:
         raise ValueError("O DPP do mês anterior usado como modelo não possui a aba 'DPP'.")
 
     sheet = workbook[SOURCE_SHEET]
-    rows = list(sheet.iter_rows(values_only=True))
-    if not rows:
+    source_rows = list(sheet.iter_rows(values_only=True))
+    if not source_rows:
         raise ValueError("A aba 'DPP' do arquivo-base está vazia.")
 
-    header_row = _find_header_row(rows)
-    headers = _headers(rows, header_row)
+    header_row = _find_header_row(source_rows)
+    headers = _headers(source_rows, header_row)
 
     material_col = _find_column(headers, "Material")
     description_col = _find_column(headers, "Descrição")
     um_col = _find_column(headers, "UM")
     origin_col = _find_column(headers, "Grupo Origem")
     check_col = _find_column(headers, "Check", required=False)
+    wiu_col = _find_any_column(headers, "WIU")
     optional_col = _find_column(headers, "OPC", required=False)
 
-    stock_sap_col = _find_any_column(headers, "STK SAP", "STK SAP TOTAL")
-    explosion_col = _find_any_column(headers, "Explosão", "EXPLOSAO", "Explosão de Placas")
+    stock_sap_col = _find_stock_source_column(headers)
+    explosion_col = _find_explosion_column(headers)
     stock_op_col = _find_any_column(headers, "STK OP", "STK OPC", "STK OPCS")
     stock_total_col = _find_any_column(headers, "STK TTL", "STK TOTAL")
     nec_col = _find_any_column(headers, "NEC", "NECESSIDADE")
     balance_col = _find_any_column(headers, "SALDO", "BALANCE")
 
-    kit_row = _find_label_row(rows, header_row, "KIT Disponivel PGD", contains=True)
-    real_row = _find_label_row(rows, header_row, "REAL")
+    kit_row = _find_label_row(source_rows, header_row, "KIT Disponivel PGD", contains=True)
+    real_row = _find_label_row(source_rows, header_row, "REAL")
     if kit_row is None or real_row is None:
         raise ValueError("O layout do DPP do mês anterior não contém as linhas KIT Disponível PGD e REAL esperadas.")
 
@@ -177,77 +310,126 @@ def _write_orion_scenario_to_dpp(
             _notify(progress, current_progress, f"Preenchendo KIT e REAL · {index}/{len(template_model_columns)} modelos")
             last_model_progress = current_progress
 
-    _notify(progress, 36, "Preparando linhas de materiais")
-    scenario_materials = {
-        _material_key(material.get("material")): material
-        for material in scenario.get("materials", [])
-        if _material_key(material.get("material"))
-    }
-    template_material_rows = _allocate_missing_material_rows(
+    _notify(progress, 35, "Preparando faixa exata de materiais")
+    source_material_rows = _material_rows(sheet, header_row=header_row, material_col=material_col)
+    formula_templates = _formula_templates(
+        sheet,
+        headers=headers,
+        material_rows=source_material_rows,
+    )
+    ordered_materials = _ordered_scenario_materials(
+        sheet,
+        scenario=scenario,
+        header_row=header_row,
+        material_col=material_col,
+    )
+    target_rows = _prepare_exact_material_rows(
         sheet,
         header_row=header_row,
         material_col=material_col,
-        scenario_material_keys=list(scenario_materials),
+        target_count=len(ordered_materials),
+        formula_templates=formula_templates,
     )
+    formula_columns = set(formula_templates)
+    last_operational_col = max(headers)
 
     _notify(progress, 38, "Preenchendo dados calculados pelo ORION")
-    total_material_rows = max(len(template_material_rows), 1)
+    total_material_rows = max(len(target_rows), 1)
     last_material_progress = -1
-    for index, (key, row) in enumerate(template_material_rows.items(), start=1):
-        material = scenario_materials.get(key)
-        if material is None:
-            # O arquivo anterior é apenas molde. Linhas históricas que não pertencem ao cenário atual
-            # não podem manter valores operacionais do mês passado.
-            for column in model_columns:
-                sheet.cell(row, column).value = 0.0
-            for column in (
-                check_col,
-                optional_col,
-                stock_sap_col,
-                explosion_col,
-                stock_op_col,
-                stock_total_col,
-                nec_col,
-                balance_col,
-            ):
-                if column:
-                    sheet.cell(row, column).value = None
-        else:
-            sheet.cell(row, material_col).value = material.get("material")
-            sheet.cell(row, description_col).value = material.get("description")
-            sheet.cell(row, um_col).value = material.get("um")
-            sheet.cell(row, origin_col).value = material.get("group_origin")
+    for index, (row, material) in enumerate(zip(target_rows, ordered_materials, strict=True), start=1):
+        # A linha anterior é somente molde visual. Todos os valores operacionais são
+        # limpos antes de projetar o cenário atual para impedir vazamento do mês anterior.
+        for column in range(material_col, last_operational_col + 1):
+            sheet.cell(row, column).value = None
+        _restore_formula_templates(sheet, row, formula_templates)
 
-            consumption = material.get("consumption_by_model") or {}
-            normalized_consumption = {_normalize(name): _number(value) for name, value in consumption.items()}
-            for column, model in model_columns.items():
-                model_name = _normalize(model.get("name")) if model else _normalize(sheet.cell(header_row, column).value)
-                sheet.cell(row, column).value = normalized_consumption.get(model_name, 0.0)
+        sheet.cell(row, material_col).value = material.get("material")
+        sheet.cell(row, description_col).value = material.get("description")
+        sheet.cell(row, um_col).value = material.get("um")
+        sheet.cell(row, origin_col).value = material.get("group_origin")
 
-            if check_col:
-                sheet.cell(row, check_col).value = material.get("check") or material.get("status")
-            if optional_col:
-                sheet.cell(row, optional_col).value = material.get("optional_material")
-            if stock_sap_col:
-                sheet.cell(row, stock_sap_col).value = _number(material.get("stock_sap_effective", material.get("stock_sap")))
-            if explosion_col:
-                sheet.cell(row, explosion_col).value = _number(material.get("explosion"))
-            if stock_op_col:
-                sheet.cell(row, stock_op_col).value = _number(material.get("stock_op"))
-            if stock_total_col:
-                sheet.cell(row, stock_total_col).value = _number(material.get("stock_total"))
-            if nec_col:
-                sheet.cell(row, nec_col).value = _number(material.get("nec"))
-            if balance_col:
-                sheet.cell(row, balance_col).value = _number(material.get("balance"))
+        consumption = material.get("consumption_by_model") or {}
+        normalized_consumption = {_normalize(name): _number(value) for name, value in consumption.items()}
+        for column, model in model_columns.items():
+            model_name = _normalize(model.get("name")) if model else _normalize(sheet.cell(header_row, column).value)
+            sheet.cell(row, column).value = normalized_consumption.get(model_name, 0.0)
+
+        # Check é um campo do DPP/WIU. O status interno OK/INVESTIGAR não deve ser
+        # exportado nessa coluna, pois é uma classificação diferente.
+        if check_col and check_col not in formula_columns:
+            sheet.cell(row, check_col).value = material.get("check") or None
+        if wiu_col and wiu_col not in formula_columns:
+            sheet.cell(row, wiu_col).value = "WIU" if material.get("in_current_wiu") else None
+        if optional_col:
+            sheet.cell(row, optional_col).value = material.get("optional_material")
+        if stock_sap_col:
+            sheet.cell(row, stock_sap_col).value = _number(material.get("stock_sap_effective", material.get("stock_sap")))
+        if explosion_col:
+            sheet.cell(row, explosion_col).value = _number(material.get("explosion"))
+        if stock_op_col:
+            sheet.cell(row, stock_op_col).value = _number(material.get("stock_op"))
+        if stock_total_col and stock_total_col not in formula_columns:
+            sheet.cell(row, stock_total_col).value = _number(material.get("stock_total"))
+        if nec_col and nec_col not in formula_columns:
+            sheet.cell(row, nec_col).value = _number(material.get("nec"))
+        if balance_col and balance_col not in formula_columns:
+            sheet.cell(row, balance_col).value = _number(material.get("balance"))
 
         current_progress = 38 + int((index / total_material_rows) * 50)
         if current_progress != last_material_progress:
-            _notify(progress, current_progress, f"Preenchendo materiais · {index}/{len(template_material_rows)}")
+            _notify(progress, current_progress, f"Preenchendo materiais · {index}/{len(target_rows)}")
             last_material_progress = current_progress
+
+    _notify(progress, 89, "Validando consistência do cenário exportado")
+    _audit_material_projection(
+        sheet,
+        rows=target_rows,
+        material_col=material_col,
+        materials=ordered_materials,
+    )
+    _audit_formula_projection(
+        sheet,
+        rows=target_rows,
+        formula_templates=formula_templates,
+    )
 
     _notify(progress, 90, "Configurando recálculo das fórmulas")
     _set_recalculation(workbook)
+    return {
+        "header_row": header_row,
+        "material_col": material_col,
+        "material_count": len(ordered_materials),
+        "material_keys": [_material_key(material.get("material")) for material in ordered_materials],
+        "formula_columns": sorted(formula_columns),
+    }
+
+
+def _validate_serialized_export(content: bytes, audit: dict) -> None:
+    workbook = load_workbook(BytesIO(content), data_only=False, read_only=True)
+    try:
+        if SOURCE_SHEET not in workbook.sheetnames:
+            raise ValueError("Falha de consistência do Excel ORION: a aba DPP desapareceu após a serialização.")
+        sheet = workbook[SOURCE_SHEET]
+        start_row = int(audit["header_row"]) + 1
+        count = int(audit["material_count"])
+        material_col = int(audit["material_col"])
+        exported_keys = [
+            _material_key(sheet.cell(row, material_col).value)
+            for row in range(start_row, start_row + count)
+        ]
+        if exported_keys != audit["material_keys"]:
+            raise ValueError(
+                "Falha de consistência do Excel ORION após salvar: os materiais do arquivo não correspondem ao cenário do Dashboard."
+            )
+        for column in audit.get("formula_columns") or []:
+            for row in range(start_row, start_row + count):
+                value = sheet.cell(row, int(column)).value
+                if not (isinstance(value, str) and value.startswith("=")):
+                    raise ValueError(
+                        "Falha de consistência do Excel ORION após salvar: uma fórmula estrutural não foi preservada."
+                    )
+    finally:
+        workbook.close()
 
 
 def export_monthly_scenario_excel(
@@ -274,10 +456,13 @@ def export_monthly_scenario_excel(
     workbook = load_workbook(BytesIO(template_content), data_only=False, keep_vba=keep_vba)
     _notify(progress, 16, "Workbook carregado")
     try:
-        _write_orion_scenario_to_dpp(workbook, scenario, progress=progress)
+        audit = _write_orion_scenario_to_dpp(workbook, scenario, progress=progress)
         _notify(progress, 94, "Serializando workbook para Excel")
         output = BytesIO()
         workbook.save(output)
+        content = output.getvalue()
+        _notify(progress, 97, "Conferindo arquivo serializado")
+        _validate_serialized_export(content, audit)
         _notify(progress, 99, "Finalizando arquivo para download")
     finally:
         workbook.close()
@@ -287,4 +472,4 @@ def export_monthly_scenario_excel(
         if keep_vba
         else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    return output.getvalue(), _output_name(scenario.get("reference_month") or "", extension), media_type
+    return content, _output_name(scenario.get("reference_month") or "", extension), media_type
