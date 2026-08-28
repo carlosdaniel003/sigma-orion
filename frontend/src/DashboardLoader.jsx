@@ -131,7 +131,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   useEffect(() => {
     window.clearTimeout(finalAnalysisTimerRef.current)
 
-    if (!workspaceReady || !generatedScenario) return undefined
+    if (!workspaceReady) return undefined
 
     const finalFile = bundle.expectedDpp
     if (!finalFile) {
@@ -142,6 +142,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       onFinalDppAnalysis?.(null)
       return undefined
     }
+
+    if (!generatedScenario) return undefined
 
     const signature = `${referenceMonth || bundle.referenceMonth}|${fileIdentity(finalFile)}`
     if (finalAnalysisSignatureRef.current === signature) return undefined
