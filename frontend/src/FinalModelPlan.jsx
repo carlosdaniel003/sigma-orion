@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './final-model-plan.css'
 
 const NUMERIC_TOLERANCE = 1e-4
+const PAGE_SIZE = 25
 
 function number(value) {
   const parsed = Number(value)
@@ -18,7 +19,7 @@ function normalizeModelName(value) {
 }
 
 function formatNumber(value) {
-  return number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+  return number(value).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
 }
 
 function formatDelta(value) {
@@ -42,12 +43,96 @@ function rowState(row) {
   return { label: 'Divergente', tone: 'attention' }
 }
 
+function mappingStrategyLabel(strategy) {
+  const labels = {
+    EXACT_NAME: 'nome exato',
+    PRODUCT_CODE: 'código do produto',
+    MONTHLY_VARIANT_RULE: 'regra mensal de variante',
+    HISTORICAL_VARIANT: 'histórico da variante',
+  }
+  return labels[strategy] || strategy || 'mapeamento não identificado'
+}
+
+function metricReason(model, metric) {
+  if (!model.orionPresent) return 'O modelo existe no DPP Final, mas não existe no Cenário ORION.'
+  if (!model.finalPresent) return 'O modelo existe no Cenário ORION, mas não existe no DPP Final.'
+
+  const divergent = metric === 'pgd' ? model.pgdDivergent : model.realDivergent
+  const delta = metric === 'pgd' ? model.pgdDelta : model.realDelta
+  if (!divergent) return 'Sem divergência neste campo: os valores coincidem dentro da tolerância operacional.'
+
+  if (metric === 'pgd') {
+    return `O KIT disponível PGD do DPP Final difere do valor mapeado pelo ORION em ${formatDelta(delta)}. Como |Final − ORION| é maior que ${NUMERIC_TOLERANCE}, este campo é divergente.`
+  }
+  return `O REAL consolidado no DPP Final difere do REAL atual do Cenário ORION em ${formatDelta(delta)}. Como |Final − ORION| é maior que ${NUMERIC_TOLERANCE}, este campo é divergente.`
+}
+
+function ModelDivergenceDetail({ model, mapping }) {
+  const mappedSource = mapping
+    ? `PGD “${mapping.pgd_model || '—'}”${mapping.pgd_code ? ` (${mapping.pgd_code})` : ''} → modelo DPP “${mapping.dpp_model || model.name}”, por ${mappingStrategyLabel(mapping.strategy)}.`
+    : 'Não há registro de mapeamento PGD associado a este modelo no diagnóstico atual.'
+
+  return (
+    <div className="final-model-detail" role="region" aria-label={`Explicação das divergências do modelo ${model.name}`}>
+      <div className="final-model-detail-rule">
+        <strong>O que o ORION considera divergente</strong>
+        <p>
+          O modelo é divergente quando está ausente em um dos lados ou quando pelo menos um dos campos comparados — KIT disponível PGD ou REAL — apresenta |DPP Final − ORION| maior que {NUMERIC_TOLERANCE}.
+        </p>
+      </div>
+
+      <div className="final-model-detail-table-wrap">
+        <table className="final-model-detail-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Cenário ORION</th>
+              <th>DPP Final</th>
+              <th>Diferença</th>
+              <th>Regra ORION / por que é divergente</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">KIT disponível PGD</th>
+              <td>{model.orionPresent ? formatNumber(model.orionPgd) : '—'}</td>
+              <td>{model.finalPresent ? formatNumber(model.finalPgd) : '—'}</td>
+              <td>{model.pgdDelta === null ? '—' : formatDelta(model.pgdDelta)}</td>
+              <td>
+                <strong>Regra:</strong> o ORION traz o KIT do PGD mensal para o modelo do DPP por mapeamento determinístico. {mappedSource} {metricReason(model, 'pgd')}
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">REAL</th>
+              <td>{model.orionPresent ? formatNumber(model.orionReal) : '—'}</td>
+              <td>{model.finalPresent ? formatNumber(model.finalReal) : '—'}</td>
+              <td>{model.realDelta === null ? '—' : formatDelta(model.realDelta)}</td>
+              <td>
+                <strong>Regra:</strong> ao criar o cenário, o REAL inicial do ORION é igual ao KIT PGD; depois, o REAL atual pode ser recalculado no cenário e esse valor passa a ser a referência. {metricReason(model, 'real')}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {mapping?.kit_pgd_before_rule !== null && mapping?.kit_pgd_before_rule !== undefined && (
+        <p className="final-model-detail-note">
+          Regra mensal aplicada ao KIT PGD: valor antes da regra {formatNumber(mapping.kit_pgd_before_rule)} → valor usado pelo ORION {formatNumber(mapping.kit_pgd)}.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function FinalModelPlan({ finalDppAnalysis }) {
   const { generatedScenario } = useDppWorkspace()
   const finalModels = finalDppAnalysis?.models || []
   const orionModels = generatedScenario?.models || []
+  const pgdMappings = generatedScenario?.pgd_mapping?.mapped || []
   const [filter, setFilter] = useState('divergent')
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(0)
+  const [selectedKey, setSelectedKey] = useState(null)
 
   const comparisonModels = useMemo(() => {
     const orionMap = new Map(
@@ -122,7 +207,30 @@ function FinalModelPlan({ finalDppAnalysis }) {
       })
   }, [comparisonModels, filter, query])
 
+  useEffect(() => {
+    setPage(0)
+    setSelectedKey(null)
+  }, [filter, query, finalDppAnalysis?.analysis_id, generatedScenario?.scenario_id])
+
+  const pageCount = Math.max(Math.ceil(visibleModels.length / PAGE_SIZE), 1)
+  const safePage = Math.min(page, pageCount - 1)
+  const pageStart = safePage * PAGE_SIZE
+  const pagedModels = visibleModels.slice(pageStart, pageStart + PAGE_SIZE)
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage)
+  }, [page, safePage])
+
   if (!finalDppAnalysis || !finalModels.length) return null
+
+  function mappingFor(model) {
+    return pgdMappings.find((item) => normalizeModelName(item.dpp_model) === model.key) || null
+  }
+
+  function toggleDetails(model) {
+    if (!model.divergent) return
+    setSelectedKey((current) => current === model.key ? null : model.key)
+  }
 
   return (
     <section className="final-model-plan" aria-label="Comparação do plano por modelo entre cenário ORION e DPP Final">
@@ -199,19 +307,44 @@ function FinalModelPlan({ finalDppAnalysis }) {
             </tr>
           </thead>
           <tbody>
-            {visibleModels.map((model) => {
+            {pagedModels.map((model) => {
               const state = rowState(model)
+              const expanded = selectedKey === model.key
               return (
-                <tr key={model.key} className={model.divergent ? 'divergent' : 'equal'}>
-                  <td><strong>{model.name}</strong></td>
-                  <td className="number-cell orion-value">{model.orionPresent ? formatNumber(model.orionPgd) : '—'}</td>
-                  <td className="number-cell orion-value">{model.orionPresent ? formatNumber(model.orionReal) : '—'}</td>
-                  <td className="number-cell final-value">{model.finalPresent ? formatNumber(model.finalPgd) : '—'}</td>
-                  <td className="number-cell final-value">{model.finalPresent ? formatNumber(model.finalReal) : '—'}</td>
-                  <td className={`number-cell delta-value ${model.pgdDivergent ? 'changed' : 'neutral'}`}>{model.pgdDelta === null ? '—' : formatDelta(model.pgdDelta)}</td>
-                  <td className={`number-cell delta-value ${model.realDivergent ? 'changed' : 'neutral'}`}>{model.realDelta === null ? '—' : formatDelta(model.realDelta)}</td>
-                  <td><span className={`final-model-comparison-status ${state.tone}`}>{state.label}</span></td>
-                </tr>
+                <Fragment key={model.key}>
+                  <tr className={model.divergent ? 'divergent' : 'equal'}>
+                    <td><strong>{model.name}</strong></td>
+                    <td className="number-cell orion-value">{model.orionPresent ? formatNumber(model.orionPgd) : '—'}</td>
+                    <td className="number-cell orion-value">{model.orionPresent ? formatNumber(model.orionReal) : '—'}</td>
+                    <td className="number-cell final-value">{model.finalPresent ? formatNumber(model.finalPgd) : '—'}</td>
+                    <td className="number-cell final-value">{model.finalPresent ? formatNumber(model.finalReal) : '—'}</td>
+                    <td className={`number-cell delta-value ${model.pgdDivergent ? 'changed' : 'neutral'}`}>{model.pgdDelta === null ? '—' : formatDelta(model.pgdDelta)}</td>
+                    <td className={`number-cell delta-value ${model.realDivergent ? 'changed' : 'neutral'}`}>{model.realDelta === null ? '—' : formatDelta(model.realDelta)}</td>
+                    <td>
+                      {model.divergent ? (
+                        <button
+                          type="button"
+                          className="final-model-comparison-action"
+                          aria-expanded={expanded}
+                          aria-label={`${expanded ? 'Ocultar' : 'Ver'} detalhes da divergência do modelo ${model.name}`}
+                          onClick={() => toggleDetails(model)}
+                        >
+                          <span className={`final-model-comparison-status ${state.tone}`}>{state.label}</span>
+                          <small>{expanded ? 'Ocultar detalhes' : 'Ver detalhes'}</small>
+                        </button>
+                      ) : (
+                        <span className={`final-model-comparison-status ${state.tone}`}>{state.label}</span>
+                      )}
+                    </td>
+                  </tr>
+                  {expanded && (
+                    <tr className="final-model-detail-row">
+                      <td colSpan="8">
+                        <ModelDivergenceDetail model={model} mapping={mappingFor(model)} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               )
             })}
           </tbody>
@@ -219,8 +352,21 @@ function FinalModelPlan({ finalDppAnalysis }) {
         {!visibleModels.length && <div className="final-model-plan-empty">Nenhum modelo encontrado para este filtro.</div>}
       </div>
 
+      {visibleModels.length > 0 && (
+        <div className="final-model-plan-pagination" aria-label="Paginação do plano consolidado por modelo">
+          <span>
+            Mostrando {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, visibleModels.length)} de {formatNumber(visibleModels.length)} modelos · máximo de {PAGE_SIZE} linhas por página
+          </span>
+          <div>
+            <button type="button" disabled={safePage === 0} onClick={() => setPage((current) => Math.max(current - 1, 0))}>Anterior</button>
+            <span>Página {safePage + 1} de {pageCount}</span>
+            <button type="button" disabled={safePage >= pageCount - 1} onClick={() => setPage((current) => Math.min(current + 1, pageCount - 1))}>Próxima</button>
+          </div>
+        </div>
+      )}
+
       <div className="final-model-plan-footnote">
-        <span><strong>Cenário ORION</strong> = KIT disponível PGD e REAL calculados pelo motor Python.</span>
+        <span><strong>Cenário ORION</strong> = KIT disponível PGD mapeado pelo motor Python e REAL atual do cenário.</span>
         <span><strong>DPP Final</strong> = KIT disponível PGD e REAL lidos diretamente do arquivo consolidado.</span>
         <span><strong>Diferença</strong> = DPP Final − Cenário ORION.</span>
       </div>
