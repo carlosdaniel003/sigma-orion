@@ -9,6 +9,7 @@ from app.services.dpp_projection_service import (
     calculate_balance,
     calculate_nec,
     calculate_stock_total,
+    is_critical_material,
 )
 
 MAX_SCENARIOS = 8
@@ -56,9 +57,6 @@ def _calculate(materials: list[dict], models: list[dict], real_by_model: dict[st
 
     for source in materials:
         item = deepcopy(source)
-
-        # NEC, STK TTL e SALDO usam as mesmas funções canônicas consumidas pela
-        # projeção/exportação. Alterar a regra aqui significa alterar a fonte única.
         nec = calculate_nec(item, real_lookup)
         stock_total = calculate_stock_total(item)
         balance = calculate_balance(stock_total, nec)
@@ -66,12 +64,12 @@ def _calculate(materials: list[dict], models: list[dict], real_by_model: dict[st
         item["stock_total"] = stock_total
         item["balance"] = balance
 
-        if balance < -1e-9:
+        if balance < 0:
             negative_all_units += 1
 
         if (item.get("um") or "").upper() == "UN":
             un_materials += 1
-            if balance < -1e-9:
+            if is_critical_material(item.get("um"), balance):
                 item["status"] = "INVESTIGAR"
                 investigate += 1
             else:
@@ -128,7 +126,6 @@ def _payload(scenario_id: str, scenario: dict) -> dict:
 
 
 def get_latest_monthly_scenario() -> dict | None:
-    """Retorna o cenário mensal mais recente mantido em memória pelo backend local."""
     if not _SCENARIOS:
         return None
     scenario_id = next(reversed(_SCENARIOS))
@@ -136,40 +133,20 @@ def get_latest_monthly_scenario() -> dict | None:
 
 
 def get_monthly_scenario(scenario_id: str) -> dict | None:
-    """Retorna um cenário específico sem alterar seus valores ou a ordem do cache."""
     scenario = _SCENARIOS.get(scenario_id)
     if scenario is None:
         return None
     return _payload(scenario_id, scenario)
 
 
-def register_monthly_scenario(
-    *,
-    materials: list[dict],
-    models: list[dict],
-    reference_month: str,
-    base_summary: dict,
-    scope: str,
-    capabilities: dict,
-    sources: list[dict],
-    pending: list[str],
-    diagnostics: dict,
-    pgd_mapping: dict,
-) -> dict:
+def register_monthly_scenario(*, materials: list[dict], models: list[dict], reference_month: str, base_summary: dict, scope: str, capabilities: dict, sources: list[dict], pending: list[str], diagnostics: dict, pgd_mapping: dict) -> dict:
     scenario_id = uuid4().hex
     real_by_model = {model["name"]: max(_number(model.get("kit_pgd"), 0.0), 0.0) for model in models}
     _SCENARIOS[scenario_id] = {
-        "materials": deepcopy(materials),
-        "models": deepcopy(models),
-        "real_by_model": real_by_model,
-        "reference_month": reference_month,
-        "base_summary": deepcopy(base_summary),
-        "scope": scope,
-        "capabilities": deepcopy(capabilities),
-        "sources": deepcopy(sources),
-        "pending": deepcopy(pending),
-        "diagnostics": deepcopy(diagnostics),
-        "pgd_mapping": deepcopy(pgd_mapping),
+        "materials": deepcopy(materials), "models": deepcopy(models), "real_by_model": real_by_model,
+        "reference_month": reference_month, "base_summary": deepcopy(base_summary), "scope": scope,
+        "capabilities": deepcopy(capabilities), "sources": deepcopy(sources), "pending": deepcopy(pending),
+        "diagnostics": deepcopy(diagnostics), "pgd_mapping": deepcopy(pgd_mapping),
     }
     _SCENARIOS.move_to_end(scenario_id)
     while len(_SCENARIOS) > MAX_SCENARIOS:
@@ -181,14 +158,12 @@ def recalculate_monthly_scenario(scenario_id: str, real_by_model: dict[str, floa
     scenario = _SCENARIOS.get(scenario_id)
     if scenario is None:
         raise ValueError("Cenário não encontrado ou expirado. Gere o DPP mensal novamente.")
-
     known_models = {model["name"] for model in scenario["models"]}
     updated = dict(scenario["real_by_model"])
     for model_name, value in real_by_model.items():
         if model_name not in known_models:
             continue
         updated[model_name] = max(_number(value, 0.0), 0.0)
-
     scenario["real_by_model"] = updated
     _SCENARIOS.move_to_end(scenario_id)
     return _payload(scenario_id, scenario)
