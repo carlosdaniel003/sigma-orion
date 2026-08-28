@@ -3,27 +3,6 @@
   margin-top: 18px;
 }
 
-.dpp-evolution-source {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.dpp-final-upload {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.dpp-final-error {
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: #fff0f0;
-  color: #8f3434;
-  font-size: 0.78rem;
-}
-
 .dpp-evolution-list {
   display: grid;
   overflow: hidden;
@@ -180,12 +159,8 @@
 }
 
 @media (max-width: 720px) {
-  .dpp-final-upload,
   .dpp-evolution-row {
     grid-template-columns: 1fr;
-  }
-
-  .dpp-evolution-row {
     gap: 6px;
   }
 
