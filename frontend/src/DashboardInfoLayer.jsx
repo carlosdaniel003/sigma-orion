@@ -44,73 +44,13 @@ const INFO_TARGETS = [
     },
   },
   {
-    key: 'dpp-state',
-    selector: '.dpp-state-panel .panel-header h3',
-    info: {
-      title: 'Estado do DPP',
-      what: 'Coloca lado a lado o Cenário ORION antes da análise humana e o DPP Final depois da consolidação do analista.',
-      source: 'ORION: cenário mensal calculado em Python. DPP Final: arquivo consolidado do mês lido pelo endpoint de resumo do Dashboard.',
-      purpose: 'Separar claramente cálculo automático e resultado humano e mostrar o estado geral de PGD, REAL, críticos, OPCs e modelos ativos.',
-    },
-  },
-  {
     key: 'dpp-evolution',
     selector: '.dpp-evolution-panel .panel-header h3',
     info: {
       title: 'Evolução do DPP',
       what: 'Mostra as variações entre o Cenário ORION e o DPP Final para materiais críticos, OPCs, REAL e modelos ativos.',
-      source: 'Diferença entre os resumos do cenário inicial calculado pelo ORION e do DPP Final consolidado.',
+      source: 'Diferença entre os resumos do cenário inicial calculado pelo ORION e do DPP Final consolidado. O DPP Final é localizado no pacote mensal e lido pelo endpoint de resumo do Dashboard.',
       purpose: 'Evidenciar o que mudou durante a investigação e consolidação humana, sem exigir comparação manual de planilhas.',
-    },
-  },
-  {
-    key: 'indicator-comparison',
-    selector: '.dashboard-kpi-comparison .dashboard-comparison-heading h3',
-    info: {
-      title: 'Cenário ORION × DPP Final',
-      what: 'Compara os mesmos indicadores operacionais nos dois cenários: PGD, REAL, gap, modelos sem restrição, risco, críticos, PGD exposto e críticos compartilhados.',
-      source: 'ORION: models, materials e summary do cenário Python. DPP Final: indicadores recalculados a partir do arquivo consolidado do mês.',
-      purpose: 'Mostrar onde as decisões humanas alteraram o plano e quais riscos permaneceram ou foram reduzidos.',
-    },
-  },
-  {
-    key: 'model-health',
-    selector: '.dashboard-health-panel .panel-header h3',
-    info: {
-      title: 'Situação dos modelos',
-      what: 'Classifica os modelos ativos do Cenário ORION entre sem restrição detectada e com pelo menos um material crítico.',
-      source: 'REAL inicial por modelo, matriz de consumo Material × Modelo e materiais de UM = UN com SALDO negativo calculado pelo Python.',
-      purpose: 'Indicar rapidamente quantos modelos precisam de investigação material. A porcentagem mede modelos sem restrição, não percentual de unidades produzíveis.',
-    },
-  },
-  {
-    key: 'bottlenecks',
-    selector: '.dashboard-risk-grid > .dashboard-table-panel:first-child .panel-header h3',
-    info: {
-      title: 'Principais gargalos',
-      what: 'Lista os materiais críticos com os maiores déficits de SALDO do Cenário ORION.',
-      source: 'Materiais classificados como INVESTIGAR pelo motor Python, ordenados do SALDO mais negativo para o menos negativo; modelos afetados vêm da matriz de consumo e do REAL ativo.',
-      purpose: 'Priorizar a investigação começando pelos materiais com maior impacto potencial sobre o plano.',
-    },
-  },
-  {
-    key: 'risk-models',
-    selector: '.dashboard-risk-grid > .dashboard-table-panel:nth-child(2) .panel-header h3',
-    info: {
-      title: 'Modelos com maior risco',
-      what: 'Ordena modelos ativos pela quantidade de materiais críticos associados e mostra o pior déficit ligado a cada modelo.',
-      source: 'REAL inicial, matriz Material × Modelo e materiais críticos calculados no Cenário ORION.',
-      purpose: 'Direcionar a análise para os modelos mais expostos a restrições antes de investigar detalhes material por material.',
-    },
-  },
-  {
-    key: 'construction-state',
-    selector: '.dashboard-operational-panel .panel-header h3',
-    info: {
-      title: 'Estado da construção do DPP',
-      what: 'Resume a consolidação da base: materiais, modelos, itens novos do WIU, históricos preservados e relações de OPC.',
-      source: 'Processamento mensal do DPP anterior combinado com WIU, STK SAP, Explosão, PGD e relações históricas de OPC.',
-      purpose: 'Dar rastreabilidade ao que entrou, permaneceu ou foi herdado durante a construção automática do cenário.',
     },
   },
   {
