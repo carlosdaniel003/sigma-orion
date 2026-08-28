@@ -20,6 +20,11 @@ function value(current) {
   return current === null || current === undefined ? '—' : fmt.format(number(current))
 }
 
+function textValue(current) {
+  const text = String(current || '').trim()
+  return text || 'Não informado'
+}
+
 function statusText(flag, positive = 'Crítico', negative = 'Não crítico') {
   return flag ? positive : negative
 }
@@ -81,9 +86,10 @@ function buildModelRows(kind, data, finalDppAnalysis) {
 
     const leftActive = Boolean(left && number(left.real) > 0)
     const rightActive = Boolean(right?.active)
-    const leftRisk = Boolean(left && data.riskModels.some((model) => key(model.name) === name))
+    const leftRisk = Boolean(left && data.riskModels?.some((model) => key(model.name) === name))
     const rightRisk = Boolean(right?.at_risk)
 
+    if (kind === 'active' && left && right && leftActive === rightActive) return []
     if (['coverage', 'risk'].includes(kind) && left && right && leftRisk === rightRisk && leftActive === rightActive) return []
     if (kind === 'exposed' && left && right) {
       const sameRiskState = leftRisk === rightRisk && leftActive === rightActive
@@ -96,6 +102,14 @@ function buildModelRows(kind, data, finalDppAnalysis) {
 
     if (kind === 'pgd') return [{ item: left?.name || right?.name || name, orion: `KIT PGD ${value(left?.kit_pgd)}`, final: `KIT PGD ${value(right?.pgd)}`, reason: !left || !right ? 'O modelo existe apenas em uma das bases.' : `O KIT disponível PGD difere em ${value(number(right.pgd) - number(left.kit_pgd))}.` }]
     if (kind === 'real') return [{ item: left?.name || right?.name || name, orion: `REAL ${value(left?.real)}`, final: `REAL ${value(right?.real)}`, reason: !left || !right ? 'O modelo existe apenas em uma das bases.' : `O REAL consolidado difere do REAL calculado pelo ORION em ${value(number(right.real) - number(left.real))}.` }]
+    if (kind === 'active') return [{
+      item: left?.name || right?.name || name,
+      orion: `${leftActive ? 'Ativo' : 'Inativo'} · REAL ${value(left?.real)}`,
+      final: `${rightActive ? 'Ativo' : 'Inativo'} · REAL ${value(right?.real)}`,
+      reason: !left || !right
+        ? 'O modelo existe apenas em uma das bases, portanto a composição dos modelos ativos não é a mesma.'
+        : `O ORION considera modelo ativo quando REAL > 0. Neste modelo, o REAL passou de ${value(left.real)} no ORION para ${value(right.real)} no DPP Final, alterando sua condição de ${leftActive ? 'ativo' : 'inativo'} para ${rightActive ? 'ativo' : 'inativo'}.`,
+    }]
     if (kind === 'gap') return [{ item: left?.name || right?.name || name, orion: `Gap ${value(number(left?.kit_pgd) - number(left?.real))}`, final: `Gap ${value(number(right?.pgd) - number(right?.real))}`, reason: 'Gap = KIT disponível PGD − REAL. A divergência nasce de KIT e/ou REAL diferentes neste modelo.' }]
     if (kind === 'exposed') return [{
       item: left?.name || right?.name || name,
@@ -126,6 +140,23 @@ function buildMaterialRows(kind, data, finalDppAnalysis) {
   return keys.flatMap((materialKey) => {
     const left = orion.get(materialKey)
     const right = final.get(materialKey)
+
+    if (kind === 'opc') {
+      const leftOpc = key(left?.optional_material)
+      const rightOpc = key(right?.optional_material)
+      const missing = !left || !right
+      if (!missing && leftOpc === rightOpc) return []
+      return [{
+        item: left?.material || right?.material || materialKey,
+        description: left?.description || right?.description || '',
+        orion: `OPC: ${textValue(left?.optional_material)}`,
+        final: `OPC: ${textValue(right?.optional_material)}`,
+        reason: missing
+          ? `${!left ? 'O material não existe no Cenário ORION.' : 'O material existe no Cenário ORION.'} ${!right ? 'O material não existe no DPP Final.' : 'O material existe no DPP Final.'}`
+          : `O material alternativo associado na coluna OPC é diferente. ORION: ${textValue(left?.optional_material)}; DPP Final: ${textValue(right?.optional_material)}.`,
+      }]
+    }
+
     const leftCritical = Boolean(left?.critical)
     const rightCritical = Boolean(right?.critical)
     const leftAffectedActive = Object.entries(left?.consumption_by_model || {})
@@ -155,7 +186,7 @@ UM ${right?.um || '—'} · NEC ${value(right?.nec)} · STK TTL ${value(right?.s
 
 function ScenarioDivergenceDetails({ kind, data, finalDppAnalysis }) {
   const rule = finalDppAnalysis?.critical_rule
-  const rows = ['critical', 'shared'].includes(kind)
+  const rows = ['critical', 'shared', 'opc'].includes(kind)
     ? buildMaterialRows(kind, data, finalDppAnalysis)
     : buildModelRows(kind, data, finalDppAnalysis)
 
@@ -165,6 +196,10 @@ function ScenarioDivergenceDetails({ kind, data, finalDppAnalysis }) {
         <strong>Como o ORION decide</strong>
         {['critical', 'coverage', 'risk', 'exposed', 'shared'].includes(kind) ? (
           <p>{rule?.definition || 'Material crítico: UM = UN e SALDO negativo.'} {rule?.formula}</p>
+        ) : kind === 'opc' ? (
+          <p>OPC representa o material alternativo associado ao material principal. Há divergência quando o código/presença do OPC no Cenário ORION não corresponde ao DPP Final, mesmo que a quantidade total de OPCs seja igual.</p>
+        ) : kind === 'active' ? (
+          <p>O ORION considera um modelo ativo quando o REAL do modelo é maior que zero. A divergência mostra quais modelos mudaram de ativo para inativo, ou o inverso, entre o Cenário ORION e o DPP Final.</p>
         ) : kind === 'gap' ? (
           <p>Gap = KIT disponível PGD − REAL. A análise compara essa mesma relação modelo a modelo nos dois cenários.</p>
         ) : (
