@@ -96,6 +96,8 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
     opc_count = 0
     shared_critical = 0
     risk_model_names: set[str] = set()
+    critical_material_codes: set[str] = set()
+    shared_critical_material_codes: set[str] = set()
 
     for excel_row in range(header_row + 1, len(rows) + 1):
         material = _as_text(_cell(rows, excel_row, material_col))
@@ -113,6 +115,7 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
             continue
 
         critical_materials += 1
+        critical_material_codes.add(material)
         affected_models = []
         for model in model_states:
             if not model["active"]:
@@ -124,6 +127,7 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
 
         if len(affected_models) > 1:
             shared_critical += 1
+            shared_critical_material_codes.add(material)
 
     for model in model_states:
         model["at_risk"] = model["name"] in risk_model_names
@@ -145,6 +149,8 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
         "filename": filename,
         "status": "DPP_FINAL",
         "models": model_states,
+        "critical_materials": sorted(critical_material_codes),
+        "shared_critical_materials": sorted(shared_critical_material_codes),
         "summary": {
             "pgd_total": pgd_total,
             "real_total": real_total,
