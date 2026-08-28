@@ -108,27 +108,17 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
         <div>
           <span className="eyebrow">VISÃO OPERACIONAL</span>
           <h2>Visão Geral do cenário inicial gerado pelo ORION</h2>
-          <p>Esta visão mostra o DPP criado pelo motor Python antes dos ajustes, investigações e decisões manuais do analista.</p>
+          <p>
+            Esta visão mostra o DPP criado pelo motor Python antes dos ajustes, investigações e decisões manuais do analista.
+            {scenario && <> Cenário analisado: <strong>{formatMonth(scenario.reference_month)}</strong>.</>}
+          </p>
         </div>
-        <span className="status">{scenario ? formatMonth(scenario.reference_month) : 'Aguardando cenário'}</span>
       </header>
 
       {!scenario ? (
         <EmptyDashboard onNavigate={onNavigate} />
       ) : (
         <>
-          <section className="dashboard-context-strip">
-            <div>
-              <span className="dashboard-context-label">Cenário atual</span>
-              <strong>{formatMonth(scenario.reference_month)}</strong>
-              <small>Cenário inicial ORION · antes dos ajustes do analista</small>
-            </div>
-            <div className="dashboard-context-actions">
-              <span className="engine-badge"><span className="status-dot" />Motor Python ativo</span>
-              <button className="secondary-button" type="button" onClick={() => onNavigate?.('consolidation')}>Ajustar REAL / Ver DPP</button>
-            </div>
-          </section>
-
           <EvolutionPanel initial={initialState} finalState={finalState} />
 
           <AiBridge initial={initialState} finalState={finalState} />
