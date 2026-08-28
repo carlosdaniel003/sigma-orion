@@ -11,7 +11,6 @@
 
 /* Remove redundant badges/labels when the same context is already visible nearby. */
 .dpp-dashboard-view > .dashboard-header .eyebrow,
-.dpp-dashboard-view > .dashboard-header > .status,
 .dpp-dashboard-view > .dashboard-operational-panel > .panel-header > .status,
 .dpp-dashboard-view > .dpp-state-panel > .panel-header > .status,
 .dpp-dashboard-view .dashboard-planning-panel > .panel-header > .status {
@@ -24,11 +23,6 @@
 
 .dpp-dashboard-view > .alert {
   order: 5;
-}
-
-.dpp-dashboard-view > .dashboard-context-strip {
-  order: 10;
-  margin: 0 0 26px;
 }
 
 .dpp-dashboard-view > .dashboard-shared-package {
@@ -99,10 +93,6 @@
 @media (max-width: 760px) {
   .dpp-dashboard-view > .dashboard-header {
     margin-bottom: 20px;
-  }
-
-  .dpp-dashboard-view > .dashboard-context-strip {
-    margin-bottom: 22px;
   }
 
   .dpp-dashboard-view > .dashboard-shared-package {
