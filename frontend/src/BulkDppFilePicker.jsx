@@ -32,6 +32,7 @@ function BulkDppFilePicker({
   processing = false,
   title = 'Adicionar arquivos em massa',
   info = null,
+  footer = null,
 }) {
   const {
     files: selectedFiles,
@@ -153,6 +154,8 @@ function BulkDppFilePicker({
               {report.duplicates.length > 0 && <span>{report.duplicates.length} arquivo(s) duplicado(s) para a mesma categoria foram ignorados.</span>}
             </div>
           )}
+
+          {footer && <div className="bulk-file-footer">{footer}</div>}
         </>
       )}
     </section>
