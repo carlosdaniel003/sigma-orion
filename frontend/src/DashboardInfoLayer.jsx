@@ -38,9 +38,9 @@ const INFO_TARGETS = [
     selector: '.dpp-evolution-panel .panel-header h3',
     info: {
       title: 'Evolução do DPP',
-      what: 'Mostra as variações entre o Cenário ORION e o DPP Final para materiais críticos, OPCs, REAL e modelos ativos.',
-      source: 'Diferença entre os resumos do cenário inicial calculado pelo ORION e do DPP Final consolidado. O DPP Final é localizado no pacote mensal e lido pelo endpoint de resumo do Dashboard.',
-      purpose: 'Evidenciar o que mudou durante a investigação e consolidação humana, sem exigir comparação manual de planilhas.',
+      what: 'Mostra materiais críticos, OPCs, REAL e modelos ativos em colunas separadas para Cenário ORION, DPP Final e diferença Final − ORION.',
+      source: 'A coluna Cenário ORION usa o resumo calculado pelo motor Python. A coluna DPP Final usa o resumo lido diretamente do arquivo final consolidado do pacote mensal.',
+      purpose: 'Permitir identificar rapidamente o que permaneceu igual e o que mudou entre a geração automática e a consolidação final.',
     },
   },
   {
@@ -58,9 +58,9 @@ const INFO_TARGETS = [
     selector: '.final-model-plan-heading > div:first-child h3',
     info: {
       title: 'Plano consolidado por modelo',
-      what: 'Mostra para cada modelo o KIT disponível PGD, o REAL consolidado e o ajuste REAL − PGD feito no DPP Final.',
-      source: 'Linhas KIT Disponivel PGD e REAL lidas diretamente da aba DPP do arquivo final/consolidado carregado no pacote.',
-      purpose: 'Identificar exatamente quais modelos foram reduzidos, aumentados ou mantidos após a análise do analista.',
+      what: 'Compara, modelo a modelo, KIT disponível PGD e REAL do Cenário ORION contra KIT disponível PGD e REAL do DPP Final, mostrando também as diferenças Final − ORION.',
+      source: 'Cenário ORION: modelos e valores registrados pelo motor Python. DPP Final: linhas KIT Disponivel PGD e REAL lidas diretamente da aba DPP do arquivo consolidado.',
+      purpose: 'Localizar exatamente quais modelos o ORION ainda não reproduz igual ao DPP Final e qual campo precisa ser investigado.',
     },
   },
 ]
