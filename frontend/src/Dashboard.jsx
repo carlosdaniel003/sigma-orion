@@ -1,10 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import BulkDppFilePicker from './BulkDppFilePicker'
-import OrionWorking from './OrionWorking'
+import { useMemo } from 'react'
 import './dashboard.css'
 import './dashboard-state.css'
-
-const AUTO_RUN_DELAY = 450
 
 function number(value) {
   const parsed = Number(value)
@@ -86,15 +82,8 @@ function buildDashboardData(scenario) {
   }
 }
 
-function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppAnalysis }) {
+function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
   const data = useMemo(() => buildDashboardData(scenario), [scenario])
-  const [finalFile, setFinalFile] = useState(null)
-  const [finalLoading, setFinalLoading] = useState(false)
-  const [finalError, setFinalError] = useState('')
-  const [bundleMeta, setBundleMeta] = useState({ ready: false, signature: '', total: 0 })
-  const lastAutoSignatureRef = useRef('')
-  const autoRunTimerRef = useRef(null)
-  const finalAbortRef = useRef(null)
 
   const initialState = scenario ? {
     pgd: data.pgdTotal,
@@ -112,62 +101,6 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
     opc: number(finalSummary.opc_count),
     activeModels: number(finalSummary.active_models),
   } : null
-
-  useEffect(() => {
-    if (!scenario || !bundleMeta.ready || !bundleMeta.signature || !finalFile || finalLoading) return undefined
-    if (lastAutoSignatureRef.current === bundleMeta.signature) return undefined
-
-    window.clearTimeout(autoRunTimerRef.current)
-    autoRunTimerRef.current = window.setTimeout(() => {
-      lastAutoSignatureRef.current = bundleMeta.signature
-      loadFinalDpp()
-    }, AUTO_RUN_DELAY)
-
-    return () => window.clearTimeout(autoRunTimerRef.current)
-  }, [scenario, bundleMeta.ready, bundleMeta.signature, finalFile, finalLoading])
-
-  function applyDashboardBundle(bundle) {
-    setFinalFile(bundle.expectedDpp || null)
-    setBundleMeta({ ready: bundle.ready, signature: bundle.signature || '', total: bundle.total || 0 })
-    if (!bundle.total) {
-      lastAutoSignatureRef.current = ''
-      onFinalDppAnalysis?.(null)
-    }
-    setFinalError('')
-  }
-
-  async function loadFinalDpp() {
-    if (!finalFile || finalLoading) return
-
-    const controller = new AbortController()
-    finalAbortRef.current = controller
-    setFinalLoading(true)
-    setFinalError('')
-    const form = new FormData()
-    form.append('file', finalFile)
-
-    try {
-      const response = await fetch(`${apiUrl}/api/dpp/dashboard/final`, { method: 'POST', body: form, signal: controller.signal })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.detail || 'Não foi possível carregar o DPP final.')
-      onFinalDppAnalysis?.(payload)
-    } catch (requestError) {
-      if (requestError.name === 'AbortError') setFinalError('Análise cancelada. Use “Reanalisar DPP final” quando quiser executar novamente.')
-      else setFinalError(requestError.message || 'Falha ao resumir o DPP final.')
-    } finally {
-      finalAbortRef.current = null
-      setFinalLoading(false)
-    }
-  }
-
-  function cancelFinalLoad() {
-    finalAbortRef.current?.abort()
-  }
-
-  function rerunFinalDpp() {
-    if (bundleMeta.signature) lastAutoSignatureRef.current = bundleMeta.signature
-    loadFinalDpp()
-  }
 
   return (
     <>
@@ -196,18 +129,7 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
             </div>
           </section>
 
-          <EvolutionPanel
-            referenceMonth={scenario.reference_month}
-            initial={initialState}
-            finalState={finalState}
-            finalFilename={finalDppAnalysis?.filename}
-            finalFile={finalFile}
-            onBundle={applyDashboardBundle}
-            loadFinalDpp={rerunFinalDpp}
-            finalLoading={finalLoading}
-            finalError={finalError}
-            cancelFinalLoad={cancelFinalLoad}
-          />
+          <EvolutionPanel initial={initialState} finalState={finalState} />
 
           <AiBridge initial={initialState} finalState={finalState} />
 
@@ -248,7 +170,7 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
   )
 }
 
-function EvolutionPanel({ referenceMonth, initial, finalState, finalFilename, finalFile, onBundle, loadFinalDpp, finalLoading, finalError, cancelFinalLoad }) {
+function EvolutionPanel({ initial, finalState }) {
   const criticalDelta = finalState ? number(finalState.critical) - number(initial.critical) : 0
   const opcDelta = finalState ? number(finalState.opc) - number(initial.opc) : 0
   const realDelta = finalState ? number(finalState.real) - number(initial.real) : 0
@@ -264,27 +186,6 @@ function EvolutionPanel({ referenceMonth, initial, finalState, finalFilename, fi
         <span className="status">{finalState ? 'ANTES → DEPOIS' : 'Aguardando DPP final'}</span>
       </div>
 
-      <div className="dpp-evolution-source">
-        <BulkDppFilePicker
-          mode="dashboard"
-          referenceMonth={referenceMonth}
-          onBundle={onBundle}
-          processing={finalLoading}
-          compact
-          title="Adicionar pacote e localizar DPP final"
-        />
-
-        <OrionWorking active={finalLoading} mode="dashboard" onCancel={cancelFinalLoad} compact />
-
-        <div className="dpp-final-upload">
-          <span>{finalFile ? `DPP final detectado: ${finalFile.name}` : finalFilename ? `Último DPP final: ${finalFilename}` : 'Nenhum DPP final reconhecido no pacote'}</span>
-          <button className="secondary-button" type="button" disabled={!finalFile || finalLoading} onClick={loadFinalDpp}>
-            {finalLoading ? 'Processando...' : finalState ? 'Reanalisar DPP final' : 'Analisar agora'}
-          </button>
-        </div>
-        {finalError && <div className="dpp-final-error">{finalError}</div>}
-      </div>
-
       {finalState ? (
         <div className="dpp-evolution-list">
           <EvolutionRow label="Materiais críticos" before={initial.critical} after={finalState.critical} delta={criticalDelta} lowerIsBetter />
@@ -293,7 +194,7 @@ function EvolutionPanel({ referenceMonth, initial, finalState, finalFilename, fi
           <EvolutionRow label="Modelos ativos" before={initial.activeModels} after={finalState.activeModels} delta={activeDelta} />
         </div>
       ) : (
-        <p className="dashboard-method-note">Adicione o pacote do mês para localizar o DPP final. Assim que a leitura terminar, as diferenças aparecem aqui.</p>
+        <p className="dashboard-method-note">O DPP final do pacote compartilhado será analisado automaticamente assim que estiver disponível.</p>
       )}
     </section>
   )
