@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import './dashboard.css'
 import './dashboard-state.css'
+import './dashboard-comparison-metrics.css'
+
+const NUMERIC_TOLERANCE = 1e-4
 
 function number(value) {
   const parsed = Number(value)
@@ -21,6 +24,51 @@ function formatMonth(value) {
   const date = new Date(Number(year), Number(month) - 1, 1)
   const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+function normalizeKey(value) {
+  return String(value || '').trim().toLocaleUpperCase('pt-BR')
+}
+
+function sameNumber(left, right) {
+  return Math.abs(number(left) - number(right)) <= NUMERIC_TOLERANCE
+}
+
+function formatSignedNumber(value, digits = 0, unit = '') {
+  const numeric = number(value)
+  if (sameNumber(numeric, 0)) return `0${unit ? ` ${unit}` : ''}`
+  const sign = numeric > 0 ? '+' : '−'
+  return `${sign}${formatNumber(Math.abs(numeric), digits)}${unit ? ` ${unit}` : ''}`
+}
+
+function modelNumericDivergences(orionModels, finalModels, orionField, finalField) {
+  const orionMap = new Map((orionModels || []).map((model) => [normalizeKey(model.name), number(model[orionField])]))
+  const finalMap = new Map((finalModels || []).map((model) => [normalizeKey(model.name), number(model[finalField])]))
+  const keys = new Set([...orionMap.keys(), ...finalMap.keys()])
+  let differences = 0
+
+  keys.forEach((key) => {
+    if (!orionMap.has(key) || !finalMap.has(key) || !sameNumber(orionMap.get(key), finalMap.get(key))) {
+      differences += 1
+    }
+  })
+
+  return differences
+}
+
+function symmetricDifferenceCount(leftValues, rightValues) {
+  const left = new Set((leftValues || []).map(normalizeKey).filter(Boolean))
+  const right = new Set((rightValues || []).map(normalizeKey).filter(Boolean))
+  let differences = 0
+
+  left.forEach((value) => {
+    if (!right.has(value)) differences += 1
+  })
+  right.forEach((value) => {
+    if (!left.has(value)) differences += 1
+  })
+
+  return differences
 }
 
 function activeModelsForMaterial(material, realLookup) {
@@ -123,30 +171,7 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
 
           <AiBridge initial={initialState} finalState={finalState} />
 
-          <section className="dashboard-kpi-grid dashboard-kpi-primary">
-            <KpiCard label="PGD do mês" value={formatNumber(data.pgdTotal)} unit="un." detail="Referência de produção do PGD" />
-            <KpiCard label="REAL planejado" value={formatNumber(data.realTotal)} unit="un." detail={`${formatPercent(data.realVsPgd)} do PGD`} tone="good" />
-            <KpiCard
-              label="Gap PGD × REAL"
-              value={formatNumber(Math.abs(data.gap))}
-              unit="un."
-              detail={data.gap > 0 ? 'Ainda não cobertas pelo REAL' : data.gap < 0 ? 'REAL acima do PGD' : 'REAL alinhado ao PGD'}
-              tone={data.gap > 0 ? 'attention' : 'good'}
-            />
-            <KpiCard
-              label="Cobertura material do REAL"
-              value={formatPercent(data.materialCoverage)}
-              detail={`${data.safeModels} de ${data.activeModels.length} modelos ativos sem material UN negativo`}
-              tone={data.riskModels.length ? 'attention' : 'good'}
-            />
-          </section>
-
-          <section className="dashboard-kpi-grid dashboard-kpi-secondary">
-            <MiniKpi label="Modelos em risco" value={`${data.riskModels.length}/${data.activeModels.length}`} detail={`${data.models.length} modelos na base`} tone={data.riskModels.length ? 'attention' : 'good'} />
-            <MiniKpi label="Materiais críticos" value={formatNumber(data.criticalMaterials.length)} detail={`${formatNumber(data.materials.length)} analisados`} tone={data.criticalMaterials.length ? 'critical' : 'good'} />
-            <MiniKpi label="PGD exposto" value={formatNumber(data.pgdExposed)} detail="PGD ligado a modelos com material crítico" tone={data.pgdExposed ? 'attention' : 'good'} />
-            <MiniKpi label="Críticos compartilhados" value={formatNumber(data.sharedCritical.length)} detail="Afetam mais de um modelo ativo" tone={data.sharedCritical.length ? 'attention' : 'good'} />
-          </section>
+          <ScenarioComparison data={data} finalDppAnalysis={finalDppAnalysis} />
 
           <PlanningPanel data={data} />
 
@@ -158,6 +183,215 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
       )}
     </>
   )
+}
+
+function ScenarioComparison({ data, finalDppAnalysis }) {
+  const finalSummary = finalDppAnalysis?.summary || null
+  const finalModels = finalDppAnalysis?.models || []
+  const hasFinal = Boolean(finalSummary)
+  const finalPgd = hasFinal ? number(finalSummary.pgd_total) : 0
+  const finalReal = hasFinal ? number(finalSummary.real_total) : 0
+  const finalGap = finalPgd - finalReal
+  const finalRealVsPgd = finalPgd > 0 ? (finalReal / finalPgd) * 100 : 0
+
+  const pgdModelDiffs = hasFinal ? modelNumericDivergences(data.models, finalModels, 'kit_pgd', 'pgd') : 0
+  const realModelDiffs = hasFinal ? modelNumericDivergences(data.models, finalModels, 'real', 'real') : 0
+  const riskModelDiffs = hasFinal
+    ? symmetricDifferenceCount(
+        data.riskModels.map((model) => model.name),
+        finalModels.filter((model) => model.at_risk).map((model) => model.name),
+      )
+    : 0
+  const criticalMaterialDiffs = hasFinal
+    ? symmetricDifferenceCount(
+        data.criticalMaterials.map((material) => material.material || material.material_key),
+        finalDppAnalysis?.critical_materials || [],
+      )
+    : 0
+  const sharedCriticalDiffs = hasFinal
+    ? symmetricDifferenceCount(
+        data.sharedCritical.map((material) => material.material || material.material_key),
+        finalDppAnalysis?.shared_critical_materials || [],
+      )
+    : 0
+
+  function numericDivergence(orionValue, finalValue, unit, modelDiffs = 0) {
+    if (!hasFinal) return null
+    const delta = finalValue - orionValue
+    const parts = []
+    if (!sameNumber(delta, 0)) parts.push(`Δ total ${formatSignedNumber(delta, 0, unit)}`)
+    if (modelDiffs > 0) parts.push(`${formatNumber(modelDiffs)} modelo(s) divergente(s)`)
+    return parts.length ? parts.join(' · ') : 'Sem divergência'
+  }
+
+  function countDivergence(count, noun) {
+    if (!hasFinal) return null
+    return count > 0 ? `${formatNumber(count)} ${noun} com classificação diferente` : 'Sem divergência'
+  }
+
+  const coverageDelta = hasFinal ? number(finalSummary.material_coverage) - data.materialCoverage : 0
+  const riskCountDelta = hasFinal ? number(finalSummary.risk_models) - data.riskModels.length : 0
+  const activeCountDelta = hasFinal ? number(finalSummary.active_models) - data.activeModels.length : 0
+  const materialTotalDelta = hasFinal ? number(finalSummary.total_materials) - data.materials.length : 0
+
+  const coverageDivergence = !hasFinal
+    ? null
+    : sameNumber(coverageDelta, 0) && riskModelDiffs === 0
+      ? 'Sem divergência'
+      : [
+          !sameNumber(coverageDelta, 0) ? `Δ ${formatSignedNumber(coverageDelta, 1, 'p.p.')}` : null,
+          riskModelDiffs > 0 ? `${formatNumber(riskModelDiffs)} modelo(s) com situação diferente` : null,
+        ].filter(Boolean).join(' · ')
+
+  const riskDivergence = !hasFinal
+    ? null
+    : riskModelDiffs === 0 && sameNumber(activeCountDelta, 0) && sameNumber(riskCountDelta, 0)
+      ? 'Sem divergência'
+      : [
+          riskModelDiffs > 0 ? `${formatNumber(riskModelDiffs)} modelo(s) com risco diferente` : null,
+          !sameNumber(riskCountDelta, 0) ? `Δ em risco ${formatSignedNumber(riskCountDelta)}` : null,
+          !sameNumber(activeCountDelta, 0) ? `Δ ativos ${formatSignedNumber(activeCountDelta)}` : null,
+        ].filter(Boolean).join(' · ')
+
+  const criticalDivergence = !hasFinal
+    ? null
+    : criticalMaterialDiffs === 0 && sameNumber(materialTotalDelta, 0)
+      ? 'Sem divergência'
+      : [
+          criticalMaterialDiffs > 0 ? `${formatNumber(criticalMaterialDiffs)} material(is) com situação crítica diferente` : null,
+          !sameNumber(materialTotalDelta, 0) ? `Δ base ${formatSignedNumber(materialTotalDelta)} material(is)` : null,
+        ].filter(Boolean).join(' · ')
+
+  const rows = [
+    {
+      label: 'PGD do mês',
+      description: 'Referência mensal de produção.',
+      orionValue: `${formatNumber(data.pgdTotal)} un.`,
+      orionDetail: 'PGD mapeado pelo motor ORION',
+      finalValue: hasFinal ? `${formatNumber(finalPgd)} un.` : null,
+      finalDetail: hasFinal ? 'KIT Disponível PGD lido no DPP Final' : null,
+      divergence: numericDivergence(data.pgdTotal, finalPgd, 'un.', pgdModelDiffs),
+    },
+    {
+      label: 'REAL planejado',
+      description: 'Quantidade planejada por modelo.',
+      orionValue: `${formatNumber(data.realTotal)} un.`,
+      orionDetail: `${formatPercent(data.realVsPgd)} do PGD`,
+      finalValue: hasFinal ? `${formatNumber(finalReal)} un.` : null,
+      finalDetail: hasFinal ? `${formatPercent(finalRealVsPgd)} do PGD` : null,
+      divergence: numericDivergence(data.realTotal, finalReal, 'un.', realModelDiffs),
+    },
+    {
+      label: 'Gap PGD × REAL',
+      description: 'Diferença entre referência e planejamento.',
+      orionValue: `${formatNumber(Math.abs(data.gap))} un.`,
+      orionDetail: gapDescription(data.gap),
+      finalValue: hasFinal ? `${formatNumber(Math.abs(finalGap))} un.` : null,
+      finalDetail: hasFinal ? gapDescription(finalGap) : null,
+      divergence: hasFinal && sameNumber(finalGap, data.gap) ? 'Sem divergência' : hasFinal ? `Δ ${formatSignedNumber(finalGap - data.gap, 0, 'un.')}` : null,
+    },
+    {
+      label: 'Cobertura material do REAL',
+      description: 'Modelos ativos sem material UN negativo.',
+      orionValue: formatPercent(data.materialCoverage),
+      orionDetail: `${data.safeModels} de ${data.activeModels.length} modelos ativos cobertos`,
+      finalValue: hasFinal ? formatPercent(finalSummary.material_coverage) : null,
+      finalDetail: hasFinal ? `${formatNumber(finalSummary.safe_models)} de ${formatNumber(finalSummary.active_models)} modelos ativos cobertos` : null,
+      divergence: coverageDivergence,
+    },
+    {
+      label: 'Modelos em risco',
+      description: 'Modelos ativos ligados a material crítico.',
+      orionValue: `${data.riskModels.length}/${data.activeModels.length}`,
+      orionDetail: `${data.models.length} modelos na base`,
+      finalValue: hasFinal ? `${formatNumber(finalSummary.risk_models)}/${formatNumber(finalSummary.active_models)}` : null,
+      finalDetail: hasFinal ? `${formatNumber(finalSummary.model_count)} modelos na base` : null,
+      divergence: riskDivergence,
+    },
+    {
+      label: 'Materiais críticos',
+      description: 'Materiais UN com SALDO negativo.',
+      orionValue: formatNumber(data.criticalMaterials.length),
+      orionDetail: `${formatNumber(data.materials.length)} analisados`,
+      finalValue: hasFinal ? formatNumber(finalSummary.critical_materials) : null,
+      finalDetail: hasFinal ? `${formatNumber(finalSummary.total_materials)} analisados` : null,
+      divergence: criticalDivergence,
+    },
+    {
+      label: 'PGD exposto',
+      description: 'PGD de modelos ligados a material crítico.',
+      orionValue: `${formatNumber(data.pgdExposed)} un.`,
+      orionDetail: 'Exposição calculada no cenário ORION',
+      finalValue: hasFinal ? `${formatNumber(finalSummary.pgd_exposed)} un.` : null,
+      finalDetail: hasFinal ? 'Exposição recalculada no DPP Final' : null,
+      divergence: numericDivergence(data.pgdExposed, number(finalSummary?.pgd_exposed), 'un.'),
+    },
+    {
+      label: 'Críticos compartilhados',
+      description: 'Materiais críticos que afetam mais de um modelo ativo.',
+      orionValue: formatNumber(data.sharedCritical.length),
+      orionDetail: 'Cenário ORION',
+      finalValue: hasFinal ? formatNumber(finalSummary.shared_critical) : null,
+      finalDetail: hasFinal ? 'DPP Final' : null,
+      divergence: countDivergence(sharedCriticalDiffs, 'material(is) compartilhado(s)'),
+    },
+  ]
+
+  const divergentRows = hasFinal ? rows.filter((row) => row.divergence !== 'Sem divergência').length : 0
+
+  return (
+    <section className="panel dashboard-scenario-comparison">
+      <div className="panel-header">
+        <div>
+          <h3>ORION × DPP Final</h3>
+          <p>Compara os principais indicadores do cenário gerado pelo ORION com o consolidado real e aponta onde os resultados divergem.</p>
+        </div>
+        <span className={`status ${hasFinal && divergentRows === 0 ? 'comparison-ok' : hasFinal ? 'comparison-warning' : ''}`}>
+          {hasFinal ? `${divergentRows} indicador(es) com divergência` : 'Aguardando DPP Final'}
+        </span>
+      </div>
+
+      <div className="scenario-comparison-grid" role="table" aria-label="Comparação entre cenário ORION e DPP Final">
+        <div className="scenario-comparison-head" role="row">
+          <span role="columnheader">Indicador</span>
+          <span role="columnheader">Cenário ORION</span>
+          <span role="columnheader">DPP Final</span>
+          <span role="columnheader">Divergência</span>
+        </div>
+        {rows.map((row) => (
+          <ComparisonMetricRow key={row.label} {...row} hasFinal={hasFinal} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ComparisonMetricRow({ label, description, orionValue, orionDetail, finalValue, finalDetail, divergence, hasFinal }) {
+  const matches = hasFinal && divergence === 'Sem divergência'
+  return (
+    <div className="scenario-comparison-row" role="row">
+      <div className="scenario-comparison-label" role="cell">
+        <strong>{label}</strong>
+        <small>{description}</small>
+      </div>
+      <div className="scenario-comparison-value orion" role="cell">
+        <strong>{orionValue}</strong>
+        <small>{orionDetail}</small>
+      </div>
+      <div className="scenario-comparison-value final" role="cell">
+        <strong>{hasFinal ? finalValue : '—'}</strong>
+        <small>{hasFinal ? finalDetail : 'Aguardando leitura automática do DPP Final'}</small>
+      </div>
+      <div className={`scenario-comparison-divergence ${!hasFinal ? 'pending' : matches ? 'ok' : 'warning'}`} role="cell">
+        <strong>{!hasFinal ? 'Aguardando comparação' : divergence}</strong>
+      </div>
+    </div>
+  )
+}
+
+function gapDescription(gap) {
+  if (sameNumber(gap, 0)) return 'REAL alinhado ao PGD'
+  return gap > 0 ? 'PGD acima do REAL' : 'REAL acima do PGD'
 }
 
 function EvolutionPanel({ initial, finalState }) {
@@ -273,26 +507,6 @@ function EmptyDashboard({ onNavigate }) {
         <EmptyKpi label="Gargalos" text="O que impede o plano de avançar" />
       </section>
     </>
-  )
-}
-
-function KpiCard({ label, value, unit, detail, tone = '' }) {
-  return (
-    <article className={`dashboard-kpi ${tone}`}>
-      <span>{label}</span>
-      <div><strong>{value}</strong>{unit && <small className="dashboard-kpi-unit">{unit}</small>}</div>
-      <p>{detail}</p>
-    </article>
-  )
-}
-
-function MiniKpi({ label, value, detail, tone = '' }) {
-  return (
-    <article className={`dashboard-mini-kpi ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </article>
   )
 }
 
