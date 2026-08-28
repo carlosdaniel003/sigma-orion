@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import InfoHint from './InfoHint'
 import './dpp-column-comparison.css'
+import './dpp-column-divergence-detail.css'
 
 const PAGE_SIZE = 25
 const NUMBER_FORMAT = new Intl.NumberFormat('pt-BR', {
