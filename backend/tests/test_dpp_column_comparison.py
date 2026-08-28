@@ -2,8 +2,9 @@ from io import BytesIO
 
 from openpyxl import Workbook
 
+from app.services import dpp_dashboard_service as dashboard_service
 from app.services import dpp_scenario_service as scenario_service
-from app.services.dpp_dashboard_service import summarize_final_dpp_content
+from app.services.dpp_dashboard_service import get_column_divergences, summarize_final_dpp_content
 
 
 def _workbook_bytes() -> bytes:
@@ -151,6 +152,7 @@ def test_column_comparison_reports_totals_and_cell_divergences_without_listing_i
         assert description["orion_total"] == 3
         assert description["delta"] == 0
         assert description["difference_count"] == 1
+        assert description["drilldown_available"] is False
 
         model_a = _column(result, "MODELO A")
         assert model_a["final_total"] == 2
@@ -181,3 +183,44 @@ def test_column_comparison_reports_totals_and_cell_divergences_without_listing_i
         assert comments["supported"] is False
     finally:
         scenario_service._SCENARIOS.clear()
+
+
+def test_column_divergence_drilldown_is_paginated_and_explains_the_rule() -> None:
+    analysis_id = "column-pagination-test"
+    try:
+        scenario = _scenario()
+        stored = scenario_service._SCENARIOS[scenario["scenario_id"]]
+        for material in stored["materials"]:
+            material["description"] = f"{material['description']} ORION"
+        scenario = scenario_service.get_monthly_scenario(scenario["scenario_id"])
+
+        result = summarize_final_dpp_content(
+            _workbook_bytes(),
+            "DPP JULHO.xlsx",
+            scenario=scenario,
+            analysis_id=analysis_id,
+        )
+        description = _column(result, "Descrição")
+        assert description["difference_count"] == 3
+        assert description["drilldown_available"] is True
+
+        first_page = get_column_divergences(analysis_id, description["column"], offset=0, limit=1)
+        assert first_page is not None
+        assert first_page["total"] == 3
+        assert first_page["returned"] == 1
+        assert first_page["has_previous"] is False
+        assert first_page["has_next"] is True
+        assert len(first_page["items"]) == 1
+        assert "valores normalizados" in first_page["rule"]["criterion"]
+        assert "diferentes" in first_page["items"][0]["reason"].lower()
+
+        second_page = get_column_divergences(analysis_id, description["column"], offset=1, limit=1)
+        assert second_page is not None
+        assert second_page["total"] == 3
+        assert second_page["returned"] == 1
+        assert second_page["has_previous"] is True
+        assert second_page["has_next"] is True
+        assert second_page["items"][0]["material"] != first_page["items"][0]["material"]
+    finally:
+        scenario_service._SCENARIOS.clear()
+        dashboard_service._FINAL_COLUMN_SNAPSHOTS.clear()
