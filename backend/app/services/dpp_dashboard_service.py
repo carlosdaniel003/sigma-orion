@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from io import BytesIO
 from pathlib import Path
+from threading import Lock
+from uuid import uuid4
 
 from fastapi import UploadFile
 from openpyxl import load_workbook
@@ -29,6 +32,10 @@ from app.services.dpp_service import (
     _number,
 )
 
+MAX_FINAL_COLUMN_SNAPSHOTS = 4
+_FINAL_COLUMN_SNAPSHOTS: OrderedDict[str, dict] = OrderedDict()
+_FINAL_COLUMN_SNAPSHOTS_LOCK = Lock()
+
 
 def _optional_column(headers: dict[int, str], *names: str, startswith: str | None = None) -> int | None:
     accepted = {_normalize(name) for name in names}
@@ -39,7 +46,115 @@ def _optional_column(headers: dict[int, str], *names: str, startswith: str | Non
     return None
 
 
-def _build_column_comparison(*, rows: list[tuple], headers: dict[int, str], header_row: int, material_col: int, origin_col: int, check_col: int, scenario: dict) -> dict:
+def _register_column_snapshot(analysis_id: str, snapshot: dict) -> None:
+    with _FINAL_COLUMN_SNAPSHOTS_LOCK:
+        _FINAL_COLUMN_SNAPSHOTS[analysis_id] = snapshot
+        _FINAL_COLUMN_SNAPSHOTS.move_to_end(analysis_id)
+        while len(_FINAL_COLUMN_SNAPSHOTS) > MAX_FINAL_COLUMN_SNAPSHOTS:
+            _FINAL_COLUMN_SNAPSHOTS.popitem(last=False)
+
+
+def _column_snapshot(analysis_id: str) -> dict | None:
+    with _FINAL_COLUMN_SNAPSHOTS_LOCK:
+        snapshot = _FINAL_COLUMN_SNAPSHOTS.get(analysis_id)
+        if snapshot is not None:
+            _FINAL_COLUMN_SNAPSHOTS.move_to_end(analysis_id)
+        return snapshot
+
+
+def _column_rule(header: str, spec: dict) -> dict:
+    normalized = _normalize(header)
+    field = spec.get("field")
+    comparison = spec.get("comparison")
+
+    if field == "model":
+        definition = f"Compara o consumo do material na coluna do modelo {header}."
+        origin = "ORION: matriz Material × Modelo montada a partir da base mensal; DPP Final: célula consolidada da mesma coluna."
+    elif field == "nec":
+        definition = "NEC = Σ(REAL do modelo × consumo do material)."
+        origin = "O ORION recalcula a necessidade usando o REAL do cenário e a matriz Material × Modelo."
+    elif field == "stock_total":
+        definition = "STK TTL = STK + EXPLOSÃO + STK OP."
+        origin = "O ORION soma os três componentes canônicos de estoque do material."
+    elif field == "balance":
+        definition = "SALDO = STK TTL − NEC."
+        origin = "O ORION subtrai a necessidade calculada do estoque total calculado."
+    elif field == "stock_sap_effective":
+        definition = "Compara o estoque SAP efetivo do material."
+        origin = "ORION: arquivo STK mensal; DPP Final: coluna STK consolidada."
+    elif field == "explosion":
+        definition = "Compara a quantidade de EXPLOSÃO do material."
+        origin = "ORION: arquivo de Explosão mensal; DPP Final: coluna EXPLOSÃO consolidada."
+    elif field == "stock_op":
+        definition = "Compara o STK OP associado ao material."
+        origin = "ORION: valor operacional consolidado no cenário; DPP Final: coluna STK OP."
+    elif field == "in_current_wiu":
+        definition = "WIU é comparado por presença: preenchido versus não preenchido."
+        origin = "ORION: presença do material na WIU mensal; DPP Final: preenchimento da coluna WIU."
+    elif field == "check":
+        definition = "Compara o valor operacional da coluna Check; o status interno do ORION não é usado como substituto."
+        origin = "ORION: campo Check derivado/mantido no DPP; DPP Final: valor consolidado da coluna Check."
+    elif field == "optional_material":
+        definition = "Compara o código OPC associado ao material."
+        origin = "ORION: material opcional identificado no cenário; DPP Final: coluna OPC consolidada."
+    elif normalized == "material":
+        definition = "O item diverge quando a chave normalizada do material existe apenas em um dos cenários."
+        origin = "As bases são alinhadas pela chave Material normalizada."
+    else:
+        definition = f"Compara o valor da coluna {header} para o mesmo material nos dois cenários."
+        origin = "ORION: projeção canônica do cenário; DPP Final: valor lido diretamente do arquivo consolidado."
+
+    if comparison == "numeric":
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}."
+    elif comparison == "presence":
+        criterion = "Divergente quando um lado está preenchido e o outro não."
+    else:
+        criterion = "Divergente quando os valores normalizados não são iguais."
+
+    return {
+        "definition": definition,
+        "origin": origin,
+        "criterion": criterion,
+        "comparison": comparison or "text",
+        "tolerance": VALIDATION_ABS_TOL if comparison == "numeric" else None,
+    }
+
+
+def _difference_reason(header: str, spec: dict, final_value: object, orion_value: object, presence: str | None = None) -> str:
+    if presence == "final_only":
+        return "O material existe no DPP Final, mas não existe na projeção do Cenário ORION."
+    if presence == "orion_only":
+        return "O material existe no Cenário ORION, mas não existe no DPP Final."
+
+    field = spec.get("field")
+    comparison = spec.get("comparison")
+    if comparison == "numeric":
+        delta = (_number(final_value, 0.0) or 0.0) - (_number(orion_value, 0.0) or 0.0)
+        if field == "nec":
+            return f"O NEC recalculado pelo ORION difere do consolidado final em {delta:.6g}. A regra usada é NEC = Σ(REAL × consumo)."
+        if field == "stock_total":
+            return f"O STK TTL do ORION difere do consolidado final em {delta:.6g}. A regra usada é STK + EXPLOSÃO + STK OP."
+        if field == "balance":
+            return f"O SALDO do ORION difere do consolidado final em {delta:.6g}. A regra usada é STK TTL − NEC."
+        if field == "model":
+            return f"O consumo do material para {header} difere em {delta:.6g} entre a matriz ORION e o DPP Final."
+        return f"O valor numérico difere em {delta:.6g}, acima da tolerância operacional de {VALIDATION_ABS_TOL:g}."
+    if comparison == "presence":
+        return "A presença do item é diferente: um cenário considera a coluna preenchida e o outro não."
+    return "Os valores textuais normalizados são diferentes para o mesmo material."
+
+
+def _build_column_comparison(
+    *,
+    rows: list[tuple],
+    headers: dict[int, str],
+    header_row: int,
+    material_col: int,
+    origin_col: int,
+    check_col: int,
+    scenario: dict,
+    analysis_id: str | None = None,
+) -> dict:
     projection = build_orion_projection(
         scenario=scenario, headers=headers, material_col=material_col, origin_col=origin_col, check_col=check_col,
     )
@@ -65,6 +180,7 @@ def _build_column_comparison(*, rows: list[tuple], headers: dict[int, str], head
             "aggregation_label": "itens preenchidos" if kind == "count" else "soma",
             "final_total": final_total, "orion_total": None, "delta": None,
             "difference_count": None, "supported": bool(spec["supported"]),
+            "drilldown_available": False,
         }
         if not spec["supported"]:
             item["note"] = "Ainda não calculado pelo cenário ORION."
@@ -83,12 +199,30 @@ def _build_column_comparison(*, rows: list[tuple], headers: dict[int, str], head
                 continue
             if not column_values_equal(_cell(rows, final_row, column), projected_row["values"].get(column), spec.get("comparison")):
                 differences += 1
-        item.update(orion_total=orion_total, delta=delta, difference_count=differences)
+        item.update(
+            orion_total=orion_total,
+            delta=delta,
+            difference_count=differences,
+            drilldown_available=bool(analysis_id and differences > 0),
+        )
         if differences > 0 or abs(float(delta)) > VALIDATION_ABS_TOL:
             divergent_columns += 1
         columns.append(item)
 
+    if analysis_id:
+        description_col = _optional_column(headers, "Descrição", "Descricao")
+        _register_column_snapshot(analysis_id, {
+            "rows": rows,
+            "headers": headers,
+            "material_col": material_col,
+            "description_col": description_col,
+            "projection": projection,
+            "final_material_rows": final_material_rows,
+            "final_row_by_material": final_row_by_material,
+        })
+
     return {
+        "analysis_id": analysis_id,
         "scenario_id": projection["scenario_id"], "reference_month": projection["reference_month"],
         "basis": "canonical_orion_projection", "columns_total": len(columns),
         "comparable_columns": comparable_columns, "divergent_columns": divergent_columns,
@@ -97,7 +231,99 @@ def _build_column_comparison(*, rows: list[tuple], headers: dict[int, str], head
     }
 
 
-def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx", scenario: dict | None = None) -> dict:
+def get_column_divergences(analysis_id: str, column: int, offset: int = 0, limit: int = 25) -> dict | None:
+    snapshot = _column_snapshot(analysis_id)
+    if snapshot is None:
+        return None
+
+    projection = snapshot["projection"]
+    spec = projection["specs"].get(column)
+    header = snapshot["headers"].get(column)
+    if spec is None or header is None:
+        raise ValueError("A coluna solicitada não pertence ao comparativo analisado.")
+    if not spec.get("supported"):
+        raise ValueError("A coluna solicitada ainda não é calculada pelo Cenário ORION.")
+
+    final_row_by_material = snapshot["final_row_by_material"]
+    final_order = [key for key, _ in snapshot["final_material_rows"]]
+    orion_only = [row["key"] for row in projection["rows"] if row["key"] not in final_row_by_material]
+    ordered_keys = final_order + orion_only
+    rows = snapshot["rows"]
+    material_col = snapshot["material_col"]
+    description_col = snapshot.get("description_col")
+
+    total = 0
+    items: list[dict] = []
+    page_end = offset + limit
+
+    for material_key in ordered_keys:
+        final_row = final_row_by_material.get(material_key)
+        projected_row = projection["by_key"].get(material_key)
+        presence = None
+        if final_row is None:
+            divergent = True
+            presence = "orion_only"
+            final_value = None
+            orion_value = projected_row["values"].get(column) if projected_row else None
+        elif projected_row is None:
+            divergent = True
+            presence = "final_only"
+            final_value = _cell(rows, final_row, column)
+            orion_value = None
+        else:
+            final_value = _cell(rows, final_row, column)
+            orion_value = projected_row["values"].get(column)
+            divergent = not column_values_equal(final_value, orion_value, spec.get("comparison"))
+
+        if not divergent:
+            continue
+
+        if total >= offset and total < page_end:
+            material = None
+            description = None
+            if projected_row:
+                material = projected_row["material"].get("material")
+                description = projected_row["material"].get("description")
+            if final_row is not None:
+                material = material or _as_text(_cell(rows, final_row, material_col))
+                if description_col:
+                    description = description or _as_text(_cell(rows, final_row, description_col))
+
+            delta = None
+            if spec.get("comparison") == "numeric" and presence is None:
+                delta = (_number(final_value, 0.0) or 0.0) - (_number(orion_value, 0.0) or 0.0)
+
+            items.append({
+                "material": material or material_key,
+                "description": description or "",
+                "orion_value": orion_value,
+                "final_value": final_value,
+                "delta": delta,
+                "reason": _difference_reason(header, spec, final_value, orion_value, presence),
+            })
+        total += 1
+
+    return {
+        "analysis_id": analysis_id,
+        "column": column,
+        "name": header,
+        "rule": _column_rule(header, spec),
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "returned": len(items),
+        "has_previous": offset > 0,
+        "has_next": offset + len(items) < total,
+        "items": items,
+    }
+
+
+def summarize_final_dpp_content(
+    content: bytes,
+    filename: str = "dpp.xlsx",
+    scenario: dict | None = None,
+    analysis_id: str | None = None,
+) -> dict:
     extension = Path(filename).suffix.lower()
     if extension not in SUPPORTED_DPP_EXTENSIONS:
         raise ValueError("Envie um DPP final em formato .xlsx ou .xlsm.")
@@ -227,10 +453,11 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx", scen
     if scenario is not None:
         column_comparison = _build_column_comparison(
             rows=rows, headers=headers, header_row=header_row, material_col=material_col,
-            origin_col=origin_col, check_col=check_col, scenario=scenario,
+            origin_col=origin_col, check_col=check_col, scenario=scenario, analysis_id=analysis_id,
         )
 
     return {
+        "analysis_id": analysis_id,
         "filename": filename,
         "status": "DPP_FINAL",
         "models": model_states,
@@ -254,4 +481,10 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx", scen
 async def summarize_final_dpp(file: UploadFile) -> dict:
     filename = file.filename or "dpp.xlsx"
     content = await file.read()
-    return summarize_final_dpp_content(content, filename, scenario=get_latest_monthly_scenario())
+    analysis_id = uuid4().hex
+    return summarize_final_dpp_content(
+        content,
+        filename,
+        scenario=get_latest_monthly_scenario(),
+        analysis_id=analysis_id,
+    )
