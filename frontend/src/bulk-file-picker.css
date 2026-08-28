@@ -205,20 +205,6 @@
   font-size: 0.74rem;
 }
 
-.dpp-final-upload > span {
-  min-width: 0;
-  overflow: hidden;
-  padding: 11px 12px;
-  border: 1px solid #d7ded9;
-  border-radius: 10px;
-  background: #fff;
-  color: #56635c;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 @media (max-width: 720px) {
   .bulk-file-picker-head,
   .bulk-package-status,
