@@ -6,7 +6,7 @@ from threading import Lock
 from time import monotonic
 from uuid import uuid4
 
-from app.services.dpp_export_service import export_monthly_scenario_excel
+from app.services.dpp_canonical_export_service import export_monthly_scenario_excel
 
 MAX_JOBS = 6
 _JOBS: OrderedDict[str, dict] = OrderedDict()
