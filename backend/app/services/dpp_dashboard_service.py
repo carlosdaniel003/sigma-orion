@@ -140,7 +140,9 @@ def _scenario_material_value(material: dict, spec: dict) -> object:
         return 0.0
 
     if field == "check":
-        return material.get("check") or material.get("status")
+        # Check é um campo do DPP/WIU. O status interno OK/INVESTIGAR pertence ao
+        # Dashboard e não pode ser usado como fallback para esta coluna do Excel.
+        return material.get("check")
 
     if field == "in_current_wiu":
         return "WIU" if material.get("in_current_wiu") else None
@@ -452,5 +454,8 @@ def summarize_final_dpp_content(
 async def summarize_final_dpp(file: UploadFile) -> dict:
     filename = file.filename or "dpp.xlsx"
     content = await file.read()
-    scenario = get_latest_monthly_scenario()
-    return summarize_final_dpp_content(content, filename, scenario=scenario)
+    return summarize_final_dpp_content(
+        content,
+        filename,
+        scenario=get_latest_monthly_scenario(),
+    )
