@@ -116,6 +116,8 @@ def test_final_dashboard_summary_uses_consolidated_excel_state() -> None:
     assert summary["material_coverage"] == 0
     assert summary["pgd_exposed"] == 100
     assert summary["shared_critical"] == 0
+    assert result["critical_materials"] == ["MAT-A"]
+    assert result["shared_critical_materials"] == []
 
 
 def test_final_dashboard_exposes_model_by_model_pgd_real_and_delta() -> None:
