@@ -44,6 +44,16 @@ const INFO_TARGETS = [
     },
   },
   {
+    key: 'scenario-comparison',
+    selector: '.dashboard-scenario-comparison .panel-header h3',
+    info: {
+      title: 'ORION × DPP Final',
+      what: 'Compara os mesmos indicadores operacionais nas duas versões do cenário e destaca diferenças de valor e, quando possível, diferenças por modelo ou material.',
+      source: 'Cenário mensal calculado pelo motor Python comparado com o resumo e as identidades de modelos/materiais lidas diretamente da aba DPP do arquivo final consolidado.',
+      purpose: 'Responder se o ORION está reproduzindo o DPP Final e indicar em quais indicadores ainda existem divergências para investigação.',
+    },
+  },
+  {
     key: 'final-model-plan',
     selector: '.final-model-plan-heading > div:first-child h3',
     info: {
