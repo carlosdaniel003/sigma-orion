@@ -22,7 +22,7 @@ from app.services.agent_service import (
     provider_status,
 )
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
-from app.services.dpp_dashboard_service import summarize_final_dpp
+from app.services.dpp_dashboard_service import get_column_divergences, summarize_final_dpp
 from app.services.dpp_export_progress_service import get_export_download, get_export_job, start_export_job
 from app.services.dpp_export_service import export_monthly_scenario_excel
 from app.services.dpp_monthly_service import generate_monthly_dpp
@@ -328,6 +328,26 @@ async def final_dpp_dashboard_route(file: UploadFile = File(...)) -> dict:
             status_code=422,
             detail=f"Não foi possível resumir o DPP final '{file.filename}': {exc}",
         ) from exc
+
+
+@router.get("/dpp/dashboard/final/{analysis_id}/columns/{column}/divergences")
+def final_dpp_column_divergences(
+    analysis_id: str,
+    column: int,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1, le=100),
+) -> dict:
+    try:
+        result = get_column_divergences(analysis_id, column, offset=offset, limit=limit)
+        if result is None:
+            raise HTTPException(status_code=404, detail="A análise do DPP Final expirou. Analise o arquivo novamente.")
+        return result
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Não foi possível carregar as divergências da coluna: {exc}") from exc
 
 
 @router.post("/dpp/monthly/recalculate")
