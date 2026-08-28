@@ -3,9 +3,9 @@ import BrandLogo from './BrandLogo'
 import DashboardInfoLayer from './DashboardInfoLayer'
 import DashboardLoader from './DashboardLoader'
 import DppColumnComparison from './DppColumnComparison'
-import EvolutionDivergenceController from './EvolutionDivergenceController'
 import FinalModelPlan from './FinalModelPlan'
 import ScenarioDivergenceController from './ScenarioDivergenceController'
+import EvolutionDivergenceController from './EvolutionDivergenceController'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
 
@@ -109,7 +109,7 @@ function App() {
           <EvolutionDivergenceController finalDppAnalysis={finalDppAnalysis} />
           <ScenarioDivergenceController finalDppAnalysis={finalDppAnalysis} />
           <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
-          <DppColumnComparison finalDppAnalysis={finalDppAnalysis} />
+          <DppColumnComparison finalDppAnalysis={finalDppAnalysis} apiUrl={API_URL} />
           <DashboardInfoLayer />
         </section>
 
