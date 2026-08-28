@@ -31,12 +31,8 @@ function criticalExplanation(material, origin) {
   const stockTotal = material.stock_total
   const nec = material.nec
   const critical = Boolean(material.critical ?? material.status === 'INVESTIGAR')
-  if (unit !== 'UN') {
-    return `${origin}: UM = ${unit}. A regra de material crítico do ORION só classifica materiais com UM = UN.`
-  }
-  if (balance === null || balance === undefined) {
-    return `${origin}: SALDO não está disponível para aplicar a regra de criticidade.`
-  }
+  if (unit !== 'UN') return `${origin}: UM = ${unit}. A regra de material crítico do ORION só classifica materiais com UM = UN.`
+  if (balance === null || balance === undefined) return `${origin}: SALDO não está disponível para aplicar a regra de criticidade.`
   const equation = `SALDO = STK TTL (${value(stockTotal)}) − NEC (${value(nec)}) = ${value(balance)}.`
   return critical
     ? `${origin}: ${equation} Como UM = UN e SALDO < −0,0001, o item é crítico.`
@@ -100,6 +96,7 @@ function buildModelRows(kind, data, finalDppAnalysis) {
 function buildMaterialRows(kind, data, finalDppAnalysis) {
   const orion = materialMap(data.materials)
   const final = materialMap(finalDppAnalysis?.material_details, true)
+  const activeOrionModels = new Set((data.activeModels || []).map((model) => key(model.name)))
   const keys = [...new Set([...orion.keys(), ...final.keys()])]
 
   return keys.flatMap((materialKey) => {
@@ -107,7 +104,10 @@ function buildMaterialRows(kind, data, finalDppAnalysis) {
     const right = final.get(materialKey)
     const leftCritical = Boolean(left?.critical)
     const rightCritical = Boolean(right?.critical)
-    const leftShared = leftCritical && Object.entries(left?.consumption_by_model || {}).filter(([, usage]) => number(usage) > 0).length > 1
+    const leftAffectedActive = Object.entries(left?.consumption_by_model || {})
+      .filter(([modelName, usage]) => activeOrionModels.has(key(modelName)) && number(usage) > 0)
+      .map(([modelName]) => modelName)
+    const leftShared = leftCritical && leftAffectedActive.length > 1
     const rightShared = Boolean(right?.shared_critical)
     const differs = kind === 'shared' ? leftShared !== rightShared : leftCritical !== rightCritical
     if (!differs) return []
@@ -120,7 +120,7 @@ UM ${left?.um || '—'} · NEC ${value(left?.nec)} · STK TTL ${value(left?.stoc
       final: `${statusText(kind === 'shared' ? rightShared : rightCritical, kind === 'shared' ? 'Crítico compartilhado' : 'Crítico', 'Não classificado')}
 UM ${right?.um || '—'} · NEC ${value(right?.nec)} · STK TTL ${value(right?.stock_total)} · SALDO ${value(right?.balance)}`,
       reason: kind === 'shared'
-        ? `Crítico compartilhado exige material crítico afetando mais de um modelo ativo. ORION: ${leftShared ? 'sim' : 'não'}; DPP Final: ${rightShared ? 'sim' : 'não'}. ${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`
+        ? `Crítico compartilhado exige material crítico afetando mais de um modelo ativo. ORION: ${leftShared ? `sim (${leftAffectedActive.join(', ')})` : 'não'}; DPP Final: ${rightShared ? `sim (${(right?.affected_models || []).join(', ')})` : 'não'}. ${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`
         : `${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`,
     }]
   })
