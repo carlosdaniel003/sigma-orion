@@ -56,6 +56,8 @@ Evitar padrões típicos de “vibe code” e interfaces geradas por IA:
 - excesso de cards;
 - cards dentro de cards sem necessidade;
 - border-radius de 16–24 px aplicado indiscriminadamente;
+- pills, chips e badges usados automaticamente para qualquer status;
+- combinação de texto semântico + fundo pastel + borda da mesma cor + cápsula;
 - glow;
 - glassmorphism;
 - backdrop blur decorativo;
@@ -67,9 +69,12 @@ Evitar padrões típicos de “vibe code” e interfaces geradas por IA:
 - emojis;
 - ícones decorativos;
 - ícones em todo título, badge e ação;
+- ícones dentro de círculos coloridos sem função;
 - microcopy genérica de template;
 - animação contínua sem função;
 - cores de identidade aplicadas a tudo;
+- caixas com fundo pastel para cada indicador;
+- bordas coloridas acompanhando automaticamente a cor do texto;
 - componentes criados apenas para ocupar layout.
 
 ## 5. Hierarquia baseada no trabalho do usuário
@@ -158,7 +163,8 @@ Regras:
 - inputs e botões: `5px`;
 - tabelas, agrupamentos e seções: `5–8px`;
 - elementos especiais: máximo habitual de `10px`;
-- cápsula (`999px`) somente para status/chip cujo formato semântico justifique;
+- cápsula (`999px`, `9999px`, `50px`, `rounded-full`) não faz parte da linguagem padrão de informação ou status;
+- cápsulas são reservadas a controles interativos cuja própria interação justifique o formato, conforme a seção de status e badges;
 - não usar `16–24px` como padrão.
 
 ## 8. Espaçamento
@@ -238,6 +244,24 @@ Quando um card for realmente necessário:
 - conteúdo específico do domínio;
 - não aninhar outro card sem necessidade.
 
+### Princípio de contenção visual
+
+Não colocar uma forma geométrica ao redor de uma informação apenas para torná-la visualmente reconhecível.
+
+Primeiro resolver hierarquia utilizando:
+
+- posição;
+- alinhamento;
+- espaçamento;
+- tamanho;
+- peso tipográfico;
+- contraste;
+- divisores.
+
+Somente criar um container quando houver necessidade funcional de agrupamento, interação ou separação estrutural.
+
+Antes de criar um badge, card ou caixa, verificar se texto, marcador, alinhamento, espaço, divisor ou tipografia já resolvem o problema.
+
 ## 12. Tabelas
 
 Tabelas são componentes de primeira classe no ORION.
@@ -253,7 +277,224 @@ Regras:
 - sticky header quando a tabela for longa;
 - priorizar colunas que respondem às decisões do analista.
 
-## 13. Ícones, informação contextual e marca
+## 13. Status, indicadores, labels e badges
+
+### Regra principal
+
+Não transformar informações, estados ou indicadores automaticamente em badges, chips, pills ou cápsulas.
+
+Os padrões conhecidos como **pill badge**, **status chip**, **soft badge**, **outlined badge** ou **capsule badge** não fazem parte da linguagem visual padrão do ORION.
+
+Evitar especialmente o padrão:
+
+- texto colorido em negrito;
+- fundo pastel da mesma cor;
+- borda colorida;
+- formato totalmente arredondado;
+- `border-radius: 9999px` ou equivalente;
+- combinação simultânea de fundo + borda + texto usando a mesma cor semântica.
+
+Esse padrão não deve ser usado como solução visual padrão para estados como:
+
+- Mantido;
+- Reduzido;
+- Acima do PGD;
+- Abaixo do PGD;
+- Divergência;
+- Pendente;
+- Concluído;
+- Ativo;
+- Inativo;
+- OK;
+- Atenção.
+
+**Status são informação, não ação. Portanto, não devem parecer botões.**
+
+### Tratamento padrão de status
+
+Preferir, nesta ordem:
+
+1. texto simples;
+2. pequeno ponto de status + texto neutro;
+3. ícone discreto + texto;
+4. mudança tipográfica;
+5. barra ou marcador lateral;
+6. mudança muito sutil de cor na célula ou linha da tabela.
+
+Exemplo preferido:
+
+```text
+● Mantido
+● Reduzido
+● Acima do PGD
+```
+
+O ponto pode utilizar a cor semântica, mas o texto deve permanecer predominantemente na cor normal da interface.
+
+Evitar:
+
+```text
+[ Mantido ]
+[ Reduzido ]
+[ Acima do PGD ]
+```
+
+quando esses elementos tiverem aparência de cápsula, chip ou botão.
+
+Em tabelas, status devem preferencialmente ser apresentados como texto + pequeno marcador, sem fundo e sem contorno.
+
+### Uma cor, um canal
+
+**Não codificar o mesmo estado simultaneamente por texto, borda e preenchimento.**
+
+Escolher preferencialmente apenas um canal para receber a cor semântica:
+
+```text
+● verde + texto normal
+```
+
+ou:
+
+```text
+barra verde | texto normal
+```
+
+ou, quando realmente necessário:
+
+```text
+texto verde
+```
+
+Evitar:
+
+```text
+texto verde + fundo verde + borda verde
+```
+
+A cor deve comunicar estado, não decorar o componente inteiro.
+
+### Uso de cores semânticas
+
+Não aplicar simultaneamente cor semântica no:
+
+- texto;
+- fundo;
+- borda.
+
+Preferir que apenas um destes elementos receba a cor:
+
+- ponto;
+- ícone;
+- pequena barra;
+- indicador;
+- detalhe lateral;
+- texto, quando o contexto realmente exigir.
+
+O resultado precisa continuar compreensível sem cor.
+
+### Tipografia de status
+
+Não utilizar automaticamente `font-weight: 600`, `700` ou `800` em status.
+
+Estados secundários devem normalmente utilizar peso `400` ou `500`.
+
+Negrito deve indicar hierarquia ou importância real, e não servir apenas para compensar um componente pequeno.
+
+### Forma
+
+Cápsulas totalmente arredondadas não fazem parte da linguagem visual padrão do sistema para informação.
+
+Evitar em status, métricas, labels informativos e indicadores:
+
+```css
+border-radius: 9999px;
+border-radius: 999px;
+border-radius: 50px;
+```
+
+E, em Tailwind ou bibliotecas equivalentes:
+
+```text
+rounded-full
+```
+
+Para elementos retangulares, utilizar os raios discretos definidos nos tokens do sistema.
+
+### Exceções
+
+Pills/chips podem existir apenas quando a própria interação justificar esse formato, por exemplo:
+
+- filtros selecionáveis;
+- tags removíveis;
+- tokens;
+- seleção múltipla;
+- toggle segmentado;
+- categorias clicáveis.
+
+Mesmo nesses casos, devem ser tratados como **controles interativos**, não como decoração ou status.
+
+### Hierarquia de forma
+
+Um elemento só deve parecer botão quando for clicável.
+
+Um status não clicável não deve compartilhar a mesma linguagem visual dos botões.
+
+Uma informação textual não deve receber contorno apenas para parecer um componente.
+
+Antes de criar um badge, verificar se texto, ícone, marcador, alinhamento, espaço, divisor ou tipografia já resolvem o problema.
+
+### Restrição de implementação
+
+Não utilizar `rounded-full` em elementos de status, métricas ou informação.
+
+Antes de utilizar classes equivalentes a:
+
+- `rounded-full`;
+- `bg-green-50`;
+- `text-green-700`;
+- `border-green-200`;
+
+em conjunto, revisar o componente.
+
+A combinação abaixo é considerada **antipadrão deste projeto**:
+
+```text
+texto semântico + fundo semântico claro + borda semântica + cápsula
+```
+
+Exemplo proibido como padrão de status:
+
+```jsx
+<span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-sm font-semibold text-green-700">
+  Mantido
+</span>
+```
+
+A implementação deve preferir algo estruturalmente simples, por exemplo:
+
+```jsx
+<span className="status-text">
+  <span className="status-dot" aria-hidden="true" />
+  Mantido
+</span>
+```
+
+### Evitar estética genérica de dashboard SaaS/IA
+
+Não usar indiscriminadamente:
+
+- cards para toda informação;
+- pills para todo status;
+- gradientes decorativos;
+- ícones dentro de círculos coloridos;
+- caixas com fundo pastel para cada indicador;
+- bordas coloridas acompanhando a cor do texto;
+- excesso de cantos arredondados;
+- componentes visuais sem função operacional.
+
+A interface deve parecer uma ferramenta profissional construída deliberadamente, e não uma coleção de componentes genéricos de biblioteca UI.
+
+## 14. Ícones, informação contextual e marca
 
 Usar ícones apenas quando ajudam a reconhecer, executar ou compreender uma ação/informação.
 
@@ -311,7 +552,7 @@ SIGMA-S  ★RION
 - o wordmark acompanha `--orion-text`;
 - não adicionar glow, órbitas ou detalhes decorativos à marca.
 
-## 14. Movimento
+## 15. Movimento
 
 Animação deve comunicar estado ou progresso.
 
@@ -358,7 +599,7 @@ Evitar:
 
 Sempre respeitar `prefers-reduced-motion`.
 
-## 15. Performance visual
+## 16. Performance visual
 
 Preferir:
 
@@ -376,7 +617,7 @@ Evitar:
 - imagens grandes para elementos que podem ser vetor/CSS;
 - animação JS para efeitos puramente visuais.
 
-## 16. Conteúdo é parte do design
+## 17. Conteúdo é parte do design
 
 Usar dados e terminologia reais do DPP:
 
@@ -393,7 +634,7 @@ Usar dados e terminologia reais do DPP:
 
 Evitar conteúdo genérico como “Revenue”, “Growth”, “Insights”, “Performance” sem relação direta com a operação.
 
-## 17. Regras específicas do Dashboard DPP
+## 18. Regras específicas do Dashboard DPP
 
 - Nunca misturar Cenário ORION e DPP Final sem identificar claramente a origem.
 - Métrica precisa informar o que mede; não usar nomes que sugiram capacidade produtiva quando o cálculo mede proporção de modelos.
@@ -402,10 +643,12 @@ Evitar conteúdo genérico como “Revenue”, “Growth”, “Insights”, “
 - O plano por modelo deve priorizar alterações no REAL e diferenças contra KIT disponível PGD.
 - Gargalos devem mostrar material, déficit, modelos afetados e OPC quando disponível.
 - Não repetir a mesma métrica em múltiplos componentes sem oferecer uma leitura adicional.
+- Status de tabelas devem seguir a regra de texto neutro + marcador semântico, evitando badges/pills não interativos.
+- Resumos de divergência como “6 indicadores com divergência” devem preferir hierarquia tipográfica, marcador ou barra lateral em vez de cápsula com fundo e borda.
 - Ações de exportação/download devem aparecer como controle contextual ou faixa operacional compacta, não como um card isolado. O texto deve deixar explícito qual cenário será exportado e qual arquivo/layout serve apenas como modelo visual.
 - Todo bloco principal visível do Dashboard deve possuir informação contextual `i` com **O que mostra / Origem / Finalidade**.
 
-## 18. Checklist obrigatório antes de alterar frontend
+## 19. Checklist obrigatório antes de alterar frontend
 
 Antes de implementar:
 
@@ -413,6 +656,9 @@ Antes de implementar:
 - [ ] Sei qual pergunta operacional o componente responde.
 - [ ] Verifiquei se a informação já existe em outro componente.
 - [ ] Avaliei seção/tabela/divisor antes de criar card.
+- [ ] Avaliei texto/marcador/divisor antes de criar badge, pill ou chip.
+- [ ] Não usei `rounded-full` para status, métrica ou informação.
+- [ ] Não codifiquei o mesmo estado simultaneamente por texto + fundo + borda semânticos.
 - [ ] Não criei cor nova sem necessidade.
 - [ ] Não criei radius novo.
 - [ ] Não criei sombra grande.
@@ -426,14 +672,15 @@ Antes de implementar:
 Depois de implementar:
 
 - [ ] O resultado continua legível sem cor.
-- [ ] A cor tem significado.
-- [ ] O componente não parece uma landing page.
+- [ ] A cor tem significado e usa preferencialmente um único canal visual.
+- [ ] Status não clicáveis não parecem botões.
+- [ ] O componente não parece uma landing page nem um dashboard SaaS/IA genérico.
 - [ ] Não existe redundância de informação.
 - [ ] O estado ORION vs Final está explícito.
 - [ ] Tooltips não inventam cálculos nem fontes.
 - [ ] Se uma nova regra visual foi aprovada, atualizei este documento.
 
-## 19. Protocolo de manutenção
+## 20. Protocolo de manutenção
 
 Este documento é parte do código do produto.
 
@@ -444,6 +691,6 @@ Para qualquer mudança visual futura:
 3. justificar qualquer exceção;
 4. atualizar este arquivo quando a linguagem visual evoluir;
 5. manter a implementação compatível com os dois temas;
-6. não reintroduzir estilos legados de 16–24 px, grandes sombras, glassmorphism ou cards excessivos.
+6. não reintroduzir estilos legados de 16–24 px, grandes sombras, glassmorphism, cards excessivos ou pills/badges como padrão de status.
 
 A consistência do sistema tem prioridade sobre criatividade isolada em uma única tela.
