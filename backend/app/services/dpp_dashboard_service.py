@@ -7,6 +7,11 @@ from fastapi import UploadFile
 from openpyxl import load_workbook
 
 from app.services.dpp_consolidation_service import _material_key
+from app.services.dpp_projection_service import (
+    aggregate,
+    build_orion_projection,
+    column_values_equal,
+)
 from app.services.dpp_scenario_service import get_latest_monthly_scenario
 from app.services.dpp_service import (
     SOURCE_SHEET,
@@ -23,148 +28,6 @@ from app.services.dpp_service import (
 )
 
 
-_COUNT_COLUMNS = {
-    "material",
-    "descricao",
-    "um",
-    "grupo origem",
-    "check",
-    "wiu",
-    "opc",
-    "coments",
-    "comments",
-    "comentario",
-    "comentarios",
-}
-_UNSUPPORTED_ORION_COLUMNS = {
-    "preco",
-    "amount",
-    "coments",
-    "comments",
-    "comentario",
-    "comentarios",
-}
-_COMMENT_COLUMNS = {"coments", "comments", "comentario", "comentarios"}
-
-
-def _is_filled(value: object) -> bool:
-    return value not in (None, "") and str(value).strip() != ""
-
-
-def _aggregate(values: list[object], kind: str) -> float | int:
-    if kind == "count":
-        return sum(1 for value in values if _is_filled(value))
-    return sum(_number(value, 0.0) or 0.0 for value in values)
-
-
-def _scenario_column_spec(
-    *,
-    column: int,
-    header: str,
-    model_start: int,
-    model_end: int,
-) -> dict:
-    normalized = _normalize(header)
-    kind = "count" if normalized in _COUNT_COLUMNS else "sum"
-
-    if model_start <= column <= model_end:
-        return {
-            "kind": "sum",
-            "supported": True,
-            "field": "model",
-            "model_name": header,
-            "comparison": "numeric",
-        }
-
-    if normalized in _UNSUPPORTED_ORION_COLUMNS:
-        return {
-            "kind": kind,
-            "supported": False,
-            "field": None,
-            "comparison": None,
-        }
-
-    direct_fields = {
-        "material": ("material", "text"),
-        "descricao": ("description", "text"),
-        "um": ("um", "text"),
-        "grupo origem": ("group_origin", "text"),
-        "check": ("check", "text"),
-        "wiu": ("in_current_wiu", "presence"),
-        "nec": ("nec", "numeric"),
-        "opc": ("optional_material", "text"),
-        "stk op": ("stock_op", "numeric"),
-        "stk ttl": ("stock_total", "numeric"),
-        "saldo": ("balance", "numeric"),
-    }
-    if normalized in direct_fields:
-        field, comparison = direct_fields[normalized]
-        return {
-            "kind": kind,
-            "supported": True,
-            "field": field,
-            "comparison": comparison,
-        }
-
-    if normalized.startswith("stk ") and normalized not in {"stk op", "stk ttl"}:
-        return {
-            "kind": "sum",
-            "supported": True,
-            "field": "stock_sap_effective",
-            "comparison": "numeric",
-        }
-
-    if normalized.startswith("explosao"):
-        return {
-            "kind": "sum",
-            "supported": True,
-            "field": "explosion",
-            "comparison": "numeric",
-        }
-
-    return {
-        "kind": kind,
-        "supported": False,
-        "field": None,
-        "comparison": None,
-    }
-
-
-def _scenario_material_value(material: dict, spec: dict) -> object:
-    field = spec.get("field")
-    if field == "model":
-        target = _normalize(spec.get("model_name"))
-        for model_name, value in (material.get("consumption_by_model") or {}).items():
-            if _normalize(model_name) == target:
-                return _number(value, 0.0) or 0.0
-        return 0.0
-
-    if field == "check":
-        # Check é um campo do DPP/WIU. O status interno OK/INVESTIGAR pertence ao
-        # Dashboard e não pode ser usado como fallback para esta coluna do Excel.
-        return material.get("check")
-
-    if field == "in_current_wiu":
-        return "WIU" if material.get("in_current_wiu") else None
-
-    if field == "stock_sap_effective":
-        return material.get("stock_sap_effective", material.get("stock_sap"))
-
-    return material.get(field) if field else None
-
-
-def _column_values_equal(final_value: object, orion_value: object, comparison: str | None) -> bool:
-    if comparison == "numeric":
-        left = _number(final_value, 0.0) or 0.0
-        right = _number(orion_value, 0.0) or 0.0
-        return abs(left - right) <= VALIDATION_ABS_TOL
-
-    if comparison == "presence":
-        return _is_filled(final_value) == _is_filled(orion_value)
-
-    return _normalize(final_value) == _normalize(orion_value)
-
-
 def _build_column_comparison(
     *,
     rows: list[tuple],
@@ -175,20 +38,13 @@ def _build_column_comparison(
     check_col: int,
     scenario: dict,
 ) -> dict:
-    model_start = origin_col + 1
-    model_end = check_col - 1
-
-    comment_columns = [
-        column
-        for column, header in headers.items()
-        if _normalize(header) in _COMMENT_COLUMNS and column >= material_col
-    ]
-    last_column = min(comment_columns) if comment_columns else max(headers)
-    comparison_columns = [
-        column
-        for column in sorted(headers)
-        if material_col <= column <= last_column
-    ]
+    projection = build_orion_projection(
+        scenario=scenario,
+        headers=headers,
+        material_col=material_col,
+        origin_col=origin_col,
+        check_col=check_col,
+    )
 
     final_material_rows: list[tuple[str, int]] = []
     final_row_by_material: dict[str, int] = {}
@@ -200,31 +56,16 @@ def _build_column_comparison(
         final_material_rows.append((key, excel_row))
         final_row_by_material[key] = excel_row
 
-    scenario_materials = [
-        material
-        for material in (scenario.get("materials") or [])
-        if _material_key(material.get("material"))
-    ]
-    orion_by_material = {
-        _material_key(material.get("material")): material
-        for material in scenario_materials
-    }
-
     columns: list[dict] = []
     divergent_columns = 0
     comparable_columns = 0
 
-    for column in comparison_columns:
+    for column in projection["columns"]:
         header = headers[column]
-        spec = _scenario_column_spec(
-            column=column,
-            header=header,
-            model_start=model_start,
-            model_end=model_end,
-        )
+        spec = projection["specs"][column]
         kind = spec["kind"]
         final_values = [_cell(rows, excel_row, column) for _, excel_row in final_material_rows]
-        final_total = _aggregate(final_values, kind)
+        final_total = aggregate(final_values, kind)
 
         item = {
             "name": header,
@@ -244,22 +85,21 @@ def _build_column_comparison(
             continue
 
         comparable_columns += 1
-        orion_values = [_scenario_material_value(material, spec) for material in scenario_materials]
-        orion_total = _aggregate(orion_values, kind)
+        orion_total = projection["totals"][column]
         delta = final_total - orion_total
 
         differences = 0
-        all_material_keys = set(final_row_by_material) | set(orion_by_material)
+        all_material_keys = set(final_row_by_material) | set(projection["by_key"])
         for material_key in all_material_keys:
             final_row = final_row_by_material.get(material_key)
-            orion_material = orion_by_material.get(material_key)
-            if final_row is None or orion_material is None:
+            projected_row = projection["by_key"].get(material_key)
+            if final_row is None or projected_row is None:
                 differences += 1
                 continue
 
             final_value = _cell(rows, final_row, column)
-            orion_value = _scenario_material_value(orion_material, spec)
-            if not _column_values_equal(final_value, orion_value, spec.get("comparison")):
+            orion_value = projected_row["values"].get(column)
+            if not column_values_equal(final_value, orion_value, spec.get("comparison")):
                 differences += 1
 
         item["orion_total"] = orion_total
@@ -270,15 +110,15 @@ def _build_column_comparison(
         columns.append(item)
 
     return {
-        "scenario_id": scenario.get("scenario_id"),
-        "reference_month": scenario.get("reference_month"),
-        "basis": "material_rows",
+        "scenario_id": projection["scenario_id"],
+        "reference_month": projection["reference_month"],
+        "basis": "canonical_orion_projection",
         "columns_total": len(columns),
         "comparable_columns": comparable_columns,
         "divergent_columns": divergent_columns,
         "unsupported_columns": len(columns) - comparable_columns,
         "final_materials": len(final_material_rows),
-        "orion_materials": len(scenario_materials),
+        "orion_materials": len(projection["rows"]),
         "columns": columns,
     }
 
