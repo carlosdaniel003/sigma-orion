@@ -70,7 +70,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
       setError('')
       try {
         const response = await fetch(
-          `${apiUrl}/dpp/dashboard/final/${analysisId}/columns/${selectedColumn.column}/divergences?offset=${offset}&limit=${PAGE_SIZE}`,
+          `${apiUrl}/api/dpp/dashboard/final/${analysisId}/columns/${selectedColumn.column}/divergences?offset=${offset}&limit=${PAGE_SIZE}`,
           { signal: controller.signal },
         )
         const payload = await response.json().catch(() => null)
