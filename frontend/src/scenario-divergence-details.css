@@ -1,35 +1,29 @@
-.scenario-comparison-divergence-button {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+.scenario-comparison-divergence.warning[data-drilldown='true'] {
   cursor: pointer;
 }
 
-.scenario-comparison-divergence-button::after {
+.scenario-comparison-divergence.warning[data-drilldown='true']::after {
   content: 'Ver detalhes';
-  flex: 0 0 auto;
   color: var(--orion-blue);
   font-size: var(--text-xs);
   font-weight: 500;
 }
 
-.scenario-comparison-divergence-button[aria-expanded='true']::after {
-  content: 'Ocultar';
+.scenario-comparison-divergence.warning[data-drilldown='true'][data-expanded='true']::after {
+  content: 'Ocultar detalhes';
+}
+
+.scenario-comparison-divergence.warning[data-drilldown='true']:focus-visible {
+  outline: 1px solid var(--orion-blue);
+  outline-offset: -2px;
+}
+
+.scenario-divergence-host {
+  border-bottom: 1px solid var(--orion-border-soft);
 }
 
 .scenario-divergence-detail {
-  grid-column: 1 / -1;
   padding: var(--space-3) var(--space-4) var(--space-4);
-  border-bottom: 1px solid var(--orion-border);
   background: var(--orion-surface);
 }
 
