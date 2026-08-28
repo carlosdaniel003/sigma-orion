@@ -405,36 +405,40 @@ function EvolutionPanel({ initial, finalState }) {
       <div className="panel-header">
         <div>
           <h3>Evolução do DPP</h3>
-          <p>O que mudou entre o cenário inicial calculado pelo ORION e o DPP consolidado após a análise.</p>
+          <p>Compara resultados de alto nível entre o cenário calculado pelo ORION e o DPP Final consolidado, mantendo a origem de cada valor explícita.</p>
         </div>
-        <span className="status">{finalState ? 'ANTES → DEPOIS' : 'Aguardando DPP final'}</span>
+        <span className="status">{finalState ? 'ORION × DPP FINAL' : 'Aguardando DPP Final'}</span>
       </div>
 
       {finalState ? (
-        <div className="dpp-evolution-list">
-          <EvolutionRow label="Materiais críticos" before={initial.critical} after={finalState.critical} delta={criticalDelta} lowerIsBetter />
-          <EvolutionRow label="OPCs" before={initial.opc} after={finalState.opc} delta={opcDelta} />
-          <EvolutionRow label="REAL" before={initial.real} after={finalState.real} delta={realDelta} />
-          <EvolutionRow label="Modelos ativos" before={initial.activeModels} after={finalState.activeModels} delta={activeDelta} />
+        <div className="dpp-evolution-list" role="table" aria-label="Evolução do DPP entre Cenário ORION e DPP Final">
+          <div className="dpp-evolution-head" role="row">
+            <span role="columnheader">Indicador</span>
+            <span role="columnheader">Cenário ORION</span>
+            <span role="columnheader">DPP Final</span>
+            <span role="columnheader">Diferença · Final − ORION</span>
+          </div>
+          <EvolutionRow label="Materiais críticos" orion={initial.critical} final={finalState.critical} delta={criticalDelta} />
+          <EvolutionRow label="OPCs" orion={initial.opc} final={finalState.opc} delta={opcDelta} />
+          <EvolutionRow label="REAL" orion={initial.real} final={finalState.real} delta={realDelta} />
+          <EvolutionRow label="Modelos ativos" orion={initial.activeModels} final={finalState.activeModels} delta={activeDelta} />
         </div>
       ) : (
-        <p className="dashboard-method-note">O DPP final do pacote compartilhado será analisado automaticamente assim que estiver disponível.</p>
+        <p className="dashboard-method-note">O DPP Final do pacote compartilhado será analisado automaticamente. Até essa leitura terminar, este bloco mostra apenas que a comparação ainda está pendente.</p>
       )}
     </section>
   )
 }
 
-function EvolutionRow({ label, before, after, delta, lowerIsBetter = false }) {
-  const improved = lowerIsBetter ? delta < 0 : delta > 0
-  const neutral = Math.abs(delta) < 1e-9
+function EvolutionRow({ label, orion, final, delta }) {
+  const neutral = sameNumber(delta, 0)
   return (
-    <div className="dpp-evolution-row">
-      <strong>{label}</strong>
-      <span className="evolution-value before">{formatNumber(before)}</span>
-      <span className="evolution-arrow">→</span>
-      <span className="evolution-value after">{formatNumber(after)}</span>
-      <small className={neutral ? 'neutral' : improved ? 'good' : 'attention'}>
-        {neutral ? 'sem alteração' : `${delta > 0 ? '+' : ''}${formatNumber(delta)}`}
+    <div className="dpp-evolution-row" role="row">
+      <strong role="rowheader">{label}</strong>
+      <span className="evolution-value orion" role="cell">{formatNumber(orion)}</span>
+      <span className="evolution-value final" role="cell">{formatNumber(final)}</span>
+      <small className={neutral ? 'neutral' : 'attention'} role="cell">
+        {neutral ? 'Igual' : formatSignedNumber(delta)}
       </small>
     </div>
   )
