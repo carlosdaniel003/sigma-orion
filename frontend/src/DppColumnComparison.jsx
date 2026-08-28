@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import InfoHint from './InfoHint'
 import './dpp-column-comparison.css'
 
+const PAGE_SIZE = 25
 const NUMBER_FORMAT = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 3,
 })
@@ -29,9 +31,82 @@ function differenceLabel(count) {
   return `${NUMBER_FORMAT.format(numeric)} ${numeric === 1 ? 'valor divergente' : 'valores divergentes'}`
 }
 
-function DppColumnComparison({ finalDppAnalysis }) {
+function formatDetailValue(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'number') return NUMBER_FORMAT.format(value)
+  return String(value)
+}
+
+function formatDetailDelta(value) {
+  if (value === null || value === undefined) return '—'
+  const numeric = Number(value) || 0
+  if (isZero(numeric)) return '0'
+  return `${numeric > 0 ? '+' : '−'}${NUMBER_FORMAT.format(Math.abs(numeric))}`
+}
+
+function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
   const comparison = finalDppAnalysis?.column_comparison
+  const analysisId = finalDppAnalysis?.analysis_id || comparison?.analysis_id
+  const [selectedColumn, setSelectedColumn] = useState(null)
+  const [detail, setDetail] = useState(null)
+  const [offset, setOffset] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    setSelectedColumn(null)
+    setDetail(null)
+    setOffset(0)
+    setError('')
+  }, [analysisId])
+
+  useEffect(() => {
+    if (!selectedColumn || !analysisId || !apiUrl) return undefined
+    const controller = new AbortController()
+
+    async function loadDetails() {
+      setLoading(true)
+      setError('')
+      try {
+        const response = await fetch(
+          `${apiUrl}/dpp/dashboard/final/${analysisId}/columns/${selectedColumn.column}/divergences?offset=${offset}&limit=${PAGE_SIZE}`,
+          { signal: controller.signal },
+        )
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) {
+          throw new Error(payload?.detail || 'Não foi possível carregar as divergências desta coluna.')
+        }
+        setDetail(payload)
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') {
+          setDetail(null)
+          setError(requestError.message || 'Não foi possível carregar as divergências desta coluna.')
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false)
+      }
+    }
+
+    loadDetails()
+    return () => controller.abort()
+  }, [analysisId, apiUrl, offset, selectedColumn])
+
   if (!comparison?.columns?.length) return null
+
+  function toggleColumn(column) {
+    if (!column.drilldown_available) return
+    if (selectedColumn?.column === column.column) {
+      setSelectedColumn(null)
+      setDetail(null)
+      setOffset(0)
+      setError('')
+      return
+    }
+    setSelectedColumn(column)
+    setDetail(null)
+    setOffset(0)
+    setError('')
+  }
 
   return (
     <section className="dpp-column-comparison" aria-labelledby="dpp-column-comparison-title">
@@ -41,9 +116,9 @@ function DppColumnComparison({ finalDppAnalysis }) {
             <h3 id="dpp-column-comparison-title">Comparativo completo das colunas do DPP</h3>
             <InfoHint
               title="Comparativo completo das colunas do DPP"
-              what="Mostra todas as colunas da aba DPP em três linhas: total do DPP Final, total do Cenário ORION e diferença entre os dois. A linha de diferença também informa quantos valores da coluna não coincidem, sem abrir os materiais individualmente."
-              source="DPP Final: valores lidos diretamente do arquivo consolidado. Cenário ORION: materiais, matriz Material × Modelo e campos calculados pelo motor Python do cenário mensal."
-              purpose="Localizar rapidamente em quais colunas a reconstrução do ORION ainda difere do DPP Final antes de investigar item a item."
+              what="Mostra todas as colunas da aba DPP em três linhas: total do DPP Final, total do Cenário ORION e diferença entre os dois. Colunas divergentes podem ser abertas para investigar os materiais responsáveis pela diferença."
+              source="DPP Final: valores lidos diretamente do arquivo consolidado. Cenário ORION: projeção canônica dos materiais, matriz Material × Modelo e campos calculados pelo motor Python do cenário mensal."
+              purpose="Localizar em quais colunas a reconstrução do ORION difere do DPP Final e auditar a causa sem carregar milhares de linhas de uma vez. O detalhe é paginado em 25 divergências por página."
               align="right"
             />
           </div>
@@ -114,9 +189,10 @@ function DppColumnComparison({ finalDppAnalysis }) {
                   !isZero(column.delta) || Number(column.difference_count) > 0
                 )
                 const state = !column.supported ? 'unsupported' : divergent ? 'warning' : 'stable'
-
-                return (
-                  <td className="dpp-column-difference-cell" data-state={state} key={`diff-${column.column}`}>
+                const interactive = state === 'warning' && column.drilldown_available
+                const expanded = selectedColumn?.column === column.column
+                const content = (
+                  <>
                     <span className="dpp-column-state-marker" aria-hidden="true" />
                     <div>
                       <strong>{column.supported ? formatDelta(column) : 'Não calculado'}</strong>
@@ -126,6 +202,28 @@ function DppColumnComparison({ finalDppAnalysis }) {
                           : column.note || 'Sem cálculo equivalente no cenário ORION'}
                       </small>
                     </div>
+                    {interactive && <span className="dpp-column-detail-action">{expanded ? 'Ocultar' : 'Ver detalhes'}</span>}
+                  </>
+                )
+
+                return (
+                  <td
+                    className="dpp-column-difference-cell"
+                    data-state={state}
+                    data-interactive={interactive ? 'true' : 'false'}
+                    key={`diff-${column.column}`}
+                  >
+                    {interactive ? (
+                      <button
+                        type="button"
+                        className="dpp-column-difference-button"
+                        aria-expanded={expanded}
+                        aria-label={`${expanded ? 'Ocultar' : 'Ver'} divergências da coluna ${column.name}`}
+                        onClick={() => toggleColumn(column)}
+                      >
+                        {content}
+                      </button>
+                    ) : content}
                   </td>
                 )
               })}
@@ -134,10 +232,90 @@ function DppColumnComparison({ finalDppAnalysis }) {
         </table>
       </div>
 
+      {selectedColumn && (
+        <ColumnDivergenceDetail
+          column={selectedColumn}
+          detail={detail}
+          loading={loading}
+          error={error}
+          offset={offset}
+          onPrevious={() => setOffset((current) => Math.max(current - PAGE_SIZE, 0))}
+          onNext={() => setOffset((current) => current + PAGE_SIZE)}
+        />
+      )}
+
       <p className="dpp-column-comparison-note">
         Colunas como Preço, Amount e Coments permanecem visíveis porque existem no DPP Final, mas são marcadas como não calculadas enquanto o motor ORION não produzir esses campos diretamente.
       </p>
     </section>
+  )
+}
+
+function ColumnDivergenceDetail({ column, detail, loading, error, offset, onPrevious, onNext }) {
+  const page = Math.floor(offset / PAGE_SIZE) + 1
+  const pages = detail?.total ? Math.ceil(detail.total / PAGE_SIZE) : 1
+
+  return (
+    <div className="dpp-column-detail" role="region" aria-label={`Divergências da coluna ${column.name}`}>
+      <div className="dpp-column-detail-heading">
+        <div>
+          <strong>{column.name}</strong>
+          <span>{differenceLabel(column.difference_count)}</span>
+        </div>
+        {detail && <small>Página {page} de {pages} · máximo de {PAGE_SIZE} linhas renderizadas por vez</small>}
+      </div>
+
+      {loading && <p className="dpp-column-detail-state">Carregando divergências desta página…</p>}
+      {!loading && error && <p className="dpp-column-detail-state error">{error}</p>}
+
+      {!loading && !error && detail && (
+        <>
+          <div className="dpp-column-detail-rule">
+            <strong>O que o ORION considera divergente</strong>
+            <p>{detail.rule?.definition} {detail.rule?.criterion}</p>
+            <small>{detail.rule?.origin}</small>
+          </div>
+
+          <div className="dpp-column-detail-table-wrap">
+            <table className="dpp-column-detail-table">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Cenário ORION</th>
+                  <th>DPP Final</th>
+                  <th>Diferença</th>
+                  <th>Por que é divergente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.items.map((item, index) => (
+                  <tr key={`${item.material}-${offset + index}`}>
+                    <th scope="row">
+                      <strong>{item.material}</strong>
+                      {item.description && <small>{item.description}</small>}
+                    </th>
+                    <td>{formatDetailValue(item.orion_value)}</td>
+                    <td>{formatDetailValue(item.final_value)}</td>
+                    <td>{formatDetailDelta(item.delta)}</td>
+                    <td>{item.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="dpp-column-detail-pagination" aria-label="Paginação das divergências">
+            <span>
+              Mostrando {detail.returned ? detail.offset + 1 : 0}–{detail.offset + detail.returned} de {NUMBER_FORMAT.format(detail.total)} divergências
+            </span>
+            <div>
+              <button type="button" disabled={!detail.has_previous} onClick={onPrevious}>Anterior</button>
+              <button type="button" disabled={!detail.has_next} onClick={onNext}>Próxima</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
