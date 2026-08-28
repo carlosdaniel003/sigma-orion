@@ -8,19 +8,9 @@ const INFO_TARGETS = [
     selector: '.dashboard-header h2',
     info: {
       title: 'Visão Geral do cenário ORION',
-      what: 'Organiza a leitura operacional do cenário inicial calculado pelo ORION e, quando disponível, sua comparação com o DPP Final.',
+      what: 'Organiza a leitura operacional do cenário inicial calculado pelo ORION e identifica diretamente o mês que está sendo analisado.',
       source: 'Cenário mensal gerado pelo motor Python e resumo do DPP Final carregado no pacote.',
       purpose: 'Dar ao analista uma visão única do mês sem misturar dados automáticos com decisões humanas.',
-    },
-  },
-  {
-    key: 'current-scenario',
-    selector: '.dashboard-context-strip .dashboard-context-label',
-    info: {
-      title: 'Cenário atual',
-      what: 'Identifica o mês e confirma que os indicadores seguintes pertencem ao cenário inicial do ORION.',
-      source: 'Campo reference_month do cenário mensal registrado após a geração determinística.',
-      purpose: 'Evitar leitura de indicadores fora do mês ou confusão entre Cenário ORION e DPP Final.',
     },
   },
   {
