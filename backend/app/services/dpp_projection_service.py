@@ -44,6 +44,37 @@ DIRECT_FIELDS = {
     "saldo": ("balance", "numeric"),
 }
 
+# Relações determinísticas do DPP. O cálculo Python e a projeção do Excel usam
+# estes mesmos conceitos; não devem existir regras paralelas no exportador.
+STOCK_TOTAL_COMPONENT_FIELDS = (
+    "stock_sap_effective",
+    "explosion",
+    "stock_op",
+)
+BALANCE_POSITIVE_FIELD = "stock_total"
+BALANCE_NEGATIVE_FIELD = "nec"
+
+
+def calculate_nec(material: dict, real_lookup: dict[str, float]) -> float:
+    return sum(
+        (real_lookup.get(model_name, 0.0) or 0.0) * (_number(consumption, 0.0) or 0.0)
+        for model_name, consumption in (material.get("consumption_by_model") or {}).items()
+    )
+
+
+def calculate_stock_total(material: dict) -> float:
+    return sum(
+        _number(
+            material.get(field, material.get("stock_sap") if field == "stock_sap_effective" else 0.0),
+            0.0,
+        ) or 0.0
+        for field in STOCK_TOTAL_COMPONENT_FIELDS
+    )
+
+
+def calculate_balance(stock_total: float, nec: float) -> float:
+    return (_number(stock_total, 0.0) or 0.0) - (_number(nec, 0.0) or 0.0)
+
 
 def is_filled(value: object) -> bool:
     return value not in (None, "") and str(value).strip() != ""
