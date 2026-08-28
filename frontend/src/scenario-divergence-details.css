@@ -18,7 +18,29 @@
   outline-offset: -2px;
 }
 
-.scenario-divergence-host {
+.dpp-evolution-row small[data-evolution-drilldown='true'] {
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+
+.dpp-evolution-row small[data-evolution-drilldown='true']::after {
+  content: 'Ver detalhes';
+  color: var(--orion-blue);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.dpp-evolution-row small[data-evolution-drilldown='true'][data-evolution-expanded='true']::after {
+  content: 'Ocultar detalhes';
+}
+
+.dpp-evolution-row small[data-evolution-drilldown='true']:focus-visible {
+  outline: 1px solid var(--orion-blue);
+  outline-offset: 2px;
+}
+
+.scenario-divergence-host,
+.evolution-divergence-host {
   border-bottom: 1px solid var(--orion-border-soft);
 }
 
