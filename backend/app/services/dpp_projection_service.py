@@ -63,6 +63,15 @@ def calculate_nec(material: dict, real_lookup: dict[str, float]) -> float:
 
 
 def calculate_stock_total(material: dict) -> float:
+    has_components = any(
+        field in material and material.get(field) is not None
+        for field in STOCK_TOTAL_COMPONENT_FIELDS
+    )
+    if not has_components:
+        # Compatibilidade com cenários/testes antigos que já armazenavam apenas
+        # STK TTL. No fluxo mensal atual os componentes sempre têm precedência.
+        return _number(material.get("stock_total"), 0.0) or 0.0
+
     return sum(
         _number(
             material.get(field, material.get("stock_sap") if field == "stock_sap_effective" else 0.0),
