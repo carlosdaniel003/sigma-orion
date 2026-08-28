@@ -44,8 +44,8 @@ DIRECT_FIELDS = {
     "saldo": ("balance", "numeric"),
 }
 
-# Relações determinísticas do DPP. O cálculo Python e a projeção do Excel usam
-# estes mesmos conceitos; não devem existir regras paralelas no exportador.
+# Relações determinísticas do DPP. O cálculo Python, Dashboard e a projeção do
+# Excel usam estes mesmos conceitos; não devem existir regras paralelas.
 STOCK_TOTAL_COMPONENT_FIELDS = (
     "stock_sap_effective",
     "explosion",
@@ -53,6 +53,7 @@ STOCK_TOTAL_COMPONENT_FIELDS = (
 )
 BALANCE_POSITIVE_FIELD = "stock_total"
 BALANCE_NEGATIVE_FIELD = "nec"
+CRITICAL_BALANCE_TOLERANCE = VALIDATION_ABS_TOL
 
 
 def calculate_nec(material: dict, real_lookup: dict[str, float]) -> float:
@@ -83,6 +84,23 @@ def calculate_stock_total(material: dict) -> float:
 
 def calculate_balance(stock_total: float, nec: float) -> float:
     return (_number(stock_total, 0.0) or 0.0) - (_number(nec, 0.0) or 0.0)
+
+
+def is_critical_material(unit: object, balance: object) -> bool:
+    if _normalize(unit).upper() != "UN":
+        return False
+    numeric_balance = _number(balance, None)
+    return numeric_balance is not None and numeric_balance < -CRITICAL_BALANCE_TOLERANCE
+
+
+def critical_rule_metadata() -> dict:
+    return {
+        "id": "un_negative_balance",
+        "label": "Material crítico",
+        "definition": "O ORION considera crítico o material cuja UM é UN e cujo SALDO é negativo além da tolerância operacional.",
+        "formula": "SALDO = STK TTL − NEC; STK TTL = STK + EXPLOSÃO + STK OP; NEC = Σ(REAL do modelo × consumo do material).",
+        "tolerance": CRITICAL_BALANCE_TOLERANCE,
+    }
 
 
 def is_filled(value: object) -> bool:
