@@ -143,9 +143,12 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       return undefined
     }
 
-    if (!generatedScenario) return undefined
+    if (!generatedScenario || generating) return undefined
 
-    const signature = `${referenceMonth || bundle.referenceMonth}|${fileIdentity(finalFile)}`
+    const packageMonth = referenceMonth || bundle.referenceMonth
+    if (generatedScenario.reference_month && packageMonth && generatedScenario.reference_month !== packageMonth) return undefined
+
+    const signature = `${packageMonth}|${fileIdentity(finalFile)}`
     if (finalAnalysisSignatureRef.current === signature) return undefined
 
     finalAnalysisTimerRef.current = window.setTimeout(() => {
@@ -153,7 +156,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     }, FINAL_DPP_DELAY)
 
     return () => window.clearTimeout(finalAnalysisTimerRef.current)
-  }, [workspaceReady, generatedScenario, bundle.expectedDpp, bundle.referenceMonth, referenceMonth])
+  }, [workspaceReady, generatedScenario, generating, bundle.expectedDpp, bundle.referenceMonth, referenceMonth])
 
   useEffect(() => () => {
     finalAnalysisAbortRef.current?.abort()
