@@ -46,32 +46,13 @@ function buildDashboardData(scenario) {
 
   const activeModels = models.filter((model) => number(model.real) > 0)
   const criticalMaterials = materials.filter((material) => material.status === 'INVESTIGAR')
-  const riskMap = new Map()
+  const riskModelNames = new Set()
 
   criticalMaterials.forEach((material) => {
-    activeModelsForMaterial(material, realLookup).forEach((modelName) => {
-      if (!riskMap.has(modelName)) riskMap.set(modelName, [])
-      riskMap.get(modelName).push(material)
-    })
+    activeModelsForMaterial(material, realLookup).forEach((modelName) => riskModelNames.add(modelName))
   })
 
-  const riskModels = activeModels
-    .filter((model) => riskMap.has(model.name))
-    .map((model) => {
-      const risks = riskMap.get(model.name) || []
-      const worst = risks.reduce((selected, material) => {
-        if (!selected || number(material.balance) < number(selected.balance)) return material
-        return selected
-      }, null)
-      return {
-        ...model,
-        criticalCount: risks.length,
-        worstDeficit: worst ? Math.abs(Math.min(number(worst.balance), 0)) : 0,
-        worstMaterial: worst?.material || '—',
-      }
-    })
-    .sort((left, right) => right.criticalCount - left.criticalCount || right.worstDeficit - left.worstDeficit)
-
+  const riskModels = activeModels.filter((model) => riskModelNames.has(model.name))
   const safeModels = Math.max(activeModels.length - riskModels.length, 0)
   const materialCoverage = activeModels.length ? (safeModels / activeModels.length) * 100 : 0
   const pgdExposed = riskModels.reduce((total, model) => total + number(model.kit_pgd), 0)
@@ -79,23 +60,6 @@ function buildDashboardData(scenario) {
   const sharedCritical = criticalMaterials.filter(
     (material) => activeModelsForMaterial(material, realLookup).length > 1,
   )
-
-  const topBottlenecks = [...criticalMaterials]
-    .sort((left, right) => number(left.balance) - number(right.balance))
-    .slice(0, 8)
-    .map((material) => ({
-      ...material,
-      affectedModels: activeModelsForMaterial(material, realLookup),
-      deficit: Math.abs(Math.min(number(material.balance), 0)),
-    }))
-
-  const opcPreventedRupture = materials.filter((material) => {
-    const stockOp = number(material.stock_op)
-    if (stockOp <= 0) return false
-    const currentBalance = number(material.balance)
-    const balanceWithoutOpc = currentBalance - stockOp
-    return currentBalance >= 0 && balanceWithoutOpc < 0
-  }).length
 
   const requiredSources = (scenario?.sources || []).filter((source) => source.id !== 'open')
   const loadedRequiredSources = requiredSources.filter((source) => source.loaded).length
@@ -116,8 +80,6 @@ function buildDashboardData(scenario) {
     pgdExposed,
     criticalMaterials,
     sharedCritical,
-    topBottlenecks,
-    opcPreventedRupture,
     requiredSources,
     loadedRequiredSources,
     pgdPending,
@@ -234,8 +196,7 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
             </div>
           </section>
 
-          <DppStateSection
-            month={formatMonth(scenario.reference_month)}
+          <EvolutionPanel
             referenceMonth={scenario.reference_month}
             initial={initialState}
             finalState={finalState}
@@ -247,8 +208,6 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
             finalError={finalError}
             cancelFinalLoad={cancelFinalLoad}
           />
-
-          {finalState && <EvolutionPanel initial={initialState} finalState={finalState} />}
 
           <AiBridge initial={initialState} finalState={finalState} />
 
@@ -277,33 +236,7 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
             <MiniKpi label="Críticos compartilhados" value={formatNumber(data.sharedCritical.length)} detail="Afetam mais de um modelo ativo" tone={data.sharedCritical.length ? 'attention' : 'good'} />
           </section>
 
-          <section className="dashboard-grid-main">
-            <PlanningPanel data={data} />
-            <ModelHealthPanel data={data} />
-          </section>
-
-          <section className="dashboard-grid-main dashboard-risk-grid">
-            <BottleneckPanel items={data.topBottlenecks} />
-            <RiskModelsPanel items={data.riskModels.slice(0, 8)} />
-          </section>
-
-          <section className="panel dashboard-operational-panel">
-            <div className="panel-header">
-              <div>
-                <h3>Estado da construção do DPP</h3>
-                <p>Indicadores de consolidação e rastreabilidade do cenário inicial carregado.</p>
-              </div>
-              <span className="status">Base atualizada</span>
-            </div>
-            <div className="dashboard-fact-grid">
-              <Fact label="Materiais" value={formatNumber(data.summary.materials ?? data.materials.length)} detail="base consolidada" />
-              <Fact label="Modelos" value={formatNumber(data.summary.models ?? data.models.length)} detail="estrutura do mês" />
-              <Fact label="Novos no WIU" value={formatNumber(data.summary.new_materials_from_wiu)} detail="incluídos neste mês" />
-              <Fact label="Históricos fora WIU" value={formatNumber(data.summary.historical_outside_wiu)} detail="preservados na base" />
-              <Fact label="OPCs herdados" value={formatNumber(data.summary.inherited_optional_materials)} detail="relações históricas" />
-              <Fact label="OPCs com estoque" value={formatNumber(data.summary.optional_materials_with_stock)} detail={`${data.opcPreventedRupture} evitaram ruptura no cenário`} />
-            </div>
-          </section>
+          <PlanningPanel data={data} />
 
           <section className="dashboard-grid-main dashboard-footer-grid">
             <QualityPanel data={data} />
@@ -315,100 +248,11 @@ function Dashboard({ apiUrl, scenario, onNavigate, finalDppAnalysis, onFinalDppA
   )
 }
 
-function DppStateSection({ month, referenceMonth, initial, finalState, finalFilename, finalFile, onBundle, loadFinalDpp, finalLoading, finalError, cancelFinalLoad }) {
-  return (
-    <section className="panel dpp-state-panel">
-      <div className="panel-header">
-        <div>
-          <h3>Estado do DPP</h3>
-          <p>Separe o cenário que o Python gera automaticamente do DPP consolidado depois do trabalho do analista.</p>
-        </div>
-        <span className="status">Inicial × Final</span>
-      </div>
-
-      <div className="dpp-state-grid">
-        <DppStateCard
-          eyebrow="CENÁRIO ORION"
-          title={month}
-          subtitle="Antes dos ajustes do analista"
-          state={initial}
-          tone="initial"
-        />
-
-        <article className={`dpp-state-card final ${finalState ? 'loaded' : ''}`}>
-          <div className="dpp-state-heading">
-            <span>DPP FINAL</span>
-            <strong>{finalState ? month : 'Aguardando DPP final'}</strong>
-            <small>{finalState ? 'Após análise e decisões humanas' : 'Adicione o pacote do mês; quando estiver completo, a leitura inicia automaticamente'}</small>
-          </div>
-
-          {finalState ? (
-            <StateMetrics state={finalState} />
-          ) : (
-            <div className="dpp-final-placeholder">
-              <strong>Segunda etapa do processo</strong>
-              <p>O pacote mensal é conferido e o DPP final é localizado automaticamente para comparar com o cenário inicial.</p>
-            </div>
-          )}
-
-          <BulkDppFilePicker
-            mode="dashboard"
-            referenceMonth={referenceMonth}
-            onBundle={onBundle}
-            processing={finalLoading}
-            compact
-            title="Adicionar pacote e localizar DPP final"
-          />
-
-          <OrionWorking active={finalLoading} mode="dashboard" onCancel={cancelFinalLoad} compact />
-
-          <div className="dpp-final-upload">
-            <span>{finalFile ? `DPP final detectado: ${finalFile.name}` : finalFilename ? `Último DPP final: ${finalFilename}` : 'Nenhum DPP final reconhecido no pacote'}</span>
-            <button className="secondary-button" type="button" disabled={!finalFile || finalLoading} onClick={loadFinalDpp}>
-              {finalLoading ? 'Processando...' : finalState ? 'Reanalisar DPP final' : 'Analisar agora'}
-            </button>
-          </div>
-          {finalError && <div className="dpp-final-error">{finalError}</div>}
-        </article>
-      </div>
-    </section>
-  )
-}
-
-function DppStateCard({ eyebrow, title, subtitle, state, tone }) {
-  return (
-    <article className={`dpp-state-card ${tone}`}>
-      <div className="dpp-state-heading">
-        <span>{eyebrow}</span>
-        <strong>{title}</strong>
-        <small>{subtitle}</small>
-      </div>
-      <StateMetrics state={state} />
-    </article>
-  )
-}
-
-function StateMetrics({ state }) {
-  return (
-    <div className="dpp-state-metrics">
-      <StateMetric label="PGD" value={formatNumber(state?.pgd)} />
-      <StateMetric label="REAL" value={formatNumber(state?.real)} />
-      <StateMetric label="Críticos" value={formatNumber(state?.critical)} />
-      <StateMetric label="OPCs" value={formatNumber(state?.opc)} />
-      <StateMetric label="Modelos ativos" value={formatNumber(state?.activeModels)} wide />
-    </div>
-  )
-}
-
-function StateMetric({ label, value, wide = false }) {
-  return <div className={wide ? 'dpp-state-metric wide' : 'dpp-state-metric'}><span>{label}</span><strong>{value}</strong></div>
-}
-
-function EvolutionPanel({ initial, finalState }) {
-  const criticalDelta = number(finalState.critical) - number(initial.critical)
-  const opcDelta = number(finalState.opc) - number(initial.opc)
-  const realDelta = number(finalState.real) - number(initial.real)
-  const activeDelta = number(finalState.activeModels) - number(initial.activeModels)
+function EvolutionPanel({ referenceMonth, initial, finalState, finalFilename, finalFile, onBundle, loadFinalDpp, finalLoading, finalError, cancelFinalLoad }) {
+  const criticalDelta = finalState ? number(finalState.critical) - number(initial.critical) : 0
+  const opcDelta = finalState ? number(finalState.opc) - number(initial.opc) : 0
+  const realDelta = finalState ? number(finalState.real) - number(initial.real) : 0
+  const activeDelta = finalState ? number(finalState.activeModels) - number(initial.activeModels) : 0
 
   return (
     <section className="panel dpp-evolution-panel">
@@ -417,14 +261,40 @@ function EvolutionPanel({ initial, finalState }) {
           <h3>Evolução do DPP</h3>
           <p>O que mudou entre o cenário inicial calculado pelo ORION e o DPP consolidado após a análise.</p>
         </div>
-        <span className="status">ANTES → DEPOIS</span>
+        <span className="status">{finalState ? 'ANTES → DEPOIS' : 'Aguardando DPP final'}</span>
       </div>
-      <div className="dpp-evolution-list">
-        <EvolutionRow label="Materiais críticos" before={initial.critical} after={finalState.critical} delta={criticalDelta} lowerIsBetter />
-        <EvolutionRow label="OPCs" before={initial.opc} after={finalState.opc} delta={opcDelta} />
-        <EvolutionRow label="REAL" before={initial.real} after={finalState.real} delta={realDelta} />
-        <EvolutionRow label="Modelos ativos" before={initial.activeModels} after={finalState.activeModels} delta={activeDelta} />
+
+      <div className="dpp-evolution-source">
+        <BulkDppFilePicker
+          mode="dashboard"
+          referenceMonth={referenceMonth}
+          onBundle={onBundle}
+          processing={finalLoading}
+          compact
+          title="Adicionar pacote e localizar DPP final"
+        />
+
+        <OrionWorking active={finalLoading} mode="dashboard" onCancel={cancelFinalLoad} compact />
+
+        <div className="dpp-final-upload">
+          <span>{finalFile ? `DPP final detectado: ${finalFile.name}` : finalFilename ? `Último DPP final: ${finalFilename}` : 'Nenhum DPP final reconhecido no pacote'}</span>
+          <button className="secondary-button" type="button" disabled={!finalFile || finalLoading} onClick={loadFinalDpp}>
+            {finalLoading ? 'Processando...' : finalState ? 'Reanalisar DPP final' : 'Analisar agora'}
+          </button>
+        </div>
+        {finalError && <div className="dpp-final-error">{finalError}</div>}
       </div>
+
+      {finalState ? (
+        <div className="dpp-evolution-list">
+          <EvolutionRow label="Materiais críticos" before={initial.critical} after={finalState.critical} delta={criticalDelta} lowerIsBetter />
+          <EvolutionRow label="OPCs" before={initial.opc} after={finalState.opc} delta={opcDelta} />
+          <EvolutionRow label="REAL" before={initial.real} after={finalState.real} delta={realDelta} />
+          <EvolutionRow label="Modelos ativos" before={initial.activeModels} after={finalState.activeModels} delta={activeDelta} />
+        </div>
+      ) : (
+        <p className="dashboard-method-note">Adicione o pacote do mês para localizar o DPP final. Assim que a leitura terminar, as diferenças aparecem aqui.</p>
+      )}
     </section>
   )
 }
@@ -568,83 +438,6 @@ function PlanningBar({ label, value, width, real = false }) {
   )
 }
 
-function ModelHealthPanel({ data }) {
-  return (
-    <section className="panel dashboard-health-panel">
-      <div className="panel-header">
-        <div><h3>Situação dos modelos</h3><p>Leitura do cenário REAL inicial contra materiais UN com saldo negativo.</p></div>
-      </div>
-      <div className="health-score">
-        <strong>{formatPercent(data.materialCoverage)}</strong>
-        <span>cobertura material</span>
-      </div>
-      <div className="health-progress"><span style={{ width: `${Math.min(data.materialCoverage, 100)}%` }} /></div>
-      <div className="health-split">
-        <div className="health-safe"><strong>{data.safeModels}</strong><span>sem restrição detectada</span></div>
-        <div className="health-risk"><strong>{data.riskModels.length}</strong><span>com material crítico</span></div>
-      </div>
-      <p className="dashboard-method-note">A cobertura mede os modelos ativos que não consomem nenhum material UN com SALDO negativo no REAL inicial.</p>
-    </section>
-  )
-}
-
-function BottleneckPanel({ items }) {
-  return (
-    <section className="panel dashboard-table-panel">
-      <div className="panel-header">
-        <div><h3>Principais gargalos</h3><p>Materiais com os maiores déficits no cenário inicial.</p></div>
-        <span className="status">Top {items.length}</span>
-      </div>
-      {!items.length ? <div className="dashboard-clear-state">Nenhum material crítico no cenário atual.</div> : (
-        <div className="table-scroll">
-          <table className="dpp-table dashboard-table">
-            <thead><tr><th>Material</th><th>Déficit</th><th>Modelos afetados</th><th>OPC</th></tr></thead>
-            <tbody>{items.map((item) => (
-              <tr key={item.material}>
-                <td><strong className="material-code">{item.material}</strong><small>{item.description || 'Sem descrição'}</small></td>
-                <td className="number-cell dashboard-negative">-{formatNumber(item.deficit)}</td>
-                <td>{item.affectedModels.length}</td>
-                <td>{item.optional_material || '—'}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function RiskModelsPanel({ items }) {
-  return (
-    <section className="panel dashboard-table-panel">
-      <div className="panel-header">
-        <div><h3>Modelos com maior risco</h3><p>Priorização pela quantidade de materiais críticos associados ao REAL inicial.</p></div>
-        <span className="status">{items.length} exibidos</span>
-      </div>
-      {!items.length ? <div className="dashboard-clear-state">Nenhum modelo com restrição material detectada.</div> : (
-        <div className="table-scroll">
-          <table className="dpp-table dashboard-table">
-            <thead><tr><th>Modelo</th><th>PGD</th><th>REAL</th><th>Críticos</th><th>Pior déficit</th></tr></thead>
-            <tbody>{items.map((model) => (
-              <tr key={model.name}>
-                <td><strong>{model.name}</strong><small>{model.worstMaterial}</small></td>
-                <td className="number-cell">{formatNumber(model.kit_pgd)}</td>
-                <td className="number-cell">{formatNumber(model.real)}</td>
-                <td>{model.criticalCount}</td>
-                <td className="number-cell dashboard-negative">-{formatNumber(model.worstDeficit)}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function Fact({ label, value, detail }) {
-  return <article className="dashboard-fact"><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>
-}
-
 function QualityPanel({ data }) {
   const sourceOk = data.requiredSources.length > 0 && data.loadedRequiredSources === data.requiredSources.length
   return (
@@ -671,7 +464,7 @@ function DecisionGuide() {
       <div className="decision-guide">
         <div><span>01</span><strong>Quanto precisamos produzir?</strong><p>PGD define a referência do mês.</p></div>
         <div><span>02</span><strong>Quanto o cenário inicial planeja?</strong><p>REAL começa pela referência disponível no PGD.</p></div>
-        <div><span>03</span><strong>O que limita o plano?</strong><p>Materiais críticos e gargalos mostram onde o analista precisa investigar.</p></div>
+        <div><span>03</span><strong>O que limita o plano?</strong><p>Materiais críticos mostram onde o analista precisa investigar.</p></div>
       </div>
       <div className="dashboard-method-note strong-note">A capacidade agregada máxima ainda não é apresentada como um número único porque materiais compartilhados exigem uma regra de alocação/solver. Esta versão exibe apenas indicadores sustentados pelo motor atual.</div>
     </section>
