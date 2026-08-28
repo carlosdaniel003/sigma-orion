@@ -16,8 +16,8 @@ function key(value) {
   return String(value || '').trim().toLocaleUpperCase('pt-BR')
 }
 
-function value(value) {
-  return value === null || value === undefined ? '—' : fmt.format(number(value))
+function value(current) {
+  return current === null || current === undefined ? '—' : fmt.format(number(current))
 }
 
 function statusText(flag, positive = 'Crítico', negative = 'Não crítico') {
@@ -30,13 +30,21 @@ function criticalExplanation(material, origin) {
   const balance = material.balance
   const stockTotal = material.stock_total
   const nec = material.nec
+  const stock = material.stock ?? material.stock_sap_effective ?? material.stock_sap
+  const explosion = material.explosion
+  const stockOp = material.stock_op
   const critical = Boolean(material.critical ?? material.status === 'INVESTIGAR')
   if (unit !== 'UN') return `${origin}: UM = ${unit}. A regra de material crítico do ORION só classifica materiais com UM = UN.`
   if (balance === null || balance === undefined) return `${origin}: SALDO não está disponível para aplicar a regra de criticidade.`
-  const equation = `SALDO = STK TTL (${value(stockTotal)}) − NEC (${value(nec)}) = ${value(balance)}.`
+
+  const hasStockBreakdown = [stock, explosion, stockOp].every((current) => current !== null && current !== undefined)
+  const stockEquation = hasStockBreakdown
+    ? `STK TTL = STK (${value(stock)}) + EXPLOSÃO (${value(explosion)}) + STK OP (${value(stockOp)}) = ${value(stockTotal)}. `
+    : ''
+  const balanceEquation = `SALDO = STK TTL (${value(stockTotal)}) − NEC (${value(nec)}) = ${value(balance)}.`
   return critical
-    ? `${origin}: ${equation} Como UM = UN e SALDO < −0,0001, o item é crítico.`
-    : `${origin}: ${equation} Como o SALDO não está abaixo de −0,0001, o item não é crítico.`
+    ? `${origin}: ${stockEquation}${balanceEquation} Como UM = UN e SALDO < −0,0001, o item é crítico.`
+    : `${origin}: ${stockEquation}${balanceEquation} Como o SALDO não está abaixo de −0,0001, o item não é crítico.`
 }
 
 function materialMap(items, final = false) {
@@ -71,16 +79,32 @@ function buildModelRows(kind, data, finalDppAnalysis) {
     if (kind === 'real' && left && right && same(left.real, right.real)) return []
     if (kind === 'gap' && left && right && same(number(left.kit_pgd) - number(left.real), number(right.pgd) - number(right.real))) return []
 
+    const leftActive = Boolean(left && number(left.real) > 0)
+    const rightActive = Boolean(right?.active)
     const leftRisk = Boolean(left && data.riskModels.some((model) => key(model.name) === name))
     const rightRisk = Boolean(right?.at_risk)
-    if (['coverage', 'risk', 'exposed'].includes(kind) && left && right && leftRisk === rightRisk && Boolean(number(left.real) > 0) === Boolean(right.active)) return []
 
-    const orionCritical = criticalMaterialsByModel(data.materials, left?.name || name)
-    const finalCritical = criticalMaterialsByModel(finalDppAnalysis?.material_details, right?.name || name, true)
+    if (['coverage', 'risk'].includes(kind) && left && right && leftRisk === rightRisk && leftActive === rightActive) return []
+    if (kind === 'exposed' && left && right) {
+      const sameRiskState = leftRisk === rightRisk && leftActive === rightActive
+      const sameExposedPgd = !leftRisk && !rightRisk ? true : same(left.kit_pgd, right.pgd)
+      if (sameRiskState && sameExposedPgd) return []
+    }
+
+    const orionCritical = leftActive ? criticalMaterialsByModel(data.materials, left?.name || name) : []
+    const finalCritical = rightActive ? criticalMaterialsByModel(finalDppAnalysis?.material_details, right?.name || name, true) : []
 
     if (kind === 'pgd') return [{ item: left?.name || right?.name || name, orion: `KIT PGD ${value(left?.kit_pgd)}`, final: `KIT PGD ${value(right?.pgd)}`, reason: !left || !right ? 'O modelo existe apenas em uma das bases.' : `O KIT disponível PGD difere em ${value(number(right.pgd) - number(left.kit_pgd))}.` }]
     if (kind === 'real') return [{ item: left?.name || right?.name || name, orion: `REAL ${value(left?.real)}`, final: `REAL ${value(right?.real)}`, reason: !left || !right ? 'O modelo existe apenas em uma das bases.' : `O REAL consolidado difere do REAL calculado pelo ORION em ${value(number(right.real) - number(left.real))}.` }]
     if (kind === 'gap') return [{ item: left?.name || right?.name || name, orion: `Gap ${value(number(left?.kit_pgd) - number(left?.real))}`, final: `Gap ${value(number(right?.pgd) - number(right?.real))}`, reason: 'Gap = KIT disponível PGD − REAL. A divergência nasce de KIT e/ou REAL diferentes neste modelo.' }]
+    if (kind === 'exposed') return [{
+      item: left?.name || right?.name || name,
+      orion: `${leftRisk ? 'PGD exposto' : 'Fora da exposição'} · KIT PGD ${value(left?.kit_pgd)}`,
+      final: `${rightRisk ? 'PGD exposto' : 'Fora da exposição'} · KIT PGD ${value(right?.pgd)}`,
+      reason: leftRisk !== rightRisk
+        ? `O modelo entra/sai do PGD exposto porque sua situação de risco mudou. Materiais críticos ORION: ${orionCritical.length}; DPP Final: ${finalCritical.length}.`
+        : `O modelo permanece com a mesma situação de risco, mas o KIT PGD que compõe a exposição mudou de ${value(left?.kit_pgd)} para ${value(right?.pgd)}.`,
+    }]
 
     return [{
       item: left?.name || right?.name || name,
@@ -88,7 +112,7 @@ function buildModelRows(kind, data, finalDppAnalysis) {
       final: `${rightRisk ? 'Em risco' : 'Coberto'}${finalCritical.length ? ` · ${finalCritical.slice(0, 4).join(', ')}` : ''}`,
       reason: leftRisk !== rightRisk
         ? `O modelo muda de situação porque o conjunto de materiais críticos ligados ao REAL ativo é diferente. ORION: ${orionCritical.length}; DPP Final: ${finalCritical.length}.`
-        : 'A atividade do modelo ou sua contribuição ao indicador agregado é diferente entre os cenários.',
+        : 'A atividade do modelo é diferente entre os cenários e altera o denominador/resultado do indicador.',
     }]
   })
 }
@@ -109,19 +133,22 @@ function buildMaterialRows(kind, data, finalDppAnalysis) {
       .map(([modelName]) => modelName)
     const leftShared = leftCritical && leftAffectedActive.length > 1
     const rightShared = Boolean(right?.shared_critical)
-    const differs = kind === 'shared' ? leftShared !== rightShared : leftCritical !== rightCritical
+    const missing = !left || !right
+    const differs = kind === 'shared' ? leftShared !== rightShared : missing || leftCritical !== rightCritical
     if (!differs) return []
 
     return [{
       item: left?.material || right?.material || materialKey,
       description: left?.description || right?.description || '',
-      orion: `${statusText(kind === 'shared' ? leftShared : leftCritical, kind === 'shared' ? 'Crítico compartilhado' : 'Crítico', 'Não classificado')}
+      orion: `${statusText(kind === 'shared' ? leftShared : leftCritical, kind === 'shared' ? 'Crítico compartilhado' : 'Crítico', left ? 'Não crítico' : 'Ausente')}
 UM ${left?.um || '—'} · NEC ${value(left?.nec)} · STK TTL ${value(left?.stock_total)} · SALDO ${value(left?.balance)}`,
-      final: `${statusText(kind === 'shared' ? rightShared : rightCritical, kind === 'shared' ? 'Crítico compartilhado' : 'Crítico', 'Não classificado')}
+      final: `${statusText(kind === 'shared' ? rightShared : rightCritical, kind === 'shared' ? 'Crítico compartilhado' : 'Crítico', right ? 'Não crítico' : 'Ausente')}
 UM ${right?.um || '—'} · NEC ${value(right?.nec)} · STK TTL ${value(right?.stock_total)} · SALDO ${value(right?.balance)}`,
-      reason: kind === 'shared'
-        ? `Crítico compartilhado exige material crítico afetando mais de um modelo ativo. ORION: ${leftShared ? `sim (${leftAffectedActive.join(', ')})` : 'não'}; DPP Final: ${rightShared ? `sim (${(right?.affected_models || []).join(', ')})` : 'não'}. ${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`
-        : `${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`,
+      reason: missing
+        ? `${!left ? 'O material não existe no Cenário ORION.' : 'O material existe no Cenário ORION.'} ${!right ? 'O material não existe no DPP Final.' : 'O material existe no DPP Final.'} ${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`
+        : kind === 'shared'
+          ? `Crítico compartilhado exige material crítico afetando mais de um modelo ativo. ORION: ${leftShared ? `sim (${leftAffectedActive.join(', ')})` : 'não'}; DPP Final: ${rightShared ? `sim (${(right?.affected_models || []).join(', ')})` : 'não'}. ${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`
+          : `${criticalExplanation(left, 'ORION')} ${criticalExplanation(right, 'DPP Final')}`,
     }]
   })
 }
