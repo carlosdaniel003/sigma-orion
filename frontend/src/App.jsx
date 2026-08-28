@@ -4,6 +4,7 @@ import DashboardInfoLayer from './DashboardInfoLayer'
 import DashboardLoader from './DashboardLoader'
 import DppColumnComparison from './DppColumnComparison'
 import FinalModelPlan from './FinalModelPlan'
+import ScenarioDivergenceController from './ScenarioDivergenceController'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
 
@@ -104,6 +105,7 @@ function App() {
             finalDppAnalysis={finalDppAnalysis}
             onFinalDppAnalysis={setFinalDppAnalysis}
           />
+          <ScenarioDivergenceController finalDppAnalysis={finalDppAnalysis} />
           <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
           <DppColumnComparison finalDppAnalysis={finalDppAnalysis} />
           <DashboardInfoLayer />
