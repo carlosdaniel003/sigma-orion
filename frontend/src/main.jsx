@@ -13,11 +13,11 @@ import './dashboard-operational-polish.css'
 import './sigma-orion-theme.css'
 import './sigma-orion-theme-toggle.css'
 import './dashboard-theme-runtime-fixes.css'
-import './dashboard-operational-scope.css'
 import './brand.css'
 import './dpp-test.css'
 import './dashboard-export.css'
 import './product-language.css'
+import './dashboard-operational-scope.css'
 import './dpp-test-context.css'
 
 createRoot(document.getElementById('root')).render(
