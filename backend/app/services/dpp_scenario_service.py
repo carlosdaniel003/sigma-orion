@@ -5,6 +5,12 @@ from copy import deepcopy
 import math
 from uuid import uuid4
 
+from app.services.dpp_projection_service import (
+    calculate_balance,
+    calculate_nec,
+    calculate_stock_total,
+)
+
 MAX_SCENARIOS = 8
 _SCENARIOS: OrderedDict[str, dict] = OrderedDict()
 
@@ -50,13 +56,14 @@ def _calculate(materials: list[dict], models: list[dict], real_by_model: dict[st
 
     for source in materials:
         item = deepcopy(source)
-        nec = 0.0
-        for model_name, consumption in item.get("consumption_by_model", {}).items():
-            nec += real_lookup.get(model_name, 0.0) * _number(consumption, 0.0)
 
-        stock_total = _number(item.get("stock_total"), 0.0)
-        balance = stock_total - nec
+        # NEC, STK TTL e SALDO usam as mesmas funções canônicas consumidas pela
+        # projeção/exportação. Alterar a regra aqui significa alterar a fonte única.
+        nec = calculate_nec(item, real_lookup)
+        stock_total = calculate_stock_total(item)
+        balance = calculate_balance(stock_total, nec)
         item["nec"] = nec
+        item["stock_total"] = stock_total
         item["balance"] = balance
 
         if balance < -1e-9:
