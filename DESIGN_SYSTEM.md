@@ -58,6 +58,8 @@ Evitar padrões típicos de “vibe code” e interfaces geradas por IA:
 - border-radius de 16–24 px aplicado indiscriminadamente;
 - pills, chips e badges usados automaticamente para qualquer status;
 - combinação de texto semântico + fundo pastel + borda da mesma cor + cápsula;
+- barras laterais coloridas, accent borders e status rails sem função operacional explícita;
+- `border-left` semântico usado apenas para dar destaque;
 - glow;
 - glassmorphism;
 - backdrop blur decorativo;
@@ -75,6 +77,7 @@ Evitar padrões típicos de “vibe code” e interfaces geradas por IA:
 - cores de identidade aplicadas a tudo;
 - caixas com fundo pastel para cada indicador;
 - bordas coloridas acompanhando automaticamente a cor do texto;
+- pequenos elementos geométricos sem significado;
 - componentes criados apenas para ocupar layout.
 
 ## 5. Hierarquia baseada no trabalho do usuário
@@ -318,8 +321,10 @@ Preferir, nesta ordem:
 2. pequeno ponto de status + texto neutro;
 3. ícone discreto + texto;
 4. mudança tipográfica;
-5. barra ou marcador lateral;
-6. mudança muito sutil de cor na célula ou linha da tabela.
+5. mudança muito sutil de cor na célula ou linha da tabela;
+6. fundo discretamente diferente quando houver seleção real.
+
+Não utilizar barra lateral como fallback visual padrão para status.
 
 Exemplo preferido:
 
@@ -356,7 +361,7 @@ Escolher preferencialmente apenas um canal para receber a cor semântica:
 ou:
 
 ```text
-barra verde | texto normal
+ícone âmbar + texto normal
 ```
 
 ou, quando realmente necessário:
@@ -385,9 +390,7 @@ Preferir que apenas um destes elementos receba a cor:
 
 - ponto;
 - ícone;
-- pequena barra;
 - indicador;
-- detalhe lateral;
 - texto, quando o contexto realmente exigir.
 
 O resultado precisa continuar compreensível sem cor.
@@ -494,7 +497,147 @@ Não usar indiscriminadamente:
 
 A interface deve parecer uma ferramenta profissional construída deliberadamente, e não uma coleção de componentes genéricos de biblioteca UI.
 
-## 14. Ícones, informação contextual e marca
+## 14. Barras laterais, accent borders e indicadores de seleção
+
+### Regra principal
+
+Não utilizar barras coloridas nas laterais de linhas, cards, itens de lista ou células apenas para criar destaque visual.
+
+Os padrões conhecidos como **accent border**, **left accent bar**, **status rail**, **colored stripe** ou `border-left` semântico não fazem parte da linguagem visual padrão do ORION quando não adicionam informação funcional.
+
+Evitar especialmente:
+
+- `border-left` colorido;
+- `border-inline-start` colorido;
+- pseudo-elementos `::before` posicionados na lateral para formar uma faixa;
+- barras verticais de `2px`, `3px` ou `4px` como decoração;
+- `box-shadow: inset ...` simulando barra lateral;
+- faixas coloridas acompanhando todas as linhas de uma tabela;
+- accent bars cuja cor não represente informação adicional necessária.
+
+Esse padrão é considerado decorativo quando a mesma informação já pode ser compreendida por texto, posição, seleção, fundo, estrutura da tabela ou hierarquia tipográfica.
+
+### Antipadrão
+
+Não usar automaticamente:
+
+```text
+| Modelo A
+| Modelo B
+| Modelo C
+```
+
+com uma barra colorida à esquerda apenas para dar personalidade visual ao componente.
+
+Também evitar como solução automática:
+
+```css
+border-left: 3px solid var(--accent);
+```
+
+ou equivalentes com pseudo-elementos:
+
+```text
+before:absolute
+before:left-0
+before:w-[3px]
+before:bg-accent
+```
+
+em linhas e itens que não precisam comunicar um estado adicional.
+
+### Tratamento padrão para linhas e itens
+
+Para diferenciar itens, preferir nesta ordem:
+
+1. alinhamento e espaçamento;
+2. divisores horizontais discretos;
+3. contraste tipográfico;
+4. mudança sutil de fundo em hover;
+5. mudança sutil de fundo para seleção;
+6. ícone funcional quando necessário.
+
+Não adicionar uma barra lateral apenas para indicar que o item existe ou pertence a determinada seção.
+
+Em uma tabela, a própria estrutura da coluna já comunica pertencimento. Não repetir essa informação com uma faixa colorida na lateral de cada linha.
+
+### Estado selecionado
+
+Um item selecionado deve ser indicado prioritariamente por:
+
+- fundo discretamente diferente;
+- texto com contraste maior;
+- peso tipográfico moderado;
+- ícone de seleção quando necessário.
+
+Evitar usar uma barra vertical colorida como indicador padrão de seleção.
+
+### Uso excepcional
+
+Uma barra lateral só pode ser utilizada quando houver significado funcional explícito, por exemplo:
+
+- classificação de severidade que precise ser escaneada rapidamente;
+- agrupamento hierárquico em que a posição lateral tenha significado;
+- estado operacional que precise de reconhecimento imediato e não esteja suficientemente claro por ponto, ícone, texto ou fundo;
+- comparação em que a própria posição lateral represente uma relação funcional.
+
+Mesmo nesses casos, verificar primeiro se ponto, ícone, texto ou fundo resolve melhor.
+
+A exceção deve ser justificável pela informação transmitida, não pela aparência.
+
+### Restrição de implementação para accent bars
+
+Não utilizar como padrão visual:
+
+- `border-l-*`;
+- `border-s-*`;
+- `before:w-[2px]`;
+- `before:w-[3px]`;
+- `before:w-1`;
+- `before:bg-*`;
+- `shadow-[inset_*]`;
+- `box-shadow: inset ...` para simular uma faixa lateral.
+
+Antes de utilizar qualquer uma dessas técnicas em linhas, cards, itens de menu, células ou listas, deve existir uma justificativa funcional explícita para a barra lateral.
+
+### Regra de composição de linhas
+
+Não adicionar elementos lineares decorativos apenas para “dar destaque”.
+
+Uma linha deve existir porque:
+
+- separa;
+- conecta;
+- indica continuidade;
+- representa relação;
+- comunica estado funcional necessário.
+
+Se não cumprir uma dessas funções, remover.
+
+### Proibição de ornamentação compensatória
+
+**Simplicidade não é ausência de design.**
+
+Não adicionar elementos visuais apenas para evitar que uma área pareça simples.
+
+Não compensar interfaces simples adicionando:
+
+- barras laterais coloridas;
+- badges;
+- pills;
+- fundos pastel;
+- círculos atrás de ícones;
+- linhas decorativas;
+- gradientes;
+- sombras sem função;
+- bordas de destaque;
+- pequenos elementos geométricos sem significado.
+
+Quando uma estrutura já é compreensível por hierarquia, tipografia, alinhamento, espaçamento e divisores, não adicionar ornamentação adicional.
+
+Um componente não precisa de um detalhe visual extra para parecer desenhado. Cada elemento visual deve justificar sua existência pela função que exerce.
+
+## 15. Ícones, informação contextual e marca
 
 Usar ícones apenas quando ajudam a reconhecer, executar ou compreender uma ação/informação.
 
@@ -552,7 +695,7 @@ SIGMA-S  ★RION
 - o wordmark acompanha `--orion-text`;
 - não adicionar glow, órbitas ou detalhes decorativos à marca.
 
-## 15. Movimento
+## 16. Movimento
 
 Animação deve comunicar estado ou progresso.
 
@@ -599,7 +742,7 @@ Evitar:
 
 Sempre respeitar `prefers-reduced-motion`.
 
-## 16. Performance visual
+## 17. Performance visual
 
 Preferir:
 
@@ -617,7 +760,7 @@ Evitar:
 - imagens grandes para elementos que podem ser vetor/CSS;
 - animação JS para efeitos puramente visuais.
 
-## 17. Conteúdo é parte do design
+## 18. Conteúdo é parte do design
 
 Usar dados e terminologia reais do DPP:
 
@@ -634,7 +777,7 @@ Usar dados e terminologia reais do DPP:
 
 Evitar conteúdo genérico como “Revenue”, “Growth”, “Insights”, “Performance” sem relação direta com a operação.
 
-## 18. Regras específicas do Dashboard DPP
+## 19. Regras específicas do Dashboard DPP
 
 - Nunca misturar Cenário ORION e DPP Final sem identificar claramente a origem.
 - Métrica precisa informar o que mede; não usar nomes que sugiram capacidade produtiva quando o cálculo mede proporção de modelos.
@@ -644,11 +787,12 @@ Evitar conteúdo genérico como “Revenue”, “Growth”, “Insights”, “
 - Gargalos devem mostrar material, déficit, modelos afetados e OPC quando disponível.
 - Não repetir a mesma métrica em múltiplos componentes sem oferecer uma leitura adicional.
 - Status de tabelas devem seguir a regra de texto neutro + marcador semântico, evitando badges/pills não interativos.
-- Resumos de divergência como “6 indicadores com divergência” devem preferir hierarquia tipográfica, marcador ou barra lateral em vez de cápsula com fundo e borda.
+- Resumos de divergência como “6 indicadores com divergência” devem preferir hierarquia tipográfica ou marcador discreto, sem cápsula e sem accent bar decorativa.
+- Linhas de modelos, materiais ou resultados não devem receber `border-left` colorido apenas por estarem divergentes, selecionadas ou pertencerem a uma seção; primeiro usar texto, ponto, fundo sutil ou estrutura tabular.
 - Ações de exportação/download devem aparecer como controle contextual ou faixa operacional compacta, não como um card isolado. O texto deve deixar explícito qual cenário será exportado e qual arquivo/layout serve apenas como modelo visual.
 - Todo bloco principal visível do Dashboard deve possuir informação contextual `i` com **O que mostra / Origem / Finalidade**.
 
-## 19. Checklist obrigatório antes de alterar frontend
+## 20. Checklist obrigatório antes de alterar frontend
 
 Antes de implementar:
 
@@ -659,6 +803,9 @@ Antes de implementar:
 - [ ] Avaliei texto/marcador/divisor antes de criar badge, pill ou chip.
 - [ ] Não usei `rounded-full` para status, métrica ou informação.
 - [ ] Não codifiquei o mesmo estado simultaneamente por texto + fundo + borda semânticos.
+- [ ] Não usei `border-left`, pseudo-elemento ou `inset shadow` como ornamentação de linha/item.
+- [ ] Se existe accent bar, consigo explicar qual informação funcional adicional ela comunica.
+- [ ] Não adicionei detalhe visual apenas para compensar uma área simples.
 - [ ] Não criei cor nova sem necessidade.
 - [ ] Não criei radius novo.
 - [ ] Não criei sombra grande.
@@ -674,13 +821,15 @@ Depois de implementar:
 - [ ] O resultado continua legível sem cor.
 - [ ] A cor tem significado e usa preferencialmente um único canal visual.
 - [ ] Status não clicáveis não parecem botões.
+- [ ] Linhas e itens não possuem accent bars decorativas.
+- [ ] A interface não contém ornamentação criada apenas para “dar destaque”.
 - [ ] O componente não parece uma landing page nem um dashboard SaaS/IA genérico.
 - [ ] Não existe redundância de informação.
 - [ ] O estado ORION vs Final está explícito.
 - [ ] Tooltips não inventam cálculos nem fontes.
 - [ ] Se uma nova regra visual foi aprovada, atualizei este documento.
 
-## 20. Protocolo de manutenção
+## 21. Protocolo de manutenção
 
 Este documento é parte do código do produto.
 
@@ -691,6 +840,6 @@ Para qualquer mudança visual futura:
 3. justificar qualquer exceção;
 4. atualizar este arquivo quando a linguagem visual evoluir;
 5. manter a implementação compatível com os dois temas;
-6. não reintroduzir estilos legados de 16–24 px, grandes sombras, glassmorphism, cards excessivos ou pills/badges como padrão de status.
+6. não reintroduzir estilos legados de 16–24 px, grandes sombras, glassmorphism, cards excessivos, pills/badges como padrão de status ou accent bars decorativas.
 
 A consistência do sistema tem prioridade sobre criatividade isolada em uma única tela.
