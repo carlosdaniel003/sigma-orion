@@ -7,10 +7,15 @@ import { useDppWorkspace } from './DppWorkspaceContext'
 
 const AUTO_RUN_DELAY = 120
 const BACKGROUND_TEST_DELAY = 350
+const FINAL_DPP_DELAY = 180
 const JOB_POLL_INTERVAL = 250
 
 function sleep(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
+function fileIdentity(file) {
+  return `${file?.name || ''}:${file?.size || 0}:${file?.lastModified || 0}`
 }
 
 function downloadFilename(disposition, fallback) {
@@ -39,6 +44,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     activity: 'Preparando processamento',
   })
   const [error, setError] = useState('')
+  const [finalLoading, setFinalLoading] = useState(false)
+  const [finalError, setFinalError] = useState('')
   const [exporting, setExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState({
     progress: 0,
@@ -49,6 +56,9 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   const generationAbortRef = useRef(null)
   const testPreparingRef = useRef(false)
   const backgroundTestTimerRef = useRef(null)
+  const finalAnalysisTimerRef = useRef(null)
+  const finalAnalysisAbortRef = useRef(null)
+  const finalAnalysisSignatureRef = useRef('')
   const bootstrappedRef = useRef(false)
 
   const bundle = useMemo(
@@ -118,6 +128,35 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     return () => window.clearTimeout(backgroundTestTimerRef.current)
   }, [workspaceReady, loading, generating, generatedScenario, testBundle.ready, testBundle.signature, testSignature])
 
+  useEffect(() => {
+    window.clearTimeout(finalAnalysisTimerRef.current)
+
+    if (!workspaceReady || !generatedScenario) return undefined
+
+    const finalFile = bundle.expectedDpp
+    if (!finalFile) {
+      finalAnalysisSignatureRef.current = ''
+      finalAnalysisAbortRef.current?.abort()
+      setFinalLoading(false)
+      setFinalError('')
+      onFinalDppAnalysis?.(null)
+      return undefined
+    }
+
+    const signature = `${referenceMonth || bundle.referenceMonth}|${fileIdentity(finalFile)}`
+    if (finalAnalysisSignatureRef.current === signature) return undefined
+
+    finalAnalysisTimerRef.current = window.setTimeout(() => {
+      analyzeFinalDpp(finalFile, signature)
+    }, FINAL_DPP_DELAY)
+
+    return () => window.clearTimeout(finalAnalysisTimerRef.current)
+  }, [workspaceReady, generatedScenario, bundle.expectedDpp, bundle.referenceMonth, referenceMonth])
+
+  useEffect(() => () => {
+    finalAnalysisAbortRef.current?.abort()
+  }, [])
+
   async function prepareTestFromPackage() {
     if (!testBundle.ready || !testBundle.signature || testPreparingRef.current) return
     if (testBundle.signature === testSignature) return
@@ -146,6 +185,41 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       console.error('Falha ao preparar Testes do DPP em segundo plano:', requestError)
     } finally {
       testPreparingRef.current = false
+    }
+  }
+
+  async function analyzeFinalDpp(finalFile, signature) {
+    if (!finalFile || !signature) return
+
+    finalAnalysisAbortRef.current?.abort()
+    const controller = new AbortController()
+    finalAnalysisAbortRef.current = controller
+    finalAnalysisSignatureRef.current = signature
+    setFinalLoading(true)
+    setFinalError('')
+    onFinalDppAnalysis?.(null)
+
+    const form = new FormData()
+    form.append('file', finalFile)
+
+    try {
+      const response = await fetch(`${apiUrl}/api/dpp/dashboard/final`, {
+        method: 'POST',
+        body: form,
+        signal: controller.signal,
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.detail || 'Não foi possível carregar o DPP final.')
+      onFinalDppAnalysis?.(payload)
+    } catch (requestError) {
+      if (requestError.name !== 'AbortError') {
+        setFinalError(requestError.message || 'Falha ao resumir o DPP final.')
+      }
+    } finally {
+      if (finalAnalysisAbortRef.current === controller) {
+        finalAnalysisAbortRef.current = null
+        setFinalLoading(false)
+      }
     }
   }
 
@@ -314,6 +388,49 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
   }
 
   const exportPercent = Math.round(exportProgress.progress)
+  const packageFooter = (
+    <>
+      {finalLoading && <div className="dashboard-final-auto-status">Analisando o DPP final do pacote automaticamente...</div>}
+      {finalError && <div className="alert error dashboard-final-auto-error">{finalError}</div>}
+
+      <div className="dashboard-scenario-export" aria-label="Exportar cenário ORION">
+        <div>
+          <span>ARQUIVO DO CENÁRIO</span>
+          <strong>Excel do cenário ORION</strong>
+          <small>
+            {bundle.baseDpp
+              ? `Usa ${bundle.baseDpp.name} somente como estrutura visual. Todos os dados operacionais da aba DPP são preenchidos com o Cenário ORION.`
+              : 'O DPP do mês anterior precisa estar no pacote para fornecer somente a estrutura visual do arquivo.'}
+          </small>
+        </div>
+        <button
+          className={`secondary-button dashboard-export-button ${exporting ? 'is-exporting' : ''}`}
+          type="button"
+          onClick={exportOrionScenario}
+          disabled={!bundle.baseDpp || exporting || generating}
+          aria-busy={exporting}
+          aria-label={exporting ? `Gerando Excel ORION, ${exportPercent}% concluído` : 'Baixar Excel ORION'}
+          title={exporting ? exportProgress.activity : undefined}
+        >
+          <span className="dashboard-export-button-label">
+            {exporting ? `Gerando Excel · ${exportPercent}%` : 'Baixar Excel ORION'}
+          </span>
+          {exporting && (
+            <span
+              className="dashboard-export-progress"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={exportPercent}
+            >
+              <span style={{ width: `${exportPercent}%` }} />
+            </span>
+          )}
+        </button>
+      </div>
+      {exportError && <div className="alert error dashboard-export-error">{exportError}</div>}
+    </>
+  )
 
   return (
     <>
@@ -350,52 +467,14 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
               processing={generating}
               compact
               title="Pacote compartilhado do DPP"
+              footer={packageFooter}
             />
           </section>
 
-          <section className="dashboard-scenario-export" aria-label="Exportar cenário ORION">
-            <div>
-              <span>ARQUIVO DO CENÁRIO</span>
-              <strong>Excel do cenário ORION</strong>
-              <small>
-                {bundle.baseDpp
-                  ? `Usa ${bundle.baseDpp.name} somente como estrutura visual. Todos os dados operacionais da aba DPP são preenchidos com o Cenário ORION.`
-                  : 'O DPP do mês anterior precisa estar no pacote para fornecer somente a estrutura visual do arquivo.'}
-              </small>
-            </div>
-            <button
-              className={`secondary-button dashboard-export-button ${exporting ? 'is-exporting' : ''}`}
-              type="button"
-              onClick={exportOrionScenario}
-              disabled={!bundle.baseDpp || exporting || generating}
-              aria-busy={exporting}
-              aria-label={exporting ? `Gerando Excel ORION, ${exportPercent}% concluído` : 'Baixar Excel ORION'}
-              title={exporting ? exportProgress.activity : undefined}
-            >
-              <span className="dashboard-export-button-label">
-                {exporting ? `Gerando Excel · ${exportPercent}%` : 'Baixar Excel ORION'}
-              </span>
-              {exporting && (
-                <span
-                  className="dashboard-export-progress"
-                  role="progressbar"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                  aria-valuenow={exportPercent}
-                >
-                  <span style={{ width: `${exportPercent}%` }} />
-                </span>
-              )}
-            </button>
-          </section>
-          {exportError && <div className="alert error dashboard-export-error">{exportError}</div>}
-
           <Dashboard
-            apiUrl={apiUrl}
             scenario={generatedScenario}
             onNavigate={onNavigate}
             finalDppAnalysis={finalDppAnalysis}
-            onFinalDppAnalysis={onFinalDppAnalysis}
           />
         </>
       )}
