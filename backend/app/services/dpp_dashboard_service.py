@@ -6,9 +6,12 @@ from pathlib import Path
 from fastapi import UploadFile
 from openpyxl import load_workbook
 
+from app.services.dpp_consolidation_service import _material_key
+from app.services.dpp_scenario_service import get_latest_monthly_scenario
 from app.services.dpp_service import (
     SOURCE_SHEET,
     SUPPORTED_DPP_EXTENSIONS,
+    VALIDATION_ABS_TOL,
     _as_text,
     _cell,
     _find_column,
@@ -20,7 +23,269 @@ from app.services.dpp_service import (
 )
 
 
-def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> dict:
+_COUNT_COLUMNS = {
+    "material",
+    "descricao",
+    "um",
+    "grupo origem",
+    "check",
+    "wiu",
+    "opc",
+    "coments",
+    "comments",
+    "comentario",
+    "comentarios",
+}
+_UNSUPPORTED_ORION_COLUMNS = {
+    "preco",
+    "amount",
+    "coments",
+    "comments",
+    "comentario",
+    "comentarios",
+}
+_COMMENT_COLUMNS = {"coments", "comments", "comentario", "comentarios"}
+
+
+def _is_filled(value: object) -> bool:
+    return value not in (None, "") and str(value).strip() != ""
+
+
+def _aggregate(values: list[object], kind: str) -> float | int:
+    if kind == "count":
+        return sum(1 for value in values if _is_filled(value))
+    return sum(_number(value, 0.0) or 0.0 for value in values)
+
+
+def _scenario_column_spec(
+    *,
+    column: int,
+    header: str,
+    model_start: int,
+    model_end: int,
+) -> dict:
+    normalized = _normalize(header)
+    kind = "count" if normalized in _COUNT_COLUMNS else "sum"
+
+    if model_start <= column <= model_end:
+        return {
+            "kind": "sum",
+            "supported": True,
+            "field": "model",
+            "model_name": header,
+            "comparison": "numeric",
+        }
+
+    if normalized in _UNSUPPORTED_ORION_COLUMNS:
+        return {
+            "kind": kind,
+            "supported": False,
+            "field": None,
+            "comparison": None,
+        }
+
+    direct_fields = {
+        "material": ("material", "text"),
+        "descricao": ("description", "text"),
+        "um": ("um", "text"),
+        "grupo origem": ("group_origin", "text"),
+        "check": ("check", "text"),
+        "wiu": ("in_current_wiu", "presence"),
+        "nec": ("nec", "numeric"),
+        "opc": ("optional_material", "text"),
+        "stk op": ("stock_op", "numeric"),
+        "stk ttl": ("stock_total", "numeric"),
+        "saldo": ("balance", "numeric"),
+    }
+    if normalized in direct_fields:
+        field, comparison = direct_fields[normalized]
+        return {
+            "kind": kind,
+            "supported": True,
+            "field": field,
+            "comparison": comparison,
+        }
+
+    if normalized.startswith("stk ") and normalized not in {"stk op", "stk ttl"}:
+        return {
+            "kind": "sum",
+            "supported": True,
+            "field": "stock_sap_effective",
+            "comparison": "numeric",
+        }
+
+    if normalized.startswith("explosao"):
+        return {
+            "kind": "sum",
+            "supported": True,
+            "field": "explosion",
+            "comparison": "numeric",
+        }
+
+    return {
+        "kind": kind,
+        "supported": False,
+        "field": None,
+        "comparison": None,
+    }
+
+
+def _scenario_material_value(material: dict, spec: dict) -> object:
+    field = spec.get("field")
+    if field == "model":
+        target = _normalize(spec.get("model_name"))
+        for model_name, value in (material.get("consumption_by_model") or {}).items():
+            if _normalize(model_name) == target:
+                return _number(value, 0.0) or 0.0
+        return 0.0
+
+    if field == "check":
+        return material.get("check") or material.get("status")
+
+    if field == "in_current_wiu":
+        return "WIU" if material.get("in_current_wiu") else None
+
+    if field == "stock_sap_effective":
+        return material.get("stock_sap_effective", material.get("stock_sap"))
+
+    return material.get(field) if field else None
+
+
+def _column_values_equal(final_value: object, orion_value: object, comparison: str | None) -> bool:
+    if comparison == "numeric":
+        left = _number(final_value, 0.0) or 0.0
+        right = _number(orion_value, 0.0) or 0.0
+        return abs(left - right) <= VALIDATION_ABS_TOL
+
+    if comparison == "presence":
+        return _is_filled(final_value) == _is_filled(orion_value)
+
+    return _normalize(final_value) == _normalize(orion_value)
+
+
+def _build_column_comparison(
+    *,
+    rows: list[tuple],
+    headers: dict[int, str],
+    header_row: int,
+    material_col: int,
+    origin_col: int,
+    check_col: int,
+    scenario: dict,
+) -> dict:
+    model_start = origin_col + 1
+    model_end = check_col - 1
+
+    comment_columns = [
+        column
+        for column, header in headers.items()
+        if _normalize(header) in _COMMENT_COLUMNS and column >= material_col
+    ]
+    last_column = min(comment_columns) if comment_columns else max(headers)
+    comparison_columns = [
+        column
+        for column in sorted(headers)
+        if material_col <= column <= last_column
+    ]
+
+    final_material_rows: list[tuple[str, int]] = []
+    final_row_by_material: dict[str, int] = {}
+    for excel_row in range(header_row + 1, len(rows) + 1):
+        raw_material = _cell(rows, excel_row, material_col)
+        key = _material_key(raw_material)
+        if not key:
+            continue
+        final_material_rows.append((key, excel_row))
+        final_row_by_material[key] = excel_row
+
+    scenario_materials = [
+        material
+        for material in (scenario.get("materials") or [])
+        if _material_key(material.get("material"))
+    ]
+    orion_by_material = {
+        _material_key(material.get("material")): material
+        for material in scenario_materials
+    }
+
+    columns: list[dict] = []
+    divergent_columns = 0
+    comparable_columns = 0
+
+    for column in comparison_columns:
+        header = headers[column]
+        spec = _scenario_column_spec(
+            column=column,
+            header=header,
+            model_start=model_start,
+            model_end=model_end,
+        )
+        kind = spec["kind"]
+        final_values = [_cell(rows, excel_row, column) for _, excel_row in final_material_rows]
+        final_total = _aggregate(final_values, kind)
+
+        item = {
+            "name": header,
+            "column": column,
+            "kind": kind,
+            "aggregation_label": "itens preenchidos" if kind == "count" else "soma",
+            "final_total": final_total,
+            "orion_total": None,
+            "delta": None,
+            "difference_count": None,
+            "supported": bool(spec["supported"]),
+        }
+
+        if not spec["supported"]:
+            item["note"] = "Ainda não calculado pelo cenário ORION."
+            columns.append(item)
+            continue
+
+        comparable_columns += 1
+        orion_values = [_scenario_material_value(material, spec) for material in scenario_materials]
+        orion_total = _aggregate(orion_values, kind)
+        delta = final_total - orion_total
+
+        differences = 0
+        all_material_keys = set(final_row_by_material) | set(orion_by_material)
+        for material_key in all_material_keys:
+            final_row = final_row_by_material.get(material_key)
+            orion_material = orion_by_material.get(material_key)
+            if final_row is None or orion_material is None:
+                differences += 1
+                continue
+
+            final_value = _cell(rows, final_row, column)
+            orion_value = _scenario_material_value(orion_material, spec)
+            if not _column_values_equal(final_value, orion_value, spec.get("comparison")):
+                differences += 1
+
+        item["orion_total"] = orion_total
+        item["delta"] = delta
+        item["difference_count"] = differences
+        if differences > 0 or abs(float(delta)) > VALIDATION_ABS_TOL:
+            divergent_columns += 1
+        columns.append(item)
+
+    return {
+        "scenario_id": scenario.get("scenario_id"),
+        "reference_month": scenario.get("reference_month"),
+        "basis": "material_rows",
+        "columns_total": len(columns),
+        "comparable_columns": comparable_columns,
+        "divergent_columns": divergent_columns,
+        "unsupported_columns": len(columns) - comparable_columns,
+        "final_materials": len(final_material_rows),
+        "orion_materials": len(scenario_materials),
+        "columns": columns,
+    }
+
+
+def summarize_final_dpp_content(
+    content: bytes,
+    filename: str = "dpp.xlsx",
+    scenario: dict | None = None,
+) -> dict:
     extension = Path(filename).suffix.lower()
     if extension not in SUPPORTED_DPP_EXTENSIONS:
         raise ValueError("Envie um DPP final em formato .xlsx ou .xlsm.")
@@ -145,12 +410,25 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
     below_pgd_models = sum(1 for model in model_states if model["delta"] < -1e-9)
     above_pgd_models = sum(1 for model in model_states if model["delta"] > 1e-9)
 
+    column_comparison = None
+    if scenario is not None:
+        column_comparison = _build_column_comparison(
+            rows=rows,
+            headers=headers,
+            header_row=header_row,
+            material_col=material_col,
+            origin_col=origin_col,
+            check_col=check_col,
+            scenario=scenario,
+        )
+
     return {
         "filename": filename,
         "status": "DPP_FINAL",
         "models": model_states,
         "critical_materials": sorted(critical_material_codes),
         "shared_critical_materials": sorted(shared_critical_material_codes),
+        "column_comparison": column_comparison,
         "summary": {
             "pgd_total": pgd_total,
             "real_total": real_total,
@@ -174,4 +452,5 @@ def summarize_final_dpp_content(content: bytes, filename: str = "dpp.xlsx") -> d
 async def summarize_final_dpp(file: UploadFile) -> dict:
     filename = file.filename or "dpp.xlsx"
     content = await file.read()
-    return summarize_final_dpp_content(content, filename)
+    scenario = get_latest_monthly_scenario()
+    return summarize_final_dpp_content(content, filename, scenario=scenario)
