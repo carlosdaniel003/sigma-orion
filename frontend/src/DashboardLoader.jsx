@@ -18,6 +18,14 @@ function fileIdentity(file) {
   return `${file?.name || ''}:${file?.size || 0}:${file?.lastModified || 0}`
 }
 
+function scenarioValidationIdentity(scenario) {
+  if (!scenario) return ''
+  const models = (scenario.models || [])
+    .map((model) => `${model?.name || ''}:${Number(model?.kit_pgd) || 0}:${Number(model?.real) || 0}`)
+    .join('|')
+  return `${scenario.scenario_id || ''}:${models}`
+}
+
 function downloadFilename(disposition, fallback) {
   const match = disposition?.match(/filename="?([^";]+)"?/i)
   return match?.[1] || fallback
@@ -35,6 +43,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     testSignature,
     setTestSignature,
     setTestResult,
+    finalDppSignature,
+    setFinalDppSignature,
     workspaceReady,
   } = useDppWorkspace()
   const [loading, setLoading] = useState(!generatedScenario)
@@ -144,6 +154,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       setFinalLoading(false)
       setFinalProgress({ progress: 0, activity: 'Preparando análise do DPP Final' })
       setFinalError('')
+      setFinalDppSignature('')
       onFinalDppAnalysis?.(null)
       return undefined
     }
@@ -153,7 +164,15 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     const packageMonth = referenceMonth || bundle.referenceMonth
     if (generatedScenario.reference_month && packageMonth && generatedScenario.reference_month !== packageMonth) return undefined
 
-    const signature = `${packageMonth}|${fileIdentity(finalFile)}`
+    const signature = `${packageMonth}|${fileIdentity(finalFile)}|${scenarioValidationIdentity(generatedScenario)}`
+
+    if (finalDppSignature === signature && finalDppAnalysis) {
+      finalAnalysisSignatureRef.current = signature
+      setFinalLoading(false)
+      setFinalError('')
+      return undefined
+    }
+
     if (finalAnalysisSignatureRef.current === signature) return undefined
 
     finalAnalysisTimerRef.current = window.setTimeout(() => {
@@ -161,7 +180,17 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     }, FINAL_DPP_DELAY)
 
     return () => window.clearTimeout(finalAnalysisTimerRef.current)
-  }, [workspaceReady, generatedScenario, generating, bundle.expectedDpp, bundle.referenceMonth, referenceMonth])
+  }, [
+    workspaceReady,
+    generatedScenario,
+    generating,
+    bundle.expectedDpp,
+    bundle.referenceMonth,
+    referenceMonth,
+    finalDppSignature,
+    finalDppAnalysis,
+    setFinalDppSignature,
+  ])
 
   useEffect(() => () => {
     finalAnalysisAbortRef.current?.abort()
@@ -255,8 +284,10 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       if (!payload) throw new Error('A análise terminou sem retornar o resumo do DPP Final.')
       setFinalProgress({ progress: 100, activity: 'Análise do DPP Final concluída' })
       onFinalDppAnalysis?.(payload)
+      setFinalDppSignature(signature)
     } catch (requestError) {
       if (requestError.name !== 'AbortError') {
+        finalAnalysisSignatureRef.current = ''
         setFinalError(requestError.message || 'Falha ao resumir o DPP final.')
       }
     } finally {
