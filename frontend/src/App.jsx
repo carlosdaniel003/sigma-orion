@@ -136,7 +136,7 @@ function App() {
             <DppTest apiUrl={API_URL} />
           </section>
         )}
-        {activeWorkspace === 'agent' && <AgentOrion />}
+        {activeWorkspace === 'agent' && <AgentOrion apiUrl={API_URL} />}
       </main>
     </div>
   )
