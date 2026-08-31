@@ -86,12 +86,16 @@ async function writePersistedProcessedState({
   generatedSignature,
   testResult,
   testSignature,
+  finalDppAnalysis,
+  finalDppSignature,
 }) {
   await writeStoredValue(PROCESSED_STATE_KEY, {
     generatedScenario,
     generatedSignature,
     testResult,
     testSignature,
+    finalDppAnalysis,
+    finalDppSignature,
     updatedAt: Date.now(),
   })
 }
@@ -131,6 +135,8 @@ export function DppWorkspaceProvider({ children }) {
   const [generatedScenario, setGeneratedScenario] = useState(null)
   const [testSignature, setTestSignature] = useState('')
   const [testResult, setTestResult] = useState(null)
+  const [finalDppAnalysis, setFinalDppAnalysis] = useState(null)
+  const [finalDppSignature, setFinalDppSignature] = useState('')
   const [workspaceReady, setWorkspaceReady] = useState(false)
 
   useEffect(() => {
@@ -158,6 +164,8 @@ export function DppWorkspaceProvider({ children }) {
         setGeneratedScenario(persistedState?.generatedScenario || null)
         setTestSignature(persistedTestSignature || '')
         setTestResult(persistedState?.testResult || null)
+        setFinalDppAnalysis(persistedState?.finalDppAnalysis || null)
+        setFinalDppSignature(persistedState?.finalDppSignature || '')
 
         if (navigator.storage?.persist) {
           navigator.storage.persist().catch(() => {})
@@ -189,10 +197,20 @@ export function DppWorkspaceProvider({ children }) {
       generatedSignature,
       testResult,
       testSignature,
+      finalDppAnalysis,
+      finalDppSignature,
     }).catch((error) => {
       console.warn('Não foi possível persistir o estado processado do DPP:', error)
     })
-  }, [generatedScenario, generatedSignature, testResult, testSignature, workspaceReady])
+  }, [
+    generatedScenario,
+    generatedSignature,
+    testResult,
+    testSignature,
+    finalDppAnalysis,
+    finalDppSignature,
+    workspaceReady,
+  ])
 
   useEffect(() => {
     if (!workspaceReady) return
@@ -217,6 +235,10 @@ export function DppWorkspaceProvider({ children }) {
     setTestSignature,
     testResult,
     setTestResult,
+    finalDppAnalysis,
+    setFinalDppAnalysis,
+    finalDppSignature,
+    setFinalDppSignature,
     workspaceReady,
   }), [
     files,
@@ -225,6 +247,8 @@ export function DppWorkspaceProvider({ children }) {
     generatedScenario,
     testSignature,
     testResult,
+    finalDppAnalysis,
+    finalDppSignature,
     workspaceReady,
   ])
 
