@@ -29,7 +29,8 @@ from app.services.dpp_projection_service import (
 )
 from app.services.dpp_scenario_service import get_monthly_scenario
 
-FORMULA_FIELDS = {"nec", "stock_total", "balance"}
+FORMULA_FIELDS = {"check", "nec", "stock_op", "stock_total", "balance", "amount"}
+CONSOLIDADO_SHEET = "CONSOLIDADO"
 
 
 def _set_recalculation(workbook) -> None:
@@ -53,6 +54,13 @@ def _field_columns(projection: dict) -> dict[str, int]:
     return result
 
 
+def _excel_number(value: object) -> str:
+    number = float(value or 0.0)
+    if number.is_integer():
+        return str(int(number))
+    return format(number, ".15g")
+
+
 def _formula_for_field(
     field: str,
     *,
@@ -60,11 +68,32 @@ def _formula_for_field(
     projection: dict,
     field_columns: dict[str, int],
     real_row: int,
+    header_row: int,
+    material: dict | None = None,
 ) -> str | None:
+    model_start = get_column_letter(int(projection["model_start"]))
+    model_end = get_column_letter(int(projection["model_end"]))
+
+    if field == "check":
+        return (
+            f'=TEXTJOIN("// ", TRUE, FILTER(${model_start}${header_row}:${model_end}${header_row}, '
+            f'{model_start}{row}:{model_end}{row}>0, ""))'
+        )
+
     if field == "nec":
-        start = get_column_letter(int(projection["model_start"]))
-        end = get_column_letter(int(projection["model_end"]))
-        return f"=SUMPRODUCT({start}{row}:{end}{row},{start}${real_row}:{end}${real_row})"
+        return f"=SUMPRODUCT(${model_start}${real_row}:${model_end}${real_row},{model_start}{row}:{model_end}{row})"
+
+    if field == "stock_op":
+        sources = list((material or {}).get("stock_op_sources") or [])
+        if not sources:
+            return None
+        if len(sources) == 1:
+            optional_column = field_columns.get("optional_material")
+            if optional_column is None:
+                return None
+            optional_ref = f"{get_column_letter(optional_column)}{row}"
+            return f"=VLOOKUP({optional_ref},{CONSOLIDADO_SHEET}!$A:$F,6,0)"
+        return "=" + "+".join(_excel_number(item.get("value")) for item in sources)
 
     if field == "stock_total":
         component_columns = [field_columns.get(name) for name in STOCK_TOTAL_COMPONENT_FIELDS]
@@ -79,6 +108,13 @@ def _formula_for_field(
         if positive is None or negative is None:
             return None
         return f"={get_column_letter(positive)}{row}-{get_column_letter(negative)}{row}"
+
+    if field == "amount":
+        price = field_columns.get("price")
+        balance = field_columns.get("balance")
+        if price is None or balance is None:
+            return None
+        return f"={get_column_letter(price)}{row}*{get_column_letter(balance)}{row}"
 
     return None
 
@@ -131,6 +167,79 @@ def _workbook_context(workbook, scenario: dict) -> dict:
     }
 
 
+def _prepare_consolidado_sheet(workbook, scenario: dict) -> None:
+    sources_by_material: dict[str, float] = {}
+    for material in scenario.get("materials") or []:
+        for source in material.get("stock_op_sources") or []:
+            code = str(source.get("material") or "").strip()
+            if code:
+                sources_by_material[code] = float(source.get("value") or 0.0)
+
+    if not sources_by_material:
+        return
+
+    if CONSOLIDADO_SHEET in workbook.sheetnames:
+        sheet = workbook[CONSOLIDADO_SHEET]
+        if sheet.max_row:
+            sheet.delete_rows(1, sheet.max_row)
+    else:
+        sheet = workbook.create_sheet(CONSOLIDADO_SHEET)
+
+    sheet.sheet_state = "hidden"
+    sheet.cell(1, 1).value = "Material"
+    sheet.cell(1, 6).value = "STK OP"
+    for row, (material, value) in enumerate(sorted(sources_by_material.items()), start=2):
+        sheet.cell(row, 1).value = material
+        sheet.cell(row, 6).value = value
+
+
+def _apply_gap_formulas(context: dict, scenario: dict) -> None:
+    gap_row = context["real_row"] + 1
+    if gap_row >= context["header_row"]:
+        return
+
+    sheet = context["sheet"]
+    projection = context["projection"]
+    models = {
+        _normalize(model.get("name")): model
+        for model in scenario.get("models") or []
+        if model.get("name")
+    }
+    for column in range(projection["model_start"], projection["model_end"] + 1):
+        cell = sheet.cell(gap_row, column)
+        model = models.get(_normalize(sheet.cell(context["header_row"], column).value))
+        difference = float(model.get("difference_real_vs_kit") or 0.0) if model else 0.0
+        if abs(difference) > 1e-4:
+            letter = get_column_letter(column)
+            cell.value = f"={letter}{context['real_row']}-{letter}{context['kit_row']}"
+        else:
+            cell.value = None
+
+
+def _apply_summary_formulas(workbook, context: dict) -> None:
+    if "Resumo de Análise" not in workbook.sheetnames or "DPP BALANCE" not in workbook.sheetnames:
+        return
+
+    sheet = workbook["Resumo de Análise"]
+    projection = context["projection"]
+    model_start = get_column_letter(int(projection["model_start"]))
+    model_end = get_column_letter(int(projection["model_end"]))
+    model_name_row = max(context["real_row"] - 1, 1)
+
+    for row in range(2, sheet.max_row + 1):
+        if sheet.cell(row, 2).value in (None, ""):
+            continue
+        sheet.cell(row, 3).value = (
+            f'=XLOOKUP(B{row},\'DPP BALANCE\'!${model_start}${model_name_row}:${model_end}${model_name_row},'
+            f'\'DPP BALANCE\'!${model_start}${context["kit_row"]}:${model_end}${context["kit_row"]},"ND")'
+        )
+        sheet.cell(row, 4).value = (
+            f'=XLOOKUP(B{row},DPP!${model_start}${model_name_row}:${model_end}${model_name_row},'
+            f'DPP!${model_start}${context["real_row"]}:${model_end}${context["real_row"]},"ND")'
+        )
+        sheet.cell(row, 5).value = f"=D{row}-C{row}"
+
+
 def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict:
     context = _workbook_context(workbook, scenario)
     sheet = context["sheet"]
@@ -159,6 +268,9 @@ def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict
         sheet.cell(context["kit_row"], column).value = float(model.get("kit_pgd") or 0.0) if model else 0.0
         sheet.cell(context["real_row"], column).value = float(model.get("real") or 0.0) if model else 0.0
 
+    _prepare_consolidado_sheet(workbook, scenario)
+    _apply_gap_formulas(context, scenario)
+
     canonical_columns = [
         column
         for column in projection["columns"]
@@ -185,12 +297,13 @@ def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict
                     projection=projection,
                     field_columns=field_columns,
                     real_row=context["real_row"],
+                    header_row=context["header_row"],
+                    material=projected_row["material"],
                 )
-                if formula is None:
-                    raise ValueError(
-                        f"Falha de consistência do Excel ORION: não foi possível gerar a fórmula canônica de '{field}'."
-                    )
-                cell.value = formula
+                if formula is not None:
+                    cell.value = formula
+                else:
+                    cell.value = projected_row["values"].get(column)
             else:
                 cell.value = projected_row["values"].get(column)
 
@@ -200,6 +313,7 @@ def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict
                 progress(current, f"Aplicando projeção canônica · {index}/{len(projection['rows'])} materiais")
                 last_progress = current
 
+    _apply_summary_formulas(workbook, context)
     _set_recalculation(workbook)
     return context
 
@@ -210,13 +324,6 @@ def _value_at(row_values: tuple, column: int):
 
 
 def _validate_canonical_projection(content: bytes, scenario: dict, progress=None) -> None:
-    """Audita o XLSX serializado usando uma única varredura sequencial da aba DPP.
-
-    Em read_only=True, milhares de chamadas aleatórias a worksheet.cell() podem obrigar
-    o OpenPyXL a percorrer repetidamente o XML da planilha. Para um DPP real isso fazia
-    a etapa de 96% durar muito mais que a própria geração. Aqui cada linha é lida uma
-    única vez e todas as comparações usam os valores já materializados em memória.
-    """
     workbook = load_workbook(BytesIO(content), data_only=False, read_only=True)
     try:
         if SOURCE_SHEET not in workbook.sheetnames:
@@ -300,12 +407,15 @@ def _validate_canonical_projection(content: bytes, scenario: dict, progress=None
                         projection=projection,
                         field_columns=field_columns,
                         real_row=real_row,
+                        header_row=header_row,
+                        material=projected_row["material"],
                     )
-                    if actual != expected_formula:
-                        raise ValueError(
-                            f"Falha de consistência do Excel ORION: fórmula canônica de '{field}' não foi preservada."
-                        )
-                    continue
+                    if expected_formula is not None:
+                        if actual != expected_formula:
+                            raise ValueError(
+                                f"Falha de consistência do Excel ORION: fórmula canônica de '{field}' não foi preservada."
+                            )
+                        continue
 
                 expected = projected_row["values"].get(column)
                 if not column_values_equal(actual, expected, spec.get("comparison")):
@@ -356,7 +466,7 @@ def export_monthly_scenario_excel(
         _write_orion_scenario_to_dpp(workbook, scenario, progress=template_progress)
 
         if progress is not None:
-            progress(78, "Aplicando projeção canônica do Cenário ORION")
+            progress(78, "Aplicando fórmulas e projeção canônica do Cenário ORION")
         _apply_canonical_projection(workbook, scenario, progress=progress)
 
         if progress is not None:
@@ -368,10 +478,10 @@ def export_monthly_scenario_excel(
         workbook.close()
 
     if progress is not None:
-        progress(96, "Auditando Excel ORION")
+        progress(96, "Auditando fórmulas e dados do Excel ORION")
     _validate_canonical_projection(canonical_content, scenario, progress=progress)
     if progress is not None:
-        progress(99, "Excel ORION consistente com o Dashboard")
+        progress(99, "Excel ORION consistente com o Dashboard e fórmulas DPP")
 
     media_type = (
         "application/vnd.ms-excel.sheet.macroEnabled.12"
