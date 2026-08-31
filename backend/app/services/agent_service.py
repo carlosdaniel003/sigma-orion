@@ -6,11 +6,11 @@ from pydantic import ValidationError
 from app.llm.provider import MockProvider, get_llm_provider
 from app.schemas.agent import AgentAnalysis, AgentAnalysisRequest, ChatResponse
 from app.services.history_service import save_analysis_history
-from app.services.knowledge_service import load_guardrails, retrieve_context
+from app.services.knowledge_service import answer_from_knowledge, load_guardrails, retrieve_context
 
 
 DEMO_NOTICE = (
-    "Demonstração com dados fictícios. Nenhuma regra real do DPP foi implementada ainda."
+    "Demonstração com dados fictícios. Use /api/agent/chat para consultar o conhecimento real validado do ORION."
 )
 
 
@@ -32,11 +32,11 @@ def provider_status() -> dict:
     status = provider.status()
     status.update(
         {
-            "mode": "live" if provider.configured and provider.name != "mock" else "demo",
+            "mode": "live" if provider.configured and provider.name != "mock" else "offline-rag",
             "message": (
                 "Provider configurado e pronto para chamadas reais."
                 if provider.configured and provider.name != "mock"
-                else "Provider mock ativo. Configure LLM_PROVIDER=groq e GROQ_API_KEY no .env para usar a LLM real."
+                else "LLM externa desativada. O chat continua disponível com RAG lexical local e conhecimento validado."
             ),
         }
     )
@@ -54,7 +54,7 @@ def build_demo_analysis() -> AgentAnalysis:
             "summary": (
                 "O cenário fictício contém quatro itens críticos e nove itens em atenção. "
                 "O objetivo desta tela é validar a estrutura da interface, evidências, "
-                "recomendações e feedback humano antes da chegada dos dados reais."
+                "recomendações e feedback humano."
             ),
             "metrics": {
                 "total_materials": 120,
@@ -132,8 +132,7 @@ def answer_demo_question(question: str) -> ChatResponse:
         )
     else:
         answer = (
-            "O agente está em modo mock. A pergunta atravessará o mesmo contrato usado pela LLM real, "
-            "mas nenhuma API externa é chamada enquanto LLM_PROVIDER=mock."
+            "Este endpoint é somente de demonstração. Para consultar regras reais do ORION, use o chat principal."
         )
 
     chunks = retrieve_context(question)
@@ -151,7 +150,14 @@ def answer_agent_question(question: str) -> ChatResponse:
     chunks = retrieve_context(question)
 
     if isinstance(provider, MockProvider):
-        return answer_demo_question(question)
+        local_answer = answer_from_knowledge(question)
+        return ChatResponse(
+            provider="local-rag",
+            model="lexical-local",
+            is_demo=False,
+            answer=local_answer.answer,
+            knowledge_sources=local_answer.sources,
+        )
 
     system_prompt = _build_system_prompt(chunks)
     user_prompt = (
