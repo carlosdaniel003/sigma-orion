@@ -7,7 +7,7 @@ from time import monotonic
 from uuid import uuid4
 
 from app.services.dpp_canonical_export_service import export_monthly_scenario_excel
-from app.services.dpp_export_postprocess_service import enforce_final_dpp_header_and_gap
+from app.services.dpp_export_formula_fidelity_service import finalize_and_audit_dpp_formulas
 from app.services.dpp_scenario_service import get_monthly_scenario
 
 MAX_JOBS = 6
@@ -89,6 +89,7 @@ def _complete_job(job_id: str, content: bytes, filename: str, media_type: str) -
             "filename": filename,
             "media_type": media_type,
             "size_bytes": len(content),
+            "formula_audit": "DPP_FINAL_RULES_OK",
         }
         job["error"] = None
         job["finished_at"] = _now()
@@ -119,17 +120,16 @@ def _run_export_job(job_id: str, payload: dict) -> None:
             progress=progress,
         )
 
-        # A decisão final sobre a fórmula REAL − KIT deve usar o próprio XLSX já
-        # serializado. Isso evita depender de metadados intermediários do cenário e
-        # garante a mesma estrutura do DPP Final: linha abaixo de REAL = REAL - KIT.
         scenario = get_monthly_scenario(payload["scenario_id"])
         if scenario is None:
-            raise ValueError("Cenário ORION não encontrado durante a validação final do Excel.")
-        progress(99, "Validando cabeçalho e diferença REAL × KIT")
-        content = enforce_final_dpp_header_and_gap(
-            content,
-            scenario.get("reference_month") or "",
-        )
+            raise ValueError("Cenário ORION não encontrado durante a auditoria final do Excel.")
+
+        # Esta etapa opera sobre o mesmo XLSX que será armazenado no job e entregue
+        # pelo endpoint de download. Ela reaplica e audita todas as fórmulas
+        # determinísticas do DPP Final; se qualquer uma estiver ausente ou diferente,
+        # o job falha e nenhum arquivo inconsistente é liberado.
+        progress(99, "Auditando todas as fórmulas do DPP Final")
+        content = finalize_and_audit_dpp_formulas(content, scenario)
 
         _complete_job(job_id, content, filename, media_type)
     except Exception as exc:
