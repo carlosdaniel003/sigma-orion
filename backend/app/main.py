@@ -6,11 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.core.config import APP_NAME, APP_VERSION, FRONTEND_ORIGIN
 from app.db.database import init_db
+from app.services.dpp_scenario_service import restore_persisted_monthly_scenario
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    restore_persisted_monthly_scenario()
     yield
 
 
