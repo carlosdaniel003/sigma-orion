@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react'
+import AgentOrion from './AgentOrion'
 import BrandLogo from './BrandLogo'
 import DashboardInfoLayer from './DashboardInfoLayer'
 import DashboardLoader from './DashboardLoader'
@@ -37,6 +38,10 @@ function App() {
     setActiveView(view)
   }
 
+  function openAgent() {
+    setActiveWorkspace('agent')
+  }
+
   function toggleTheme() {
     setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
   }
@@ -54,6 +59,16 @@ function App() {
           onClick={() => openDppView('dashboard')}
         >
           <DppIcon />
+        </button>
+
+        <button
+          className={`workspace-button ${activeWorkspace === 'agent' ? 'workspace-active' : ''}`}
+          type="button"
+          aria-label="Agente ORION"
+          data-tooltip="Agente ORION"
+          onClick={openAgent}
+        >
+          <AgentIcon />
         </button>
 
         <span className="workspace-dock-separator" aria-hidden="true" />
@@ -121,6 +136,7 @@ function App() {
             <DppTest apiUrl={API_URL} />
           </section>
         )}
+        {activeWorkspace === 'agent' && <AgentOrion />}
       </main>
     </div>
   )
@@ -132,6 +148,15 @@ function DppIcon() {
       <path d="M6.5 3.5h7.2l3.8 3.8v13.2H6.5Z" />
       <path d="M13.5 3.8v4h3.8" />
       <path d="M9 11h6M9 14h6M9 17h4" />
+    </svg>
+  )
+}
+
+function AgentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 5.5h14v10.8H9.2L5 19.5Z" />
+      <path d="M8.5 9.2h7M8.5 12.6h4.8" />
     </svg>
   )
 }
