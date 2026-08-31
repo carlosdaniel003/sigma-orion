@@ -79,7 +79,7 @@ function materialEvidence(material) {
     evidence.push({ label: 'NEC ORION', value: formatNumber(material.nec), detail: 'Motor determinístico' })
   }
   if (material.stock_total !== undefined && material.stock_total !== null) {
-    evidence.push({ label: 'STK TTL ORION', value: formatNumber(material.stock_total), detail: 'Cenário inicial' })
+    evidence.push({ label: 'STK TTL ORION', value: formatNumber(material.stock_total), detail: 'Cenário atual' })
   }
   if (material.balance !== undefined && material.balance !== null) {
     evidence.push({ label: 'SALDO ORION', value: formatNumber(material.balance), detail: 'STK TTL − NEC' })
@@ -87,7 +87,61 @@ function materialEvidence(material) {
   return evidence
 }
 
-function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth }) {
+function isWorkspaceDataQuestion(question, scenario) {
+  const q = normalize(question)
+  if (findMaterial(question, scenario?.materials || [])) return true
+  if (findModel(question, scenario?.models || [])) return true
+  if (q.includes('quant') && q.includes('material')) return true
+  if (q.includes('real') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) return true
+  if (q.includes('cenario atual') || q.includes('cenário atual')) return true
+  if (q.includes('dpp final') && (q.includes('quant') || q.includes('valor') || q.includes('difer'))) return true
+  return false
+}
+
+function workspaceUnavailableAnswer(dppState) {
+  const bundle = dppState?.bundle
+  return {
+    text: 'O cenário ORION ainda não está disponível para o pacote atual do DPP. Para responder sobre valores do mês, materiais ou modelos, complete ou reprocesse o pacote na aba DPP.',
+    evidence: [
+      {
+        label: 'Pacote atual',
+        value: formatMonth(dppState?.currentMonth),
+        detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
+      },
+    ],
+    sources: ['Workspace compartilhado do DPP'],
+    entities: [],
+    tool: 'workspace_status',
+    confidence: 'Determinística',
+  }
+}
+
+function staleWorkspaceAnswer(dppState) {
+  const bundle = dppState?.bundle
+  return {
+    text: 'O pacote compartilhado da aba DPP mudou desde o último processamento. Para não misturar dados antigos com os arquivos atuais, o Agente ORION bloqueou esta consulta de dados mensais até o cenário ser recalculado.',
+    evidence: [
+      {
+        label: 'Pacote atual',
+        value: formatMonth(dppState?.currentMonth),
+        detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
+      },
+      {
+        label: 'Cenário',
+        value: 'Desatualizado',
+        detail: 'A assinatura do cenário não corresponde ao pacote DPP atual.',
+      },
+    ],
+    sources: ['Workspace compartilhado do DPP'],
+    entities: [],
+    tool: 'workspace_sync_guard',
+    confidence: 'Determinística',
+  }
+}
+
+function workspaceAnswer(question, { scenario, finalDppAnalysis, referenceMonth }) {
+  if (!scenario) return null
+
   const q = normalize(question)
   const materials = scenario?.materials || []
   const models = scenario?.models || []
@@ -95,36 +149,10 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
   const model = findModel(question, models)
   const changedModels = changedRealModels(scenario, finalDppAnalysis)
   const month = referenceMonth || scenario?.reference_month || finalDppAnalysis?.column_comparison?.reference_month || ''
-  const sources = []
+  const sources = [`Cenário ORION · ${formatMonth(month)}`]
   const entities = []
   const evidence = []
-
-  if (!scenario) {
-    return {
-      text: 'O cenário ORION ainda não está disponível para o pacote atual do DPP. Complete ou reprocesse o pacote mensal na aba DPP para habilitar consultas determinísticas.',
-      evidence: [],
-      sources: ['Workspace compartilhado do DPP'],
-      entities: [],
-      tool: 'workspace_status',
-      confidence: 'Determinística',
-    }
-  }
-
-  sources.push(`Cenário ORION · ${formatMonth(month)}`)
   if (finalDppAnalysis) sources.push(`DPP Final · ${formatMonth(month)}`)
-
-  if ((q.includes('como') || q.includes('regra') || q.includes('calcula')) && q.includes('nec')) {
-    return {
-      text: 'O ORION calcula NEC por material usando NEC = Σ(REAL do modelo × consumo do material naquele modelo). O cálculo permanece no motor Python; esta tela apenas consulta e apresenta o resultado.',
-      evidence: [
-        { label: 'Regra', value: 'NEC = Σ(REAL × consumo)', detail: 'Cálculo determinístico em Python' },
-      ],
-      sources: ['Regra determinística NEC'],
-      entities: ['NEC'],
-      tool: 'get_rule(nec)',
-      confidence: 'Determinística',
-    }
-  }
 
   if (material && q.includes('nec') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) {
     entities.push(material.material || material.material_key, 'NEC')
@@ -139,9 +167,9 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
 
     if (changedModels.length) {
       return {
-        text: `Há ${changedModels.length} modelo(s) com alteração de REAL entre o cenário inicial e o DPP Final. Como o NEC depende de REAL × consumo, essas alterações são a primeira causa determinística a ser verificada para este material.`,
+        text: `Há ${changedModels.length} modelo(s) com alteração de REAL entre o Cenário ORION e o DPP Final sincronizado. Como NEC depende de REAL × consumo, essas alterações são causas determinísticas que devem ser verificadas para este material.`,
         evidence,
-        sources: [...sources, 'Regra determinística NEC'],
+        sources,
         entities,
         tool: 'compare_real_models + get_material',
         confidence: 'Determinística',
@@ -192,7 +220,7 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
 
     return {
       text: finalReal === null
-        ? `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)} e REAL atual de ${formatNumber(orionReal)}. O DPP Final sincronizado não está disponível para comparação neste workspace.`
+        ? `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)} e REAL atual de ${formatNumber(orionReal)}. O DPP Final sincronizado não está disponível para comparação.`
         : `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)}, REAL ORION de ${formatNumber(orionReal)} e REAL no DPP Final de ${formatNumber(finalReal)}.`,
       evidence,
       sources,
@@ -240,7 +268,7 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
   if (q.includes('real') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) {
     return {
       text: finalDppAnalysis
-        ? `Encontrei ${changedModels.length} modelo(s) com REAL diferente entre o cenário ORION e o DPP Final sincronizado.`
+        ? `Encontrei ${changedModels.length} modelo(s) com REAL diferente entre o Cenário ORION e o DPP Final sincronizado.`
         : 'O DPP Final sincronizado ainda não está disponível para o pacote atual, então não há uma segunda referência válida para comparar o REAL.',
       evidence: changedModels.slice(0, 8).map((item) => ({
         label: item.name,
@@ -254,24 +282,50 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
     }
   }
 
-  return {
-    text: 'Nesta primeira versão offline eu ainda não interpreto linguagem livre com uma LLM. Já consigo consultar os dados estruturados que estão sincronizados com o workspace do DPP: materiais, modelos, críticos, diferenças de REAL e regras determinísticas.',
-    evidence: [
-      { label: 'Modo atual', value: 'Consulta determinística', detail: 'Sem LLM e sem acesso externo' },
-      { label: 'Contexto', value: formatMonth(month), detail: `${materials.length} materiais · ${models.length} modelos` },
-    ],
-    sources,
-    entities: [],
-    tool: 'offline_router',
-    confidence: 'Determinística',
+  return null
+}
+
+async function knowledgeAnswer(apiUrl, question) {
+  try {
+    const response = await fetch(`${apiUrl}/api/agent/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    })
+    const payload = await response.json()
+    if (!response.ok) throw new Error(payload.detail || 'Não foi possível consultar a base de conhecimento do ORION.')
+
+    const sources = payload.knowledge_sources || []
+    const localRag = payload.provider === 'local-rag'
+    return {
+      text: payload.answer,
+      evidence: sources.map((source) => ({
+        label: 'Base de conhecimento',
+        value: source,
+        detail: localRag ? 'Trecho recuperado localmente pelo backend' : 'Contexto fornecido à LLM',
+      })),
+      sources,
+      entities: [],
+      tool: localRag ? 'rag_local_lexical' : `llm_rag:${payload.provider}`,
+      confidence: localRag ? 'Conhecimento validado' : 'LLM + RAG',
+    }
+  } catch (error) {
+    return {
+      text: `Não consegui consultar a base de conhecimento do backend: ${error.message || 'falha desconhecida'}`,
+      evidence: [],
+      sources: [],
+      entities: [],
+      tool: 'rag_backend',
+      confidence: 'Indisponível',
+    }
   }
 }
 
 const SUGGESTIONS = [
-  'Quantos materiais temos no cenário?',
-  'Quantos materiais estão críticos?',
-  'Quais modelos tiveram mudança de REAL?',
-  'Como o ORION calcula o NEC?',
+  'Qual a fórmula para calcular NEC?',
+  'Como o ORION calcula o STK TTL?',
+  'Quando um material é considerado crítico?',
+  'Como o CHECK é comparado?',
 ]
 
 function scenarioStatusText(state) {
@@ -297,30 +351,7 @@ function packageStatusText(state) {
   return 'Pacote DPP não carregado'
 }
 
-function staleWorkspaceAnswer(dppState) {
-  const bundle = dppState?.bundle
-  return {
-    text: 'O pacote compartilhado da aba DPP mudou desde o último processamento. Para não misturar dados antigos com os arquivos atuais, o Agente ORION bloqueou esta consulta até o cenário ser recalculado pela aba DPP.',
-    evidence: [
-      {
-        label: 'Pacote atual',
-        value: formatMonth(dppState?.currentMonth),
-        detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
-      },
-      {
-        label: 'Cenário',
-        value: 'Desatualizado',
-        detail: 'A assinatura do cenário não corresponde ao pacote DPP atual.',
-      },
-    ],
-    sources: ['Workspace compartilhado do DPP'],
-    entities: [],
-    tool: 'workspace_sync_guard',
-    confidence: 'Determinística',
-  }
-}
-
-function AgentOrion() {
+function AgentOrion({ apiUrl }) {
   const {
     generatedScenario,
     finalDppAnalysis,
@@ -329,15 +360,17 @@ function AgentOrion() {
     dppState,
   } = useDppWorkspace()
   const [question, setQuestion] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [knowledgeStatus, setKnowledgeStatus] = useState({ state: 'checking', documents: 0 })
   const [messages, setMessages] = useState(() => [
     {
       id: 'initial',
       role: 'orion',
-      text: 'Estou ligado ao mesmo workspace da aba DPP. Só utilizo cenário e DPP Final quando eles correspondem ao pacote compartilhado atual; as evidências usadas em cada resposta aparecem ao lado.',
+      text: 'Estou ligado ao mesmo workspace da aba DPP e à base de conhecimento validada do motor Python. Perguntas sobre valores do mês usam o cenário sincronizado; perguntas sobre regras e fórmulas usam o RAG local do backend.',
       evidence: [],
-      sources: ['Workspace compartilhado do DPP'],
+      sources: ['Workspace compartilhado do DPP', 'Base de conhecimento local'],
       entities: [],
-      tool: 'workspace_status',
+      tool: 'workspace_status + rag_status',
       confidence: 'Determinística',
     },
   ])
@@ -361,6 +394,32 @@ function AgentOrion() {
   }), [scenarioForChat])
 
   useEffect(() => {
+    let cancelled = false
+
+    async function loadKnowledgeStatus() {
+      try {
+        const response = await fetch(`${apiUrl}/api/knowledge/status`, { cache: 'no-store' })
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.detail || 'Base indisponível')
+        if (!cancelled) {
+          setKnowledgeStatus({
+            state: 'ready',
+            documents: Number(payload.document_count) || 0,
+            chunks: Number(payload.chunk_count) || 0,
+          })
+        }
+      } catch {
+        if (!cancelled) setKnowledgeStatus({ state: 'unavailable', documents: 0, chunks: 0 })
+      }
+    }
+
+    loadKnowledgeStatus()
+    return () => {
+      cancelled = true
+    }
+  }, [apiUrl])
+
+  useEffect(() => {
     if (messages.length <= 1) return
     const messageList = messageListRef.current
     const latestAnswer = latestAnswerRef.current
@@ -376,22 +435,34 @@ function AgentOrion() {
     })
   }, [messages])
 
-  function submitQuestion(value = question) {
+  async function submitQuestion(value = question) {
     const trimmed = String(value || '').trim()
-    if (!trimmed) return
+    if (!trimmed || asking) return
 
     const userMessage = { id: `user-${Date.now()}`, role: 'user', text: trimmed }
-    const answer = dppState?.scenario?.state === 'stale'
-      ? staleWorkspaceAnswer(dppState)
-      : offlineAnswer(trimmed, {
-          scenario: scenarioForChat,
-          finalDppAnalysis: finalForChat,
-          referenceMonth: month,
-        })
-    const assistantMessage = { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer }
-
-    setMessages((current) => [...current, userMessage, assistantMessage])
+    setMessages((current) => [...current, userMessage])
     setQuestion('')
+    setAsking(true)
+
+    const workspaceDependent = isWorkspaceDataQuestion(trimmed, generatedScenario)
+    let answer
+
+    if (workspaceDependent && dppState?.scenario?.state === 'stale') {
+      answer = staleWorkspaceAnswer(dppState)
+    } else if (workspaceDependent && !scenarioForChat) {
+      answer = workspaceUnavailableAnswer(dppState)
+    } else {
+      answer = workspaceAnswer(trimmed, {
+        scenario: scenarioForChat,
+        finalDppAnalysis: finalForChat,
+        referenceMonth: month,
+      })
+      if (!answer) answer = await knowledgeAnswer(apiUrl, trimmed)
+    }
+
+    const assistantMessage = { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer }
+    setMessages((current) => [...current, assistantMessage])
+    setAsking(false)
   }
 
   function handleSubmit(event) {
@@ -415,7 +486,12 @@ function AgentOrion() {
       ? 'Sincronizado com a aba DPP'
       : scenarioState === 'stale'
         ? 'Pacote alterado · reprocessamento necessário'
-        : 'Aguardando cenário do DPP'
+        : 'Conhecimento disponível · cenário mensal pendente'
+  const knowledgeStatusText = knowledgeStatus.state === 'ready'
+    ? `RAG local · ${knowledgeStatus.documents} documento(s)`
+    : knowledgeStatus.state === 'checking'
+      ? 'Verificando base de conhecimento'
+      : 'Base de conhecimento indisponível'
 
   return (
     <section className="agent-orion-page" aria-labelledby="agent-orion-title">
@@ -423,7 +499,7 @@ function AgentOrion() {
         <div>
           <span className="agent-orion-kicker">CONSULTA OPERACIONAL</span>
           <h2 id="agent-orion-title">Agente ORION</h2>
-          <p>Consulte exatamente o mesmo cenário, DPP Final e regras usados pela área DPP. Nesta etapa, nenhuma LLM é utilizada.</p>
+          <p>Consulte o mesmo cenário da área DPP e o conhecimento validado do motor determinístico Python. A LLM externa continua desativada nesta etapa.</p>
         </div>
         <div className="agent-orion-context" aria-label="Contexto atual do agente">
           <strong>{formatMonth(month)}</strong>
@@ -435,7 +511,7 @@ function AgentOrion() {
         <span><i data-state={packageState === 'ready' ? 'ready' : 'pending'} aria-hidden="true" />{packageStatusText(packageState)}</span>
         <span><i data-state={scenarioState === 'current' ? 'ready' : 'pending'} aria-hidden="true" />{scenarioStatusText(scenarioState)}</span>
         <span><i data-state={finalState === 'current' ? 'ready' : 'pending'} aria-hidden="true" />{finalStatusText(finalState)}</span>
-        <span><i data-state="ready" aria-hidden="true" />Modo offline determinístico</span>
+        <span><i data-state={knowledgeStatus.state === 'ready' ? 'ready' : 'pending'} aria-hidden="true" />{knowledgeStatusText}</span>
       </div>
 
       <div className="agent-orion-layout">
@@ -443,7 +519,7 @@ function AgentOrion() {
           <div className="agent-conversation-head">
             <div>
               <strong>Conversa</strong>
-              <span>Respostas baseadas somente nos dados sincronizados com o workspace atual do DPP.</span>
+              <span>Dados mensais vêm do workspace DPP; regras e fórmulas vêm da base local validada.</span>
             </div>
             <small>{contextSummary.materials} materiais · {contextSummary.models} modelos</small>
           </div>
@@ -469,18 +545,24 @@ function AgentOrion() {
                 </article>
               )
             })}
+            {asking && (
+              <article className="agent-message" data-role="orion">
+                <div className="agent-message-author">ORION</div>
+                <p>Consultando o motor e a base de conhecimento local...</p>
+              </article>
+            )}
           </div>
 
           <div className="agent-suggestions" aria-label="Perguntas para testar o agente">
             {SUGGESTIONS.map((suggestion) => (
-              <button type="button" key={suggestion} onClick={() => submitQuestion(suggestion)}>
+              <button type="button" key={suggestion} onClick={() => submitQuestion(suggestion)} disabled={asking}>
                 {suggestion}
               </button>
             ))}
           </div>
 
           <form className="agent-composer" onSubmit={handleSubmit}>
-            <label htmlFor="agent-orion-input">Pergunte sobre materiais, modelos, divergências ou regras</label>
+            <label htmlFor="agent-orion-input">Pergunte sobre materiais, modelos, cálculos, divergências, regras ou funcionamento do ORION</label>
             <div>
               <textarea
                 id="agent-orion-input"
@@ -488,9 +570,10 @@ function AgentOrion() {
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ex.: Quais modelos tiveram mudança de REAL?"
+                placeholder="Ex.: Qual a fórmula para calcular NEC?"
+                disabled={asking}
               />
-              <button type="submit" disabled={!question.trim()}>Enviar</button>
+              <button type="submit" disabled={!question.trim() || asking}>{asking ? 'Consultando' : 'Enviar'}</button>
             </div>
             <small>Enter envia · Shift + Enter cria uma nova linha</small>
           </form>
@@ -513,7 +596,7 @@ function AgentOrion() {
                 ))}
               </div>
             ) : (
-              <p className="agent-empty-evidence">Faça uma consulta para ver os dados usados na resposta.</p>
+              <p className="agent-empty-evidence">Faça uma consulta para ver os dados ou documentos usados na resposta.</p>
             )}
           </section>
 
@@ -541,7 +624,7 @@ function AgentOrion() {
               </div>
               <div>
                 <dt>Execução</dt>
-                <dd>Local · mesmo workspace DPP · sem LLM · sem rede externa</dd>
+                <dd>Local · workspace DPP + RAG lexical · sem LLM externa</dd>
               </div>
             </dl>
           </section>
