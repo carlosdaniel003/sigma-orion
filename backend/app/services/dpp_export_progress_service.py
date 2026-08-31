@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from app.services.dpp_canonical_export_service import export_monthly_scenario_excel
 from app.services.dpp_export_formula_fidelity_service import finalize_and_audit_dpp_formulas
+from app.services.dpp_export_material_fidelity_service import finalize_and_audit_material_extent
 from app.services.dpp_scenario_service import get_monthly_scenario
 
 MAX_JOBS = 6
@@ -74,7 +75,14 @@ def _update_job(job_id: str, progress: int, activity: str) -> None:
         _JOBS.move_to_end(job_id)
 
 
-def _complete_job(job_id: str, content: bytes, filename: str, media_type: str) -> None:
+def _complete_job(
+    job_id: str,
+    content: bytes,
+    filename: str,
+    media_type: str,
+    *,
+    material_audit: dict | None = None,
+) -> None:
     with _LOCK:
         job = _JOBS.get(job_id)
         if job is None:
@@ -90,6 +98,7 @@ def _complete_job(job_id: str, content: bytes, filename: str, media_type: str) -
             "media_type": media_type,
             "size_bytes": len(content),
             "formula_audit": "DPP_FINAL_RULES_OK",
+            "material_audit": material_audit or {},
         }
         job["error"] = None
         job["finished_at"] = _now()
@@ -131,7 +140,20 @@ def _run_export_job(job_id: str, payload: dict) -> None:
         progress(99, "Auditando todas as fórmulas do DPP Final")
         content = finalize_and_audit_dpp_formulas(content, scenario)
 
-        _complete_job(job_id, content, filename, media_type)
+        # A última barreira compara a quantidade/lista física da coluna Material com
+        # scenario.materials (a mesma lista usada pelo Dashboard) e estende filtros e
+        # tabelas do template até o último material. Assim um template de 4.091 linhas
+        # não pode esconder os 15 materiais novos de um cenário com 4.106 itens.
+        progress(99, "Conferindo 1:1 materiais do Dashboard e Excel")
+        content, material_audit = finalize_and_audit_material_extent(content, scenario)
+
+        _complete_job(
+            job_id,
+            content,
+            filename,
+            media_type,
+            material_audit=material_audit,
+        )
     except Exception as exc:
         _fail_job(job_id, exc)
 
