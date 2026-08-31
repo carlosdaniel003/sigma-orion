@@ -1,134 +1,104 @@
 # Regras Globais do Processo
 
-> Registrar somente regras obtidas do processo real e validadas por análise do DPP e/ou especialista.
+> Registrar somente regras obtidas do processo real e validadas pelo motor determinístico, pela análise do DPP e/ou por especialista. A descrição técnica detalhada está em `motor-deterministico.md`.
 
 ## REGRA-001 — Cálculo da necessidade (NEC)
 
 **Objetivo:** calcular a necessidade de cada material com base na quantidade REAL dos modelos e no consumo do material em cada modelo.
 
-**Quando aplicar:** para cada linha de material do DPP.
+**Entradas:** REAL por modelo e matriz Material × Modelo.
 
-**Entradas necessárias:**
+**Regra:**
 
-- quantidade REAL de cada modelo;
-- consumo do material em cada modelo na matriz do DPP.
+`NEC = Σ(REAL do modelo × consumo do material no modelo)`
 
-**Resultado esperado:**
-
-`NEC = soma(REAL do modelo × consumo do material no modelo)`
-
-**Exceções:** nenhuma confirmada até o momento.
-
-**Fonte:** fórmula existente no DPP preenchido e levantamento do processo.
-
----
+**Implementação:** `calculate_nec()` em `dpp_projection_service.py`.
 
 ## REGRA-002 — Cálculo do estoque total (STK TTL)
 
-**Objetivo:** calcular o estoque total considerado para o material dentro do DPP.
+**Entradas:** STK SAP efetivo, EXPLOSÃO e STK OP.
 
-**Entradas necessárias:**
+**Regra:**
 
-- STK base da data do DPP;
-- EXPLOSÃO;
-- STK OP.
+`STK TTL = STK SAP efetivo + EXPLOSÃO + STK OP`
 
-**Resultado esperado:**
+Valores ausentes são tratados como zero no cálculo determinístico.
 
-`STK TTL = STK base + EXPLOSÃO + STK OP`
+**Implementação:** `calculate_stock_total()` em `dpp_projection_service.py`.
 
-Células vazias são tratadas como zero no cálculo determinístico.
+## REGRA-003 — Cálculo do SALDO
 
-**Fonte:** fórmula existente no DPP preenchido.
-
----
-
-## REGRA-003 — Cálculo do saldo
-
-**Objetivo:** medir a diferença entre o estoque total considerado e a necessidade calculada.
-
-**Entradas necessárias:**
-
-- STK TTL;
-- NEC.
-
-**Resultado esperado:**
+**Regra:**
 
 `SALDO = STK TTL - NEC`
 
-**Fonte:** fórmula existente no DPP preenchido.
+**Implementação:** `calculate_balance()` em `dpp_projection_service.py`.
 
----
+## REGRA-004 — Material crítico
 
-## REGRA-004 — Interpretação inicial de saldo negativo
+Um material é crítico quando:
 
-**Objetivo:** impedir que uma divergência matemática seja interpretada automaticamente como necessidade de compra.
+- `UM == UN`;
+- `SALDO < -0,0001`.
 
-**Quando aplicar:** quando `SALDO < 0`.
+Saldo negativo não deve ser transformado automaticamente em ordem ou recomendação de compra. A condição sinaliza investigação operacional.
 
-**Resultado esperado:**
-
-Classificar o item inicialmente como `INVESTIGAR`.
-
-Saldo negativo indica que, com os valores atualmente consolidados no DPP, a necessidade é maior que o estoque considerado. Isso pode decorrer de diferentes situações administrativas ou de apontamento e deve ser investigado antes de qualquer conclusão de compra.
-
-**Regra de segurança:** o ORION não deve transformar automaticamente o valor negativo em ordem ou recomendação de compra.
-
-**Fonte:** levantamento do processo com a analista.
-
----
+**Implementação:** `is_critical_material()` em `dpp_projection_service.py`.
 
 ## REGRA-005 — Material opcional (OPC)
 
-**Objetivo:** considerar estoque de um material opcional quando o DPP informar um código OPC.
+OPC representa material opcional associado ao item. O estoque opcional consolidado entra em `STK OP` e participa do STK TTL.
 
-**Entradas necessárias:**
-
-- código OPC;
-- STK OP já consolidado no DPP.
-
-**Resultado esperado:**
-
-O código em `OPC` representa um material opcional e o valor em `STK OP` é somado ao estoque total conforme a REGRA-002.
-
-**Fonte:** confirmação do processo + fórmula do DPP.
-
----
+Na comparação ORION × DPP Final, OPC é `reference_final`: o DPP Final é a referência mais recente para associações de OPC encontradas/corrigidas durante o fechamento, e diferenças de OPC não são classificadas automaticamente como divergência do ORION.
 
 ## REGRA-006 — Amount
 
-**Objetivo:** reproduzir o campo informativo de valor do DPP.
-
-**Entradas necessárias:**
-
-- Preço;
-- SALDO.
-
-**Resultado esperado:**
+**Regra:**
 
 `Amount = Preço × SALDO`
 
-Esse campo é informativo e não é prioridade da análise atual.
+Amount é um campo derivado e pode mudar por alteração no Preço, no SALDO ou em ambos.
 
-**Fonte:** fórmula do DPP + levantamento do processo.
+## REGRA-007 — CHECK
 
----
+CHECK representa os modelos associados ao material. A ordem textual não altera o significado.
 
-## REGRA-007 — Escopo atual do ORION
+Os valores são comparados como tokens normalizados e ordenados. Reordenação não é divergência; mudança real no conjunto de modelos é divergência.
 
-Nesta etapa, o ORION trabalha **somente sobre o DPP já preenchido**.
+## REGRA-008 — COMENTS
 
-Informações de WIU, EXPLOSÃO, PGD, BOM e outras fontes externas podem chegar ao DPP por fórmulas, mas ainda não serão reconstruídas pelo ORION a partir de seus arquivos de origem.
+COMENTS é anotação contextual do analista para o DPP daquele mês. Não é cálculo determinístico e não participa da contagem de divergências ORION × DPP Final.
 
-O objetivo atual é:
+## REGRA-009 — Tolerância numérica
 
-1. ler a estrutura do DPP;
-2. identificar modelos, códigos e quantidades REAL/KIT;
-3. recalcular NEC em Python;
-4. recalcular STK TTL em Python;
-5. recalcular SALDO em Python;
-6. recalcular Amount quando houver preço;
-7. comparar os resultados do Python com os valores já presentes no DPP;
-8. listar saldos negativos como itens a investigar.
+A tolerância absoluta atual para comparação numérica é `1e-4`. A validação geral também usa tolerância relativa `1e-9`.
 
-A integração direta das planilhas de origem será implementada somente depois que o comportamento do DPP estiver reproduzido de forma confiável.
+## REGRA-010 — Cenário ORION e DPP Final
+
+O Cenário ORION é reconstruído de forma independente a partir das fontes mensais e das regras Python.
+
+O DPP Final é o histórico consolidado do mês e é usado para comparação/validação. Diferença entre os dois não significa automaticamente bug.
+
+Não copiar valores do DPP Final para o cenário inicial apenas para forçar igualdade.
+
+## REGRA-011 — Fontes do cenário mensal
+
+A geração mensal usa:
+
+- DPP do mês anterior;
+- WIU;
+- Explosão;
+- STK SAP;
+- PGD;
+- mês de referência;
+- OPEN, quando disponível, como entrada opcional.
+
+O DPP Final do mês corrente entra depois, na etapa de comparação e validação.
+
+## REGRA-012 — Separação de responsabilidades
+
+O princípio do ORION é:
+
+`Python calcula → RAG recupera conhecimento → LLM interpreta → humano valida e decide`
+
+A LLM não substitui o motor determinístico e não deve inventar fatos, valores ou causas ausentes.
