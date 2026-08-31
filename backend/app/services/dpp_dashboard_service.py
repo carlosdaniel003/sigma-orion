@@ -10,6 +10,7 @@ from fastapi import UploadFile
 from openpyxl import load_workbook
 
 from app.services.dpp_consolidation_service import _material_key
+from app.services.dpp_derived_divergence_service import explain_derived_divergence
 from app.services.dpp_nec_divergence_service import explain_nec_divergence
 from app.services.dpp_projection_service import (
     aggregate,
@@ -67,56 +68,74 @@ def _column_rule(header: str, spec: dict) -> dict:
     normalized = _normalize(header)
     field = spec.get("field")
     comparison = spec.get("comparison")
+    mode = spec.get("mode", "compare")
 
-    if field == "model":
+    if mode == "contextual":
+        definition = "COMENTS registra anotações do analista válidas para o DPP daquele mês."
+        origin = "DPP Final: comentários registrados durante a análise e consolidação do mês corrente."
+        criterion = "Coluna contextual: não participa da contagem de divergências entre ORION e DPP Final."
+    elif mode == "reference_final":
+        definition = "OPC registra opcionais descobertos e consolidados durante o processo mensal."
+        origin = "O DPP Final é a referência mais recente para OPC, pois incorpora as correções e inclusões encontradas durante a análise."
+        criterion = "Diferenças de OPC são tratadas como atualização consolidada, não como divergência do ORION."
+    elif field == "model":
         definition = f"Compara o consumo do material na coluna do modelo {header}."
         origin = "ORION: matriz Material × Modelo montada a partir da base mensal; DPP Final: célula consolidada da mesma coluna."
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}."
     elif field == "nec":
         definition = "NEC = Σ(REAL do modelo × consumo do material)."
         origin = "O ORION recalcula a necessidade usando o REAL do cenário e a matriz Material × Modelo."
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}; o detalhe procura a causa no REAL e no consumo."
     elif field == "stock_total":
         definition = "STK TTL = STK + EXPLOSÃO + STK OP."
         origin = "O ORION soma os três componentes canônicos de estoque do material."
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}; o detalhe identifica qual componente mudou."
     elif field == "balance":
         definition = "SALDO = STK TTL − NEC."
         origin = "O ORION subtrai a necessidade calculada do estoque total calculado."
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}; o detalhe rastreia a diferença até STK TTL e/ou NEC."
     elif field == "stock_sap_effective":
         definition = "Compara o estoque SAP efetivo do material."
         origin = "ORION: arquivo STK mensal; DPP Final: coluna STK consolidada."
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}."
     elif field == "explosion":
         definition = "Compara a quantidade de EXPLOSÃO do material."
         origin = "ORION: arquivo de Explosão mensal; DPP Final: coluna EXPLOSÃO consolidada."
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}."
     elif field == "stock_op":
         definition = "Compara o STK OP associado ao material."
         origin = "ORION: valor operacional consolidado no cenário; DPP Final: coluna STK OP."
+        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}."
     elif field == "in_current_wiu":
         definition = "WIU é comparado por presença: preenchido versus não preenchido."
         origin = "ORION: presença do material na WIU mensal; DPP Final: preenchimento da coluna WIU."
+        criterion = "Divergente quando um lado está preenchido e o outro não."
     elif field == "check":
-        definition = "Compara o valor operacional da coluna Check; o status interno do ORION não é usado como substituto."
-        origin = "ORION: campo Check derivado/mantido no DPP; DPP Final: valor consolidado da coluna Check."
-    elif field == "optional_material":
-        definition = "Compara o código OPC associado ao material."
-        origin = "ORION: material opcional identificado no cenário; DPP Final: coluna OPC consolidada."
+        definition = "CHECK representa o conjunto de modelos associados ao material; a ordem textual dos modelos não altera o significado."
+        origin = "ORION e DPP Final são comparados pelos mesmos nomes de modelo presentes no CHECK, independentemente da ordem em que foram concatenados."
+        criterion = "Divergente somente quando os conjuntos de modelos forem diferentes; reordenação como 'TV 50 / TV 50 INNOLUX' versus 'TV 50 INNOLUX / TV 50' é considerada equivalente."
     elif normalized == "material":
         definition = "O item diverge quando a chave normalizada do material existe apenas em um dos cenários."
         origin = "As bases são alinhadas pela chave Material normalizada."
+        criterion = "Divergente quando o material existe em apenas um dos cenários."
     else:
         definition = f"Compara o valor da coluna {header} para o mesmo material nos dois cenários."
         origin = "ORION: projeção canônica do cenário; DPP Final: valor lido diretamente do arquivo consolidado."
-
-    if comparison == "numeric":
-        criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}."
-    elif comparison == "presence":
-        criterion = "Divergente quando um lado está preenchido e o outro não."
-    else:
-        criterion = "Divergente quando os valores normalizados não são iguais."
+        if comparison == "numeric":
+            criterion = f"Divergente quando |DPP Final − ORION| > {VALIDATION_ABS_TOL:g}."
+        elif comparison == "presence":
+            criterion = "Divergente quando um lado está preenchido e o outro não."
+        elif comparison == "unordered_tokens":
+            criterion = "Divergente quando os conjuntos de valores forem diferentes, ignorando a ordem."
+        else:
+            criterion = "Divergente quando os valores normalizados não são iguais."
 
     return {
         "definition": definition,
         "origin": origin,
         "criterion": criterion,
         "comparison": comparison or "text",
+        "mode": mode,
         "tolerance": VALIDATION_ABS_TOL if comparison == "numeric" else None,
     }
 
@@ -142,6 +161,8 @@ def _difference_reason(header: str, spec: dict, final_value: object, orion_value
         return f"O valor numérico difere em {delta:.6g}, acima da tolerância operacional de {VALIDATION_ABS_TOL:g}."
     if comparison == "presence":
         return "A presença do item é diferente: um cenário considera a coluna preenchida e o outro não."
+    if comparison == "unordered_tokens":
+        return "O CHECK contém modelos diferentes entre o Cenário ORION e o DPP Final; somente mudança de ordem não é considerada divergência."
     return "Os valores textuais normalizados são diferentes para o mesmo material."
 
 
@@ -171,20 +192,41 @@ def _build_column_comparison(
     columns: list[dict] = []
     divergent_columns = 0
     comparable_columns = 0
+    reference_columns = 0
+    contextual_columns = 0
+    unsupported_columns = 0
+
     for column in projection["columns"]:
         header = headers[column]
         spec = projection["specs"][column]
         kind = spec["kind"]
+        mode = spec.get("mode", "compare")
         final_total = aggregate([_cell(rows, excel_row, column) for _, excel_row in final_material_rows], kind)
         item = {
-            "name": header, "column": column, "kind": kind,
+            "name": header, "column": column, "kind": kind, "mode": mode,
             "aggregation_label": "itens preenchidos" if kind == "count" else "soma",
             "final_total": final_total, "orion_total": None, "delta": None,
-            "difference_count": None, "supported": bool(spec["supported"]),
+            "difference_count": 0, "supported": bool(spec["supported"]),
             "drilldown_available": False,
         }
+
+        if mode == "contextual":
+            contextual_columns += 1
+            item["note"] = "Anotação mensal do analista no DPP Final; não é cálculo nem divergência do ORION."
+            columns.append(item)
+            continue
+
+        if mode == "reference_final":
+            reference_columns += 1
+            item["orion_total"] = projection["totals"].get(column)
+            item["note"] = "O DPP Final é a referência mais recente desta coluna; diferenças representam consolidação/correção do processo."
+            columns.append(item)
+            continue
+
         if not spec["supported"]:
-            item["note"] = "Ainda não calculado pelo cenário ORION."
+            unsupported_columns += 1
+            item["difference_count"] = None
+            item["note"] = "Sem regra de comparação definida no Cenário ORION."
             columns.append(item)
             continue
 
@@ -231,7 +273,8 @@ def _build_column_comparison(
         "scenario_id": projection["scenario_id"], "reference_month": projection["reference_month"],
         "basis": "canonical_orion_projection", "columns_total": len(columns),
         "comparable_columns": comparable_columns, "divergent_columns": divergent_columns,
-        "unsupported_columns": len(columns) - comparable_columns,
+        "reference_columns": reference_columns, "contextual_columns": contextual_columns,
+        "unsupported_columns": unsupported_columns,
         "final_materials": len(final_material_rows), "orion_materials": len(projection["rows"]), "columns": columns,
     }
 
@@ -246,8 +289,10 @@ def get_column_divergences(analysis_id: str, column: int, offset: int = 0, limit
     header = snapshot["headers"].get(column)
     if spec is None or header is None:
         raise ValueError("A coluna solicitada não pertence ao comparativo analisado.")
+    if spec.get("mode", "compare") != "compare":
+        raise ValueError("A coluna solicitada é informativa e não participa da investigação de divergências.")
     if not spec.get("supported"):
-        raise ValueError("A coluna solicitada ainda não é calculada pelo Cenário ORION.")
+        raise ValueError("A coluna solicitada não possui regra de comparação no Cenário ORION.")
 
     final_row_by_material = snapshot["final_row_by_material"]
     final_order = [key for key, _ in snapshot["final_material_rows"]]
@@ -299,23 +344,31 @@ def get_column_divergences(analysis_id: str, column: int, offset: int = 0, limit
                 delta = (_number(final_value, 0.0) or 0.0) - (_number(orion_value, 0.0) or 0.0)
 
             reason = _difference_reason(header, spec, final_value, orion_value, presence)
-            if (
-                spec.get("field") == "nec"
-                and presence is None
-                and final_row is not None
-                and projected_row is not None
-            ):
-                reason = explain_nec_divergence(
-                    rows=rows,
-                    headers=snapshot["headers"],
-                    real_row=snapshot.get("real_row"),
-                    final_row=final_row,
-                    projected_row=projected_row,
-                    projection=projection,
-                    scenario_models=snapshot.get("scenario_models") or [],
-                    final_value=final_value,
-                    orion_value=orion_value,
-                ) or reason
+            field = spec.get("field")
+            if presence is None and final_row is not None and projected_row is not None:
+                if field == "nec":
+                    reason = explain_nec_divergence(
+                        rows=rows,
+                        headers=snapshot["headers"],
+                        real_row=snapshot.get("real_row"),
+                        final_row=final_row,
+                        projected_row=projected_row,
+                        projection=projection,
+                        scenario_models=snapshot.get("scenario_models") or [],
+                        final_value=final_value,
+                        orion_value=orion_value,
+                    ) or reason
+                elif field in {"stock_total", "balance", "amount"}:
+                    reason = explain_derived_divergence(
+                        field=field,
+                        rows=rows,
+                        headers=snapshot["headers"],
+                        real_row=snapshot.get("real_row"),
+                        final_row=final_row,
+                        projected_row=projected_row,
+                        projection=projection,
+                        scenario_models=snapshot.get("scenario_models") or [],
+                    ) or reason
 
             items.append({
                 "material": material or material_key,
