@@ -4,6 +4,7 @@ from collections import OrderedDict
 from copy import deepcopy
 import json
 import math
+from uuid import uuid4
 
 from app.core.config import DATA_DIR
 from app.services.dpp_projection_service import (
@@ -28,9 +29,9 @@ def _number(value: object, default: float = 0.0) -> float:
     return number if math.isfinite(number) else default
 
 
-def _persist_latest_scenario() -> None:
+def _persist_latest_scenario() -> bool:
     if not _SCENARIOS:
-        return
+        return False
 
     scenario_id = next(reversed(_SCENARIOS))
     payload = {
@@ -39,15 +40,23 @@ def _persist_latest_scenario() -> None:
         "scenario": _SCENARIOS[scenario_id],
     }
     temporary = SCENARIO_STATE_PATH.with_suffix(".tmp")
-    temporary.write_text(
-        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-        encoding="utf-8",
-    )
-    temporary.replace(SCENARIO_STATE_PATH)
+    try:
+        temporary.write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        temporary.replace(SCENARIO_STATE_PATH)
+        return True
+    except (OSError, TypeError, ValueError):
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False
 
 
 def restore_persisted_monthly_scenario() -> bool:
-    if not SCENARIO_STATE_PATH.exists():
+    if _SCENARIOS or not SCENARIO_STATE_PATH.exists():
         return False
 
     try:
@@ -179,8 +188,6 @@ def get_monthly_scenario(scenario_id: str) -> dict | None:
 
 
 def register_monthly_scenario(*, materials: list[dict], models: list[dict], reference_month: str, base_summary: dict, scope: str, capabilities: dict, sources: list[dict], pending: list[str], diagnostics: dict, pgd_mapping: dict) -> dict:
-    from uuid import uuid4
-
     scenario_id = uuid4().hex
     real_by_model = {model["name"]: max(_number(model.get("kit_pgd"), 0.0), 0.0) for model in models}
     _SCENARIOS[scenario_id] = {
