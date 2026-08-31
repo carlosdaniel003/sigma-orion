@@ -139,7 +139,9 @@ def test_column_comparison_reports_totals_and_cell_divergences_without_listing_i
         assert comparison["final_materials"] == 3
         assert comparison["orion_materials"] == 3
         assert comparison["columns_total"] == 18
-        assert comparison["unsupported_columns"] == 1
+        assert comparison["unsupported_columns"] == 0
+        assert comparison["reference_columns"] == 1
+        assert comparison["contextual_columns"] == 1
 
         material = _column(result, "Material")
         assert material["final_total"] == 3
@@ -170,6 +172,12 @@ def test_column_comparison_reports_totals_and_cell_divergences_without_listing_i
         assert nec["orion_total"] == 240
         assert nec["difference_count"] == 0
 
+        opc = _column(result, "OPC")
+        assert opc["mode"] == "reference_final"
+        assert opc["difference_count"] == 0
+        assert opc["delta"] is None
+        assert opc["drilldown_available"] is False
+
         price = _column(result, "Preço")
         assert price["final_total"] == 3
         assert price["orion_total"] == 0
@@ -188,6 +196,9 @@ def test_column_comparison_reports_totals_and_cell_divergences_without_listing_i
         assert comments["final_total"] == 1
         assert comments["orion_total"] is None
         assert comments["supported"] is False
+        assert comments["mode"] == "contextual"
+        assert comments["difference_count"] == 0
+        assert "anotação mensal" in comments["note"].lower()
     finally:
         scenario_service._SCENARIOS.clear()
 
