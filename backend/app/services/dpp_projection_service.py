@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from app.services.dpp_consolidation_service import _material_key
 from app.services.dpp_service import VALIDATION_ABS_TOL, _normalize, _number
 
@@ -17,21 +19,21 @@ COUNT_COLUMNS = {
     "comentarios",
 }
 
-UNSUPPORTED_ORION_COLUMNS = {
+CONTEXTUAL_COLUMNS = {
     "coments",
     "comments",
     "comentario",
     "comentarios",
 }
 
-COMMENT_COLUMNS = {"coments", "comments", "comentario", "comentarios"}
+COMMENT_COLUMNS = set(CONTEXTUAL_COLUMNS)
 
 DIRECT_FIELDS = {
     "material": ("material", "text"),
     "descricao": ("description", "text"),
     "um": ("um", "text"),
     "grupo origem": ("group_origin", "text"),
-    "check": ("check", "text"),
+    "check": ("check", "unordered_tokens"),
     "wiu": ("in_current_wiu", "presence"),
     "nec": ("nec", "numeric"),
     "opc": ("optional_material", "text"),
@@ -124,14 +126,16 @@ def scenario_column_spec(
             "field": "model",
             "model_name": header,
             "comparison": "numeric",
+            "mode": "compare",
         }
 
-    if normalized in UNSUPPORTED_ORION_COLUMNS:
+    if normalized in CONTEXTUAL_COLUMNS:
         return {
             "kind": kind,
             "supported": False,
             "field": None,
             "comparison": None,
+            "mode": "contextual",
         }
 
     if normalized in DIRECT_FIELDS:
@@ -141,6 +145,7 @@ def scenario_column_spec(
             "supported": True,
             "field": field,
             "comparison": comparison,
+            "mode": "reference_final" if normalized == "opc" else "compare",
         }
 
     if normalized.startswith("stk ") and normalized not in {"stk op", "stk ttl"}:
@@ -149,6 +154,7 @@ def scenario_column_spec(
             "supported": True,
             "field": "stock_sap_effective",
             "comparison": "numeric",
+            "mode": "compare",
         }
 
     if normalized.startswith("explosao"):
@@ -157,6 +163,7 @@ def scenario_column_spec(
             "supported": True,
             "field": "explosion",
             "comparison": "numeric",
+            "mode": "compare",
         }
 
     return {
@@ -164,6 +171,7 @@ def scenario_column_spec(
         "supported": False,
         "field": None,
         "comparison": None,
+        "mode": "unsupported",
     }
 
 
@@ -189,6 +197,17 @@ def scenario_material_value(material: dict, spec: dict) -> object:
     return material.get(field) if field else None
 
 
+def _unordered_tokens(value: object) -> list[str]:
+    if value in (None, ""):
+        return []
+    tokens = [
+        _normalize(token)
+        for token in re.split(r"\s*/+\s*", str(value))
+        if _normalize(token)
+    ]
+    return sorted(tokens)
+
+
 def column_values_equal(left_value: object, right_value: object, comparison: str | None) -> bool:
     if comparison == "numeric":
         left = _number(left_value, 0.0) or 0.0
@@ -197,6 +216,9 @@ def column_values_equal(left_value: object, right_value: object, comparison: str
 
     if comparison == "presence":
         return is_filled(left_value) == is_filled(right_value)
+
+    if comparison == "unordered_tokens":
+        return _unordered_tokens(left_value) == _unordered_tokens(right_value)
 
     return _normalize(left_value) == _normalize(right_value)
 
