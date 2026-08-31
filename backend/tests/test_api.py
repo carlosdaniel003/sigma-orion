@@ -165,14 +165,28 @@ def test_agent_chat_uses_local_rag_without_external_llm() -> None:
     assert payload["provider"] == "local-rag"
     assert payload["model"] == "lexical-local"
     assert payload["is_demo"] is False
-    assert "NEC" in payload["answer"]
-    assert "REAL" in payload["answer"]
-    assert "consumo" in payload["answer"].lower()
-    assert payload["knowledge_sources"]
-    assert any(
-        source in {"motor-deterministico.md", "regras-globais.md"}
-        for source in payload["knowledge_sources"]
-    )
+    assert "NEC = Σ(REAL do modelo × consumo do material naquele modelo)" in payload["answer"]
+    assert "calculate_nec" in payload["answer"]
+    assert "| Termo |" not in payload["answer"]
+    assert len(payload["answer"]) < 700
+    assert payload["knowledge_sources"] == ["motor-deterministico.md"]
+
+
+def test_agent_chat_synthesizes_other_deterministic_formulas() -> None:
+    cases = [
+        ("Como calcula STK TTL?", "STK TTL = STK SAP efetivo + EXPLOSÃO + STK OP"),
+        ("Qual a fórmula do SALDO?", "SALDO = STK TTL - NEC"),
+        ("Qual a fórmula do Amount?", "Amount = Preço × SALDO"),
+    ]
+
+    with TestClient(app) as client:
+        for question, expected_formula in cases:
+            response = client.post("/api/agent/chat", json={"question": question})
+            assert response.status_code == 200
+            payload = response.json()
+            assert expected_formula in payload["answer"]
+            assert "| Termo |" not in payload["answer"]
+            assert payload["knowledge_sources"] == ["motor-deterministico.md"]
 
 
 def test_structured_mock_analysis_is_saved_to_history() -> None:
