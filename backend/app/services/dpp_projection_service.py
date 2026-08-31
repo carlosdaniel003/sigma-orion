@@ -3,8 +3,6 @@ from __future__ import annotations
 from app.services.dpp_consolidation_service import _material_key
 from app.services.dpp_service import VALIDATION_ABS_TOL, _normalize, _number
 
-# Esta é a projeção canônica do Cenário ORION para a aba DPP.
-# Dashboard, comparativos e exportação devem consumir estas mesmas regras.
 COUNT_COLUMNS = {
     "material",
     "descricao",
@@ -20,8 +18,6 @@ COUNT_COLUMNS = {
 }
 
 UNSUPPORTED_ORION_COLUMNS = {
-    "preco",
-    "amount",
     "coments",
     "comments",
     "comentario",
@@ -42,10 +38,10 @@ DIRECT_FIELDS = {
     "stk op": ("stock_op", "numeric"),
     "stk ttl": ("stock_total", "numeric"),
     "saldo": ("balance", "numeric"),
+    "preco": ("price", "numeric"),
+    "amount": ("amount", "numeric"),
 }
 
-# Relações determinísticas do DPP. O cálculo Python, Dashboard e a projeção do
-# Excel usam estes mesmos conceitos; não devem existir regras paralelas.
 STOCK_TOTAL_COMPONENT_FIELDS = (
     "stock_sap_effective",
     "explosion",
@@ -69,8 +65,6 @@ def calculate_stock_total(material: dict) -> float:
         for field in STOCK_TOTAL_COMPONENT_FIELDS
     )
     if not has_components:
-        # Compatibilidade com cenários/testes antigos que já armazenavam apenas
-        # STK TTL. No fluxo mensal atual os componentes sempre têm precedência.
         return _number(material.get("stock_total"), 0.0) or 0.0
 
     return sum(
@@ -184,8 +178,6 @@ def scenario_material_value(material: dict, spec: dict) -> object:
         return 0.0
 
     if field == "check":
-        # Check é o campo operacional do DPP/WIU. Nunca usar status interno
-        # OK/INVESTIGAR como fallback, porque são informações diferentes.
         return material.get("check")
 
     if field == "in_current_wiu":
@@ -217,11 +209,6 @@ def build_orion_projection(
     origin_col: int,
     check_col: int,
 ) -> dict:
-    """Projeta o cenário ORION para as colunas físicas da aba DPP.
-
-    Esta função é a fonte única para valores por material usados tanto no Dashboard
-    quanto no Excel. Não deve haver outro mapeamento paralelo dessas colunas.
-    """
     model_start = origin_col + 1
     model_end = check_col - 1
 
