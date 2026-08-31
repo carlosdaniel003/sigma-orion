@@ -75,8 +75,11 @@ def _formula_for_field(
     model_end = get_column_letter(int(projection["model_end"]))
 
     if field == "check":
+        # O DPP Final grava funções futuras no formato OOXML com prefixos _xlfn.
+        # Usar a mesma codificação evita que dois Excels com a mesma regra apareçam
+        # diferentes em uma auditoria célula a célula do arquivo serializado.
         return (
-            f'=TEXTJOIN("// ", TRUE, FILTER(${model_start}${header_row}:${model_end}${header_row}, '
+            f'=_xlfn.TEXTJOIN("// ", TRUE, _xlfn._xlws.FILTER(${model_start}${header_row}:${model_end}${header_row}, '
             f'{model_start}{row}:{model_end}{row}>0, ""))'
         )
 
@@ -92,6 +95,10 @@ def _formula_for_field(
             if optional_column is None:
                 return None
             optional_ref = f"{get_column_letter(optional_column)}{row}"
+            # O DPP Final usa [N]CONSOLIDADO porque aponta para um arquivo externo.
+            # [N] é um índice de externalLink do XLSX, não parte da regra de negócio.
+            # No ORION a mesma tabela é incorporada ao workbook para a fórmula continuar
+            # recalculável e auditável sem depender do caminho corporativo R:\\.
             return f"=VLOOKUP({optional_ref},{CONSOLIDADO_SHEET}!$A:$F,6,0)"
         return "=" + "+".join(_excel_number(item.get("value")) for item in sources)
 
@@ -413,7 +420,7 @@ def _validate_canonical_projection(content: bytes, scenario: dict, progress=None
                     if expected_formula is not None:
                         if actual != expected_formula:
                             raise ValueError(
-                                f"Falha de consistência do Excel ORION: fórmula canônica de '{field}' não foi preservada."
+                                f"Falha de consistência do Excel ORION: fórmula DPP de '{field}' não foi preservada."
                             )
                         continue
 
@@ -466,7 +473,7 @@ def export_monthly_scenario_excel(
         _write_orion_scenario_to_dpp(workbook, scenario, progress=template_progress)
 
         if progress is not None:
-            progress(78, "Aplicando fórmulas e projeção canônica do Cenário ORION")
+            progress(78, "Aplicando fórmulas do DPP Final ao Cenário ORION")
         _apply_canonical_projection(workbook, scenario, progress=progress)
 
         if progress is not None:
@@ -478,7 +485,7 @@ def export_monthly_scenario_excel(
         workbook.close()
 
     if progress is not None:
-        progress(96, "Auditando fórmulas e dados do Excel ORION")
+        progress(96, "Auditando fórmulas e valores do Excel ORION")
     _validate_canonical_projection(canonical_content, scenario, progress=progress)
     if progress is not None:
         progress(99, "Excel ORION consistente com o Dashboard e fórmulas DPP")
