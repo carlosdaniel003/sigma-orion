@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import InfoHint from './InfoHint'
 import './dpp-column-comparison.css'
 import './dpp-column-divergence-detail.css'
@@ -8,8 +8,30 @@ const NUMBER_FORMAT = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 3,
 })
 
+const CONTEXTUAL_COLUMN_NAMES = new Set(['coments', 'comments', 'comentario', 'comentarios'])
+
 function isZero(value) {
   return Math.abs(Number(value) || 0) <= 1e-4
+}
+
+function normalizeColumnName(value) {
+  return String(value || '').trim().toLocaleLowerCase('pt-BR')
+}
+
+function resolveColumnMode(column) {
+  if (column?.mode) return column.mode
+
+  const name = normalizeColumnName(column?.name)
+  if (name === 'opc') return 'reference_final'
+  if (CONTEXTUAL_COLUMN_NAMES.has(name)) return 'contextual'
+  return column?.supported ? 'compare' : 'unsupported'
+}
+
+function normalizeColumn(column) {
+  return {
+    ...column,
+    mode: resolveColumnMode(column),
+  }
 }
 
 function formatAggregate(column, value) {
@@ -54,6 +76,52 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const columns = useMemo(
+    () => (comparison?.columns || []).map(normalizeColumn),
+    [comparison],
+  )
+
+  const legacyContract = useMemo(
+    () => Boolean(comparison?.columns?.some((column) => !column?.mode)),
+    [comparison],
+  )
+
+  const summary = useMemo(() => {
+    let comparableColumns = 0
+    let divergentColumns = 0
+    let referenceColumns = 0
+    let contextualColumns = 0
+    let unsupportedColumns = 0
+
+    columns.forEach((column) => {
+      if (column.mode === 'reference_final') {
+        referenceColumns += 1
+        return
+      }
+      if (column.mode === 'contextual') {
+        contextualColumns += 1
+        return
+      }
+      if (column.mode !== 'compare' || !column.supported) {
+        unsupportedColumns += 1
+        return
+      }
+
+      comparableColumns += 1
+      if (!isZero(column.delta) || Number(column.difference_count) > 0) {
+        divergentColumns += 1
+      }
+    })
+
+    return {
+      comparableColumns,
+      divergentColumns,
+      referenceColumns,
+      contextualColumns,
+      unsupportedColumns,
+    }
+  }, [columns])
+
   useEffect(() => {
     setSelectedColumn(null)
     setDetail(null)
@@ -92,7 +160,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
     return () => controller.abort()
   }, [analysisId, apiUrl, offset, selectedColumn])
 
-  if (!comparison?.columns?.length) return null
+  if (!columns.length) return null
 
   function toggleColumn(column) {
     if (!column.drilldown_available) return
@@ -126,19 +194,24 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
           <p>
             Texto é resumido por quantidade de itens preenchidos; colunas numéricas são resumidas pela soma. Apenas campos com regra de comparação equivalente entram na contagem de divergências.
           </p>
+          {legacyContract && (
+            <p className="dpp-column-comparison-note">
+              Este resultado foi criado por uma versão anterior da análise. A tela corrige a classificação de OPC e COMENTS, mas execute novamente a análise do DPP Final para recalcular CHECK e as divergências com as regras atuais.
+            </p>
+          )}
         </div>
         <div className="dpp-column-comparison-summary" aria-label="Resumo do comparativo por coluna">
-          <span>{comparison.columns_total} colunas</span>
-          <span>{comparison.comparable_columns} comparáveis</span>
-          <span>{comparison.divergent_columns} com divergência</span>
-          {comparison.reference_columns > 0 && (
-            <span>{comparison.reference_columns} de referência final</span>
+          <span>{columns.length} colunas</span>
+          <span>{summary.comparableColumns} comparáveis</span>
+          <span>{summary.divergentColumns} com divergência</span>
+          {summary.referenceColumns > 0 && (
+            <span>{summary.referenceColumns} de referência final</span>
           )}
-          {comparison.contextual_columns > 0 && (
-            <span>{comparison.contextual_columns} contextual</span>
+          {summary.contextualColumns > 0 && (
+            <span>{summary.contextualColumns} contextual</span>
           )}
-          {comparison.unsupported_columns > 0 && (
-            <span>{comparison.unsupported_columns} sem regra de comparação</span>
+          {summary.unsupportedColumns > 0 && (
+            <span>{summary.unsupportedColumns} sem regra de comparação</span>
           )}
         </div>
       </div>
@@ -153,7 +226,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
           <thead>
             <tr>
               <th className="dpp-column-scenario-column" scope="col">Cenário</th>
-              {comparison.columns.map((column) => (
+              {columns.map((column) => (
                 <th scope="col" key={`${column.column}-${column.name}`}>
                   <span>{column.name}</span>
                   <small>{column.aggregation_label}</small>
@@ -167,7 +240,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
                 <strong>DPP Final</strong>
                 <small>Arquivo consolidado</small>
               </th>
-              {comparison.columns.map((column) => (
+              {columns.map((column) => (
                 <td className="number-cell" key={`final-${column.column}`}>
                   {formatAggregate(column, column.final_total)}
                 </td>
@@ -179,7 +252,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
                 <strong>Cenário ORION</strong>
                 <small>Motor Python</small>
               </th>
-              {comparison.columns.map((column) => (
+              {columns.map((column) => (
                 <td className="number-cell" key={`orion-${column.column}`}>
                   {column.mode === 'contextual'
                     ? '—'
@@ -195,23 +268,23 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
                 <strong>Diferença</strong>
                 <small>Final − ORION</small>
               </th>
-              {comparison.columns.map((column) => {
+              {columns.map((column) => {
                 const comparable = column.mode === 'compare' && column.supported
                 const divergent = comparable && (
                   !isZero(column.delta) || Number(column.difference_count) > 0
                 )
                 const state = divergent ? 'warning' : 'stable'
-                const interactive = state === 'warning' && column.drilldown_available
+                const interactive = state === 'warning' && column.drilldown_available && !legacyContract
                 const expanded = selectedColumn?.column === column.column
 
                 let primary = formatDelta(column)
                 let secondary = comparable ? differenceLabel(column.difference_count) : column.note
                 if (column.mode === 'reference_final') {
                   primary = 'Referência: DPP Final'
-                  secondary = column.note
+                  secondary = column.note || 'Consolidação/correção realizada durante o processo mensal.'
                 } else if (column.mode === 'contextual') {
                   primary = 'Anotação mensal'
-                  secondary = column.note
+                  secondary = column.note || 'Registro contextual do analista para este DPP; não participa da comparação.'
                 } else if (!column.supported) {
                   primary = 'Sem comparação'
                   secondary = column.note || 'Não existe regra equivalente entre os dois cenários.'
