@@ -143,6 +143,9 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
         )
         const payload = await response.json().catch(() => null)
         if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Os detalhes desta análise não estão mais em memória no backend. Execute novamente a análise do DPP Final para recriar o drill-down com as regras atuais.')
+          }
           throw new Error(payload?.detail || 'Não foi possível carregar as divergências desta coluna.')
         }
         setDetail(payload)
@@ -163,7 +166,8 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
   if (!columns.length) return null
 
   function toggleColumn(column) {
-    if (!column.drilldown_available) return
+    if (!analysisId || column.mode !== 'compare') return
+    if (!column.drilldown_available && !legacyContract) return
     if (selectedColumn?.column === column.column) {
       setSelectedColumn(null)
       setDetail(null)
@@ -196,7 +200,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
           </p>
           {legacyContract && (
             <p className="dpp-column-comparison-note">
-              Este resultado foi criado por uma versão anterior da análise. A tela corrige a classificação de OPC e COMENTS, mas execute novamente a análise do DPP Final para recalcular CHECK e as divergências com as regras atuais.
+              Este resultado foi criado por uma versão anterior da análise. O drill-down continua disponível enquanto os detalhes permanecerem em memória; para recalcular CHECK e as causas com as regras atuais, execute novamente a análise do DPP Final.
             </p>
           )}
         </div>
@@ -274,7 +278,9 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
                   !isZero(column.delta) || Number(column.difference_count) > 0
                 )
                 const state = divergent ? 'warning' : 'stable'
-                const interactive = state === 'warning' && column.drilldown_available && !legacyContract
+                const interactive = state === 'warning'
+                  && Boolean(analysisId)
+                  && (column.drilldown_available || legacyContract)
                 const expanded = selectedColumn?.column === column.column
 
                 let primary = formatDelta(column)
