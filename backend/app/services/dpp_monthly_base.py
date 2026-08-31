@@ -131,6 +131,7 @@ def parse_previous_dpp(content: bytes) -> tuple[dict[str, dict], list[dict], dic
     origin_col = _find_column(headers, "Grupo Origem")
     optional_col = _find_column(headers, "OPC", required=False)
     check_col = _find_column(headers, "Check", required=False)
+    price_col = _find_column(headers, "Preço", required=False)
 
     kit_row = _find_label_row(rows, header_row, "KIT Disponivel PGD", contains=True)
     real_row = _find_label_row(rows, header_row, "REAL")
@@ -164,6 +165,7 @@ def parse_previous_dpp(content: bytes) -> tuple[dict[str, dict], list[dict], dic
             continue
 
         optional_material = _material_code(_cell(rows, excel_row, optional_col)) if optional_col else None
+        price = _number(_cell(rows, excel_row, price_col), 0.0) if price_col else 0.0
         materials[key] = {
             "material": material,
             "material_key": key,
@@ -171,6 +173,7 @@ def parse_previous_dpp(content: bytes) -> tuple[dict[str, dict], list[dict], dic
             "um": _normalize_unit(_cell(rows, excel_row, um_col)),
             "group_origin": _text(_cell(rows, excel_row, origin_col)),
             "optional_material": optional_material,
+            "price": price,
             "from_history": True,
             "historical_source": {
                 "sheet": SOURCE_SHEET,
