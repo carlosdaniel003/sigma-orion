@@ -8,16 +8,25 @@ from app.core.config import KNOWLEDGE_DIR, RAG_TOP_K
 STOP_WORDS = {
     "a", "as", "o", "os", "e", "de", "da", "das", "do", "dos", "em", "no", "na",
     "nos", "nas", "um", "uma", "para", "por", "com", "que", "se", "ao", "aos",
+    "qual", "quais", "como", "quando", "onde", "porque", "significa", "significado",
+    "definicao", "definir", "formula", "calcula", "calculo", "calculado", "calcular",
+    "equacao", "regra",
 }
 
 FORMULA_INTENT_TOKENS = {
-    "formula", "calcula", "calculo", "calculado", "calcular", "equacao", "regra",
+    "formula", "calcula", "calculo", "calculado", "calcular", "equacao",
+}
+
+DEFINITION_INTENT_TOKENS = {
+    "significa", "significado", "definicao", "definir",
 }
 
 ENGINE_KNOWLEDGE_SOURCES = {
     "motor-deterministico.md",
     "regras-globais.md",
 }
+
+MIN_GENERIC_SCORE = 6.0
 
 
 @dataclass(slots=True)
@@ -37,7 +46,7 @@ class KnowledgeAnswer:
 def _normalize(text: str) -> str:
     normalized = unicodedata.normalize("NFKD", text.lower())
     normalized = "".join(char for char in normalized if not unicodedata.combining(char))
-    return re.sub(r"[^a-z0-9_-]+", " ", normalized)
+    return re.sub(r"[^a-z0-9_-]+", " ", normalized).strip()
 
 
 def _tokens(text: str) -> set[str]:
@@ -46,6 +55,10 @@ def _tokens(text: str) -> set[str]:
         for token in _normalize(text).split()
         if len(token) > 2 and token not in STOP_WORDS
     }
+
+
+def _raw_tokens(text: str) -> set[str]:
+    return {token for token in _normalize(text).split() if len(token) > 2}
 
 
 def _split_markdown_sections(content: str) -> list[str]:
@@ -106,9 +119,20 @@ def _heading(chunk: KnowledgeChunk) -> str:
 
 
 def _is_formula_query(query: str) -> bool:
-    tokens = _tokens(query)
+    raw_tokens = _raw_tokens(query)
     normalized = _normalize(query)
-    return bool(tokens & FORMULA_INTENT_TOKENS) or "como o orion calcula" in normalized
+    return bool(raw_tokens & FORMULA_INTENT_TOKENS) or "como o orion calcula" in normalized
+
+
+def _is_definition_query(query: str) -> bool:
+    raw_tokens = _raw_tokens(query)
+    normalized = _normalize(query)
+    return (
+        bool(raw_tokens & DEFINITION_INTENT_TOKENS)
+        or normalized.startswith("o que e ")
+        or normalized.startswith("o que sao ")
+        or normalized.startswith("o que significa ")
+    )
 
 
 def _table_density(content: str) -> float:
@@ -121,6 +145,9 @@ def _table_density(content: str) -> float:
 
 def retrieve_context(query: str, top_k: int | None = None) -> list[KnowledgeChunk]:
     query_tokens = _tokens(query)
+    if not query_tokens:
+        return []
+
     limit = top_k or RAG_TOP_K
     ranked: list[KnowledgeChunk] = []
     formula_query = _is_formula_query(query)
@@ -130,18 +157,21 @@ def retrieve_context(query: str, top_k: int | None = None) -> list[KnowledgeChun
         heading_tokens = _tokens(_heading(chunk))
         overlap = query_tokens & chunk_tokens
         heading_overlap = query_tokens & heading_tokens
-        source_tokens = _tokens(chunk.source)
+        source_overlap = query_tokens & _tokens(chunk.source)
+
+        if not overlap and not heading_overlap and not source_overlap:
+            continue
 
         score = float(
             len(overlap) * 3
             + len(heading_overlap) * 9
-            + len(query_tokens & source_tokens) * 2
+            + len(source_overlap) * 2
         )
 
         if formula_query:
             if chunk.source in ENGINE_KNOWLEDGE_SOURCES:
                 score += 6
-            if "formula" in chunk_tokens or "fórmula" in chunk.content.lower():
+            if "formula" in _raw_tokens(chunk.content):
                 score += 5
             if "=" in chunk.content:
                 score += 3
@@ -152,9 +182,7 @@ def retrieve_context(query: str, top_k: int | None = None) -> list[KnowledgeChun
             score += 0.25
 
         if score > 0:
-            ranked.append(
-                KnowledgeChunk(source=chunk.source, content=chunk.content, score=score)
-            )
+            ranked.append(KnowledgeChunk(source=chunk.source, content=chunk.content, score=score))
 
     ranked.sort(key=lambda item: item.score, reverse=True)
     return ranked[:limit]
@@ -178,6 +206,8 @@ def _clean_markdown_for_chat(content: str) -> str:
         if line.startswith("|") and line.endswith("|"):
             continue
         line = _clean_inline_markdown(line)
+        if _normalize(line) == "formula":
+            continue
         if line:
             lines.append(line)
     return "\n".join(lines).strip()
@@ -190,13 +220,35 @@ def _formula_from_chunk(chunk: KnowledgeChunk) -> str | None:
 
     lines = chunk.content.splitlines()
     for index, raw_line in enumerate(lines):
-        if _normalize(raw_line).strip() != "formula":
+        if _normalize(raw_line) != "formula":
             continue
         for next_line in lines[index + 1:index + 4]:
             cleaned = _clean_inline_markdown(next_line)
             if cleaned and "=" in cleaned:
                 return cleaned
     return None
+
+
+def _subject_tokens(query: str) -> set[str]:
+    return _tokens(query)
+
+
+def _best_formula_chunk(query: str, chunks: list[KnowledgeChunk]) -> KnowledgeChunk | None:
+    subject_tokens = _subject_tokens(query)
+    if not subject_tokens:
+        return None
+
+    candidates: list[KnowledgeChunk] = []
+    for chunk in chunks:
+        if chunk.source not in ENGINE_KNOWLEDGE_SOURCES:
+            continue
+        if not _formula_from_chunk(chunk):
+            continue
+        if not (subject_tokens & _tokens(_heading(chunk))):
+            continue
+        candidates.append(chunk)
+
+    return candidates[0] if candidates else None
 
 
 def _formula_answer(chunk: KnowledgeChunk) -> str:
@@ -207,21 +259,41 @@ def _formula_answer(chunk: KnowledgeChunk) -> str:
     definition = ""
     explanation = ""
     implementation = ""
+    formula_seen = False
 
     for block in blocks[1:]:
         clean = _clean_markdown_for_chat(block)
+        normalized = _normalize(clean)
         if not clean:
             continue
-        normalized = _normalize(clean)
-        if normalized == "formula" or (formula and formula in clean):
+
+        if normalized == "formula":
+            formula_seen = True
             continue
+
+        if formula and formula in clean:
+            formula_seen = True
+            remainder = clean.replace(formula, "").strip(" .:-")
+            if _normalize(remainder) in {"", "formula"}:
+                continue
+            clean = remainder
+            normalized = _normalize(clean)
+
         if normalized.startswith("implementacao") or normalized.startswith("fonte tecnica"):
             implementation = clean
             continue
-        if not definition:
+
+        if not formula_seen and not definition:
             definition = clean
             continue
-        if not explanation:
+
+        if formula_seen and not explanation:
+            explanation = clean
+            continue
+
+        if not definition:
+            definition = clean
+        elif not explanation:
             explanation = clean
 
     parts: list[str] = []
@@ -229,47 +301,90 @@ def _formula_answer(chunk: KnowledgeChunk) -> str:
         parts.append(definition.rstrip("."))
     elif heading:
         parts.append(heading)
+
     if formula:
         parts.append(f"Fórmula: {formula}")
+
     if explanation:
         parts.append(explanation.rstrip("."))
+
     if implementation:
         parts.append(implementation.rstrip("."))
 
     answer = ". ".join(part for part in parts if part).strip()
+    answer = re.sub(r"\bFórmula\s*:\s*\.", "", answer, flags=re.IGNORECASE)
+    answer = re.sub(r"\s{2,}", " ", answer).strip()
     if answer and not answer.endswith("."):
         answer += "."
     return answer
 
 
-def _best_formula_chunk(query: str, chunks: list[KnowledgeChunk]) -> KnowledgeChunk | None:
-    query_tokens = _tokens(query)
-    for chunk in chunks:
-        if chunk.source not in ENGINE_KNOWLEDGE_SOURCES:
-            continue
-        if not _formula_from_chunk(chunk):
-            continue
-        heading_tokens = _tokens(_heading(chunk))
-        if query_tokens & heading_tokens:
-            return chunk
+def _glossary_answer(query: str) -> KnowledgeAnswer | None:
+    if not _is_definition_query(query):
+        return None
 
-    for chunk in chunks:
-        if _formula_from_chunk(chunk):
-            return chunk
-    return None
+    path = KNOWLEDGE_DIR / "glossario.md"
+    if not path.exists():
+        return None
+
+    normalized_query = _normalize(query)
+    rows = path.read_text(encoding="utf-8").splitlines()
+    matches: list[tuple[str, str, str]] = []
+
+    for raw_line in rows:
+        line = raw_line.strip()
+        if not (line.startswith("|") and line.endswith("|")):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        term, meaning, validation = cells[:3]
+        if term.lower() == "termo" or set(term) <= {"-", ":"}:
+            continue
+        normalized_term = _normalize(term)
+        if not normalized_term:
+            continue
+        if re.search(rf"(?:^|\s){re.escape(normalized_term)}(?:\s|$)", normalized_query):
+            matches.append((term, meaning, validation))
+
+    if not matches:
+        return None
+
+    matches.sort(key=lambda item: len(_normalize(item[0])), reverse=True)
+    term, meaning, validation = matches[0]
+    answer = f"{term}: {meaning}"
+    if validation and _normalize(validation) != "a confirmar":
+        answer += f" Fonte/validação: {validation}."
+    elif not answer.endswith("."):
+        answer += "."
+
+    chunk = KnowledgeChunk(
+        source="glossario.md",
+        content=f"{term}: {meaning}\nFonte/Validação: {validation}",
+        score=100.0,
+    )
+    return KnowledgeAnswer(answer=answer, sources=["glossario.md"], chunks=[chunk])
+
+
+def _insufficient_answer() -> KnowledgeAnswer:
+    return KnowledgeAnswer(
+        answer=(
+            "Não encontrei informação validada na base local do ORION para responder essa pergunta. "
+            "Nesta etapa, o Agente responde sobre o sistema ORION, o motor determinístico Python e os dados DPP sincronizados; ele não deve preencher lacunas com uma resposta não suportada pelas fontes."
+        ),
+        sources=[],
+        chunks=[],
+    )
 
 
 def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnswer:
+    glossary_answer = _glossary_answer(query)
+    if glossary_answer is not None:
+        return glossary_answer
+
     chunks = retrieve_context(query, top_k=top_k or max(RAG_TOP_K, 6))
     if not chunks:
-        return KnowledgeAnswer(
-            answer=(
-                "Não encontrei uma regra validada na base de conhecimento local para responder essa pergunta. "
-                "Posso responder somente sobre informações registradas e validadas do motor ORION nesta etapa."
-            ),
-            sources=[],
-            chunks=[],
-        )
+        return _insufficient_answer()
 
     if _is_formula_query(query):
         formula_chunk = _best_formula_chunk(query, chunks)
@@ -281,18 +396,25 @@ def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnsw
                     sources=[formula_chunk.source],
                     chunks=[formula_chunk],
                 )
+        return _insufficient_answer()
+
+    if chunks[0].score < MIN_GENERIC_SCORE:
+        return _insufficient_answer()
 
     best_score = chunks[0].score
     selected = [chunks[0]]
     for chunk in chunks[1:]:
         if len(selected) >= 2:
             break
-        if chunk.score >= max(best_score * 0.82, best_score - 3):
+        if chunk.score >= max(best_score * 0.86, best_score - 3):
             selected.append(chunk)
 
     answer_parts = [_clean_markdown_for_chat(chunk.content) for chunk in selected]
     answer_parts = [part for part in answer_parts if part]
     sources = list(dict.fromkeys(chunk.source for chunk in selected))
+
+    if not answer_parts:
+        return _insufficient_answer()
 
     return KnowledgeAnswer(
         answer="\n\n".join(answer_parts),
@@ -311,8 +433,8 @@ def knowledge_status() -> dict:
         "document_count": len(files),
         "chunk_count": len(chunks),
         "message": (
-            "RAG local ativo com recuperação lexical por seções e síntese determinística por intenção. "
-            "Perguntas objetivas de fórmula retornam somente a regra relevante; uma LLM poderá usar "
-            "os mesmos trechos depois."
+            "RAG local ativo com recuperação lexical por seções, respostas determinísticas por intenção "
+            "e abstinência quando a base não sustenta a pergunta. Definições do glossário e fórmulas do "
+            "motor recebem tratamento específico para evitar respostas irrelevantes."
         ),
     }
