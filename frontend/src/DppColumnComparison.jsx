@@ -19,7 +19,7 @@ function formatAggregate(column, value) {
 }
 
 function formatDelta(column) {
-  if (!column.supported || column.delta === null || column.delta === undefined) return '—'
+  if (!column.supported || column.mode !== 'compare' || column.delta === null || column.delta === undefined) return '—'
   const numeric = Number(column.delta) || 0
   if (isZero(numeric)) return column.kind === 'count' ? '0 itens' : '0'
   const sign = numeric > 0 ? '+' : '−'
@@ -117,22 +117,28 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
             <h3 id="dpp-column-comparison-title">Comparativo completo das colunas do DPP</h3>
             <InfoHint
               title="Comparativo completo das colunas do DPP"
-              what="Mostra todas as colunas da aba DPP em três linhas: total do DPP Final, total do Cenário ORION e diferença entre os dois. Colunas divergentes podem ser abertas para investigar os materiais responsáveis pela diferença."
-              source="DPP Final: valores lidos diretamente do arquivo consolidado. Cenário ORION: projeção canônica dos materiais, matriz Material × Modelo e campos calculados pelo motor Python do cenário mensal."
-              purpose="Localizar em quais colunas a reconstrução do ORION difere do DPP Final e auditar a causa sem carregar milhares de linhas de uma vez. O detalhe é paginado em 25 divergências por página."
+              what="Mostra as colunas da aba DPP respeitando a função de cada campo. Colunas calculadas são comparadas; OPC é tratado como consolidação mais recente do DPP Final; COMENTS é contexto mensal do analista; CHECK é comparado pelo conjunto de modelos, sem considerar a ordem do texto."
+              source="DPP Final: valores e registros consolidados do mês. Cenário ORION: projeção canônica dos materiais, matriz Material × Modelo e campos calculados pelo motor Python."
+              purpose="Separar divergências reais de diferenças esperadas do processo e investigar a causa das divergências calculadas sem classificar reordenação, atualização de OPC ou comentários mensais como erro."
               align="right"
             />
           </div>
           <p>
-            Texto é resumido por quantidade de itens preenchidos; colunas numéricas são resumidas pela soma. A diferença é calculada como DPP Final − Cenário ORION.
+            Texto é resumido por quantidade de itens preenchidos; colunas numéricas são resumidas pela soma. Apenas campos com regra de comparação equivalente entram na contagem de divergências.
           </p>
         </div>
         <div className="dpp-column-comparison-summary" aria-label="Resumo do comparativo por coluna">
           <span>{comparison.columns_total} colunas</span>
           <span>{comparison.comparable_columns} comparáveis</span>
           <span>{comparison.divergent_columns} com divergência</span>
+          {comparison.reference_columns > 0 && (
+            <span>{comparison.reference_columns} de referência final</span>
+          )}
+          {comparison.contextual_columns > 0 && (
+            <span>{comparison.contextual_columns} contextual</span>
+          )}
           {comparison.unsupported_columns > 0 && (
-            <span>{comparison.unsupported_columns} ainda não calculadas pelo ORION</span>
+            <span>{comparison.unsupported_columns} sem regra de comparação</span>
           )}
         </div>
       </div>
@@ -175,7 +181,11 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
               </th>
               {comparison.columns.map((column) => (
                 <td className="number-cell" key={`orion-${column.column}`}>
-                  {column.supported ? formatAggregate(column, column.orion_total) : 'Não calculado'}
+                  {column.mode === 'contextual'
+                    ? '—'
+                    : column.supported
+                      ? formatAggregate(column, column.orion_total)
+                      : '—'}
                 </td>
               ))}
             </tr>
@@ -186,22 +196,33 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
                 <small>Final − ORION</small>
               </th>
               {comparison.columns.map((column) => {
-                const divergent = column.supported && (
+                const comparable = column.mode === 'compare' && column.supported
+                const divergent = comparable && (
                   !isZero(column.delta) || Number(column.difference_count) > 0
                 )
-                const state = !column.supported ? 'unsupported' : divergent ? 'warning' : 'stable'
+                const state = divergent ? 'warning' : 'stable'
                 const interactive = state === 'warning' && column.drilldown_available
                 const expanded = selectedColumn?.column === column.column
+
+                let primary = formatDelta(column)
+                let secondary = comparable ? differenceLabel(column.difference_count) : column.note
+                if (column.mode === 'reference_final') {
+                  primary = 'Referência: DPP Final'
+                  secondary = column.note
+                } else if (column.mode === 'contextual') {
+                  primary = 'Anotação mensal'
+                  secondary = column.note
+                } else if (!column.supported) {
+                  primary = 'Sem comparação'
+                  secondary = column.note || 'Não existe regra equivalente entre os dois cenários.'
+                }
+
                 const content = (
                   <>
                     <span className="dpp-column-state-marker" aria-hidden="true" />
                     <div>
-                      <strong>{column.supported ? formatDelta(column) : 'Não calculado'}</strong>
-                      <small>
-                        {column.supported
-                          ? differenceLabel(column.difference_count)
-                          : column.note || 'Sem cálculo equivalente no cenário ORION'}
-                      </small>
+                      <strong>{primary}</strong>
+                      <small>{secondary}</small>
                     </div>
                     {interactive && <span className="dpp-column-detail-action">{expanded ? 'Ocultar' : 'Ver detalhes'}</span>}
                   </>
@@ -246,7 +267,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
       )}
 
       <p className="dpp-column-comparison-note">
-        Colunas como Preço, Amount e Coments permanecem visíveis porque existem no DPP Final, mas são marcadas como não calculadas enquanto o motor ORION não produzir esses campos diretamente.
+        CHECK ignora apenas a ordem dos mesmos modelos. OPC usa o DPP Final como registro consolidado mais recente. COMENTS é uma anotação contextual do mês e não participa da comparação de divergências.
       </p>
     </section>
   )
