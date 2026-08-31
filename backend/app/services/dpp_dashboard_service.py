@@ -10,6 +10,7 @@ from fastapi import UploadFile
 from openpyxl import load_workbook
 
 from app.services.dpp_consolidation_service import _material_key
+from app.services.dpp_nec_divergence_service import explain_nec_divergence
 from app.services.dpp_projection_service import (
     aggregate,
     build_orion_projection,
@@ -211,6 +212,8 @@ def _build_column_comparison(
 
     if analysis_id:
         description_col = _optional_column(headers, "Descrição", "Descricao")
+        max_column = max(len(row) for row in rows)
+        real_row = _find_label_row(rows, max_column, header_row, "REAL")
         _register_column_snapshot(analysis_id, {
             "rows": rows,
             "headers": headers,
@@ -219,6 +222,8 @@ def _build_column_comparison(
             "projection": projection,
             "final_material_rows": final_material_rows,
             "final_row_by_material": final_row_by_material,
+            "real_row": real_row,
+            "scenario_models": list(scenario.get("models") or []),
         })
 
     return {
@@ -293,13 +298,32 @@ def get_column_divergences(analysis_id: str, column: int, offset: int = 0, limit
             if spec.get("comparison") == "numeric" and presence is None:
                 delta = (_number(final_value, 0.0) or 0.0) - (_number(orion_value, 0.0) or 0.0)
 
+            reason = _difference_reason(header, spec, final_value, orion_value, presence)
+            if (
+                spec.get("field") == "nec"
+                and presence is None
+                and final_row is not None
+                and projected_row is not None
+            ):
+                reason = explain_nec_divergence(
+                    rows=rows,
+                    headers=snapshot["headers"],
+                    real_row=snapshot.get("real_row"),
+                    final_row=final_row,
+                    projected_row=projected_row,
+                    projection=projection,
+                    scenario_models=snapshot.get("scenario_models") or [],
+                    final_value=final_value,
+                    orion_value=orion_value,
+                ) or reason
+
             items.append({
                 "material": material or material_key,
                 "description": description or "",
                 "orion_value": orion_value,
                 "final_value": final_value,
                 "delta": delta,
-                "reason": _difference_reason(header, spec, final_value, orion_value, presence),
+                "reason": reason,
             })
         total += 1
 
