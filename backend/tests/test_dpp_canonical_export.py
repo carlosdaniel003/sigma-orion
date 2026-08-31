@@ -148,9 +148,9 @@ def test_excel_is_canonical_projection_of_dashboard_scenario() -> None:
             assert sheet["H6"].value in (None, "")
             assert sheet["J6"].value == 50
 
-            # Fórmulas equivalentes às fórmulas operacionais do DPP Final.
-            assert sheet["G5"].value == '=TEXTJOIN("// ", TRUE, FILTER($E$4:$F$4, E5:F5>0, ""))'
-            assert sheet["G6"].value == '=TEXTJOIN("// ", TRUE, FILTER($E$4:$F$4, E6:F6>0, ""))'
+            # As expressões precisam seguir o mesmo padrão textual do DPP Final.
+            assert sheet["G5"].value == '=_xlfn.TEXTJOIN("// ", TRUE, _xlfn._xlws.FILTER($E$4:$F$4, E5:F5>0, ""))'
+            assert sheet["G6"].value == '=_xlfn.TEXTJOIN("// ", TRUE, _xlfn._xlws.FILTER($E$4:$F$4, E6:F6>0, ""))'
             assert sheet["I5"].value == "=SUMPRODUCT($E$2:$F$2,E5:F5)"
             assert sheet["M5"].value == "=VLOOKUP(L5,CONSOLIDADO!$A:$F,6,0)"
             assert sheet["N5"].value == "=J5+K5+M5"
