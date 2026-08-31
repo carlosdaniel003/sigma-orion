@@ -21,6 +21,7 @@ venv/
 /data/*.db
 /data/*.sqlite
 /data/*.sqlite3
+/data/dpp_scenario_state.json
 /data/uploads/*
 !/data/uploads/.gitkeep
 
