@@ -41,7 +41,6 @@ def _template_bytes() -> bytes:
     for column, value in enumerate(headers, start=1):
         sheet.cell(row=4, column=column, value=value)
 
-    # Valores propositalmente antigos: o exportador canônico deve substituir/limpar tudo.
     for row, material in ((5, "MAT-A"), (6, "MAT-OLD")):
         sheet.cell(row=row, column=1, value=material)
         for column in range(2, len(headers) + 1):
@@ -70,6 +69,8 @@ def _scenario() -> dict:
                 "stock_sap_effective": 100.0,
                 "explosion": 10.0,
                 "stock_op": 5.0,
+                "stock_op_sources": [{"material": "OPC-A", "value": 5.0}],
+                "price": 2.5,
             },
             {
                 "material": "MAT-B",
@@ -84,6 +85,8 @@ def _scenario() -> dict:
                 "stock_sap_effective": 50.0,
                 "explosion": 0.0,
                 "stock_op": 0.0,
+                "stock_op_sources": [],
+                "price": 1.25,
             },
         ],
         models=[
@@ -120,46 +123,55 @@ def test_excel_is_canonical_projection_of_dashboard_scenario() -> None:
         try:
             sheet = workbook["DPP"]
 
-            # KIT e REAL são exatamente o mesmo cenário usado pelo Dashboard.
             assert sheet["E1"].value == 10
             assert sheet["F1"].value == 20
             assert sheet["E2"].value == 12
             assert sheet["F2"].value == 3
+            assert sheet["E3"].value == "=E2-E1"
+            assert sheet["F3"].value == "=F2-F1"
 
-            # A faixa física contém somente os materiais do cenário atual.
             assert sheet["A5"].value == "MAT-A"
             assert sheet["A6"].value == "MAT-B"
             assert sheet["A7"].value in (None, "")
 
-            # Campos diretos e matriz Material × Modelo vêm da projeção canônica.
             assert sheet["B5"].value == "Material A"
             assert sheet["C5"].value == "UN"
             assert sheet["D5"].value == "LOCAL"
             assert sheet["E5"].value == 2
             assert sheet["F5"].value == 1
-            assert sheet["G5"].value == "CHECK-A"
             assert sheet["H5"].value == "WIU"
             assert sheet["J5"].value == 100
             assert sheet["K5"].value == 10
             assert sheet["L5"].value == "OPC-A"
-            assert sheet["M5"].value == 5
 
             assert sheet["B6"].value == "Material B"
-            assert sheet["G6"].value in (None, "")
             assert sheet["H6"].value in (None, "")
             assert sheet["J6"].value == 50
 
-            # NEC/STK TTL/SALDO são fórmulas canônicas ligadas ao mesmo REAL e fontes.
-            assert sheet["I5"].value == "=SUMPRODUCT(E5:F5,E$2:F$2)"
+            # Fórmulas equivalentes às fórmulas operacionais do DPP Final.
+            assert sheet["G5"].value == '=TEXTJOIN("// ", TRUE, FILTER($E$4:$F$4, E5:F5>0, ""))'
+            assert sheet["G6"].value == '=TEXTJOIN("// ", TRUE, FILTER($E$4:$F$4, E6:F6>0, ""))'
+            assert sheet["I5"].value == "=SUMPRODUCT($E$2:$F$2,E5:F5)"
+            assert sheet["M5"].value == "=VLOOKUP(L5,CONSOLIDADO!$A:$F,6,0)"
             assert sheet["N5"].value == "=J5+K5+M5"
             assert sheet["O5"].value == "=N5-I5"
-            assert sheet["I6"].value == "=SUMPRODUCT(E6:F6,E$2:F$2)"
+            assert sheet["P5"].value == 2.5
+            assert sheet["Q5"].value == "=P5*O5"
+
+            assert sheet["I6"].value == "=SUMPRODUCT($E$2:$F$2,E6:F6)"
+            assert sheet["M6"].value == 0
             assert sheet["N6"].value == "=J6+K6+M6"
             assert sheet["O6"].value == "=N6-I6"
+            assert sheet["P6"].value == 1.25
+            assert sheet["Q6"].value == "=P6*O6"
 
-            # Campos ainda não calculados pelo ORION nunca herdam resíduos do mês anterior.
-            for coordinate in ("P5", "Q5", "R5", "P6", "Q6", "R6"):
-                assert sheet[coordinate].value in (None, "")
+            assert sheet["R5"].value in (None, "")
+            assert sheet["R6"].value in (None, "")
+
+            support = workbook["CONSOLIDADO"]
+            assert support.sheet_state == "hidden"
+            assert support["A2"].value == "OPC-A"
+            assert support["F2"].value == 5
         finally:
             workbook.close()
     finally:
@@ -186,6 +198,6 @@ def test_excel_audit_reports_incremental_progress_after_serialization() -> None:
         assert audit_updates[0][0] >= 96
         assert any("/2 materiais" in activity for _value, activity in audit_updates)
         assert max(value for value, _activity in audit_updates) >= 99
-        assert updates[-1] == (99, "Excel ORION consistente com o Dashboard")
+        assert updates[-1] == (99, "Excel ORION consistente com o Dashboard e fórmulas DPP")
     finally:
         scenario_service._SCENARIOS.clear()
