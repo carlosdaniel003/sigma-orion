@@ -139,7 +139,7 @@ def test_column_comparison_reports_totals_and_cell_divergences_without_listing_i
         assert comparison["final_materials"] == 3
         assert comparison["orion_materials"] == 3
         assert comparison["columns_total"] == 18
-        assert comparison["unsupported_columns"] == 3
+        assert comparison["unsupported_columns"] == 1
 
         material = _column(result, "Material")
         assert material["final_total"] == 3
@@ -172,10 +172,17 @@ def test_column_comparison_reports_totals_and_cell_divergences_without_listing_i
 
         price = _column(result, "Preço")
         assert price["final_total"] == 3
-        assert price["orion_total"] is None
-        assert price["delta"] is None
-        assert price["difference_count"] is None
-        assert price["supported"] is False
+        assert price["orion_total"] == 0
+        assert price["delta"] == 3
+        assert price["difference_count"] == 3
+        assert price["supported"] is True
+
+        amount = _column(result, "Amount")
+        assert amount["final_total"] == -5
+        assert amount["orion_total"] == 0
+        assert amount["delta"] == -5
+        assert amount["difference_count"] == 2
+        assert amount["supported"] is True
 
         comments = _column(result, "Coments")
         assert comments["final_total"] == 1
