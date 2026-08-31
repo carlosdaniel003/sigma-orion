@@ -164,3 +164,28 @@ def test_excel_is_canonical_projection_of_dashboard_scenario() -> None:
             workbook.close()
     finally:
         scenario_service._SCENARIOS.clear()
+
+
+def test_excel_audit_reports_incremental_progress_after_serialization() -> None:
+    updates: list[tuple[int, str]] = []
+    try:
+        scenario = _scenario()
+        export_monthly_scenario_excel(
+            scenario_id=scenario["scenario_id"],
+            template_content=_template_bytes(),
+            template_filename="DPP JUN_2026.xlsx",
+            progress=lambda value, activity: updates.append((value, activity)),
+        )
+
+        audit_updates = [
+            (value, activity)
+            for value, activity in updates
+            if activity.startswith("Auditando Excel ORION")
+        ]
+        assert audit_updates
+        assert audit_updates[0][0] >= 96
+        assert any("/2 materiais" in activity for _value, activity in audit_updates)
+        assert max(value for value, _activity in audit_updates) >= 99
+        assert updates[-1] == (99, "Excel ORION consistente com o Dashboard")
+    finally:
+        scenario_service._SCENARIOS.clear()
