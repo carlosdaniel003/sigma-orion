@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from copy import deepcopy
+import json
 import math
-from uuid import uuid4
 
+from app.core.config import DATA_DIR
 from app.services.dpp_projection_service import (
     calculate_balance,
     calculate_nec,
@@ -13,6 +14,7 @@ from app.services.dpp_projection_service import (
 )
 
 MAX_SCENARIOS = 8
+SCENARIO_STATE_PATH = DATA_DIR / "dpp_scenario_state.json"
 _SCENARIOS: OrderedDict[str, dict] = OrderedDict()
 
 
@@ -24,6 +26,43 @@ def _number(value: object, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
     return number if math.isfinite(number) else default
+
+
+def _persist_latest_scenario() -> None:
+    if not _SCENARIOS:
+        return
+
+    scenario_id = next(reversed(_SCENARIOS))
+    payload = {
+        "version": 1,
+        "scenario_id": scenario_id,
+        "scenario": _SCENARIOS[scenario_id],
+    }
+    temporary = SCENARIO_STATE_PATH.with_suffix(".tmp")
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    temporary.replace(SCENARIO_STATE_PATH)
+
+
+def restore_persisted_monthly_scenario() -> bool:
+    if not SCENARIO_STATE_PATH.exists():
+        return False
+
+    try:
+        payload = json.loads(SCENARIO_STATE_PATH.read_text(encoding="utf-8"))
+        scenario_id = payload.get("scenario_id")
+        scenario = payload.get("scenario")
+        if not isinstance(scenario_id, str) or not scenario_id or not isinstance(scenario, dict):
+            return False
+        _SCENARIOS[scenario_id] = scenario
+        _SCENARIOS.move_to_end(scenario_id)
+        while len(_SCENARIOS) > MAX_SCENARIOS:
+            _SCENARIOS.popitem(last=False)
+        return True
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return False
 
 
 def _calculate(materials: list[dict], models: list[dict], real_by_model: dict[str, float]) -> tuple[list[dict], list[dict], dict]:
@@ -140,6 +179,8 @@ def get_monthly_scenario(scenario_id: str) -> dict | None:
 
 
 def register_monthly_scenario(*, materials: list[dict], models: list[dict], reference_month: str, base_summary: dict, scope: str, capabilities: dict, sources: list[dict], pending: list[str], diagnostics: dict, pgd_mapping: dict) -> dict:
+    from uuid import uuid4
+
     scenario_id = uuid4().hex
     real_by_model = {model["name"]: max(_number(model.get("kit_pgd"), 0.0), 0.0) for model in models}
     _SCENARIOS[scenario_id] = {
@@ -151,6 +192,7 @@ def register_monthly_scenario(*, materials: list[dict], models: list[dict], refe
     _SCENARIOS.move_to_end(scenario_id)
     while len(_SCENARIOS) > MAX_SCENARIOS:
         _SCENARIOS.popitem(last=False)
+    _persist_latest_scenario()
     return _payload(scenario_id, _SCENARIOS[scenario_id])
 
 
@@ -166,4 +208,5 @@ def recalculate_monthly_scenario(scenario_id: str, real_by_model: dict[str, floa
         updated[model_name] = max(_number(value, 0.0), 0.0)
     scenario["real_by_model"] = updated
     _SCENARIOS.move_to_end(scenario_id)
+    _persist_latest_scenario()
     return _payload(scenario_id, scenario)
