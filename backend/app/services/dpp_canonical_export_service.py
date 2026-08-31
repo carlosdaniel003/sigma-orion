@@ -148,7 +148,6 @@ def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict
             f"({missing} material(is) ausente(s), {extra} excedente(s))."
         )
 
-    # KIT e REAL são projetados diretamente do mesmo objeto de modelos usado pelo Dashboard.
     models = {
         _normalize(model.get("name")): model
         for model in (scenario.get("models") or [])
@@ -160,10 +159,6 @@ def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict
         sheet.cell(context["kit_row"], column).value = float(model.get("kit_pgd") or 0.0) if model else 0.0
         sheet.cell(context["real_row"], column).value = float(model.get("real") or 0.0) if model else 0.0
 
-    # A primeira etapa já escreve a matriz Material × Modelo a partir do mesmo cenário.
-    # Reescrever dezenas de colunas para milhares de materiais aqui duplicava centenas
-    # de milhares de operações OpenPyXL. A etapa canônica passa a normalizar apenas os
-    # campos não-modelo e as fórmulas; a auditoria final continua verificando a matriz.
     canonical_columns = [
         column
         for column in projection["columns"]
@@ -209,40 +204,86 @@ def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict
     return context
 
 
-def _validate_canonical_projection(content: bytes, scenario: dict) -> None:
+def _value_at(row_values: tuple, column: int):
+    index = column - 1
+    return row_values[index] if 0 <= index < len(row_values) else None
+
+
+def _validate_canonical_projection(content: bytes, scenario: dict, progress=None) -> None:
+    """Audita o XLSX serializado usando uma única varredura sequencial da aba DPP.
+
+    Em read_only=True, milhares de chamadas aleatórias a worksheet.cell() podem obrigar
+    o OpenPyXL a percorrer repetidamente o XML da planilha. Para um DPP real isso fazia
+    a etapa de 96% durar muito mais que a própria geração. Aqui cada linha é lida uma
+    única vez e todas as comparações usam os valores já materializados em memória.
+    """
     workbook = load_workbook(BytesIO(content), data_only=False, read_only=True)
     try:
-        context = _workbook_context(workbook, scenario)
-        sheet = context["sheet"]
-        projection = context["projection"]
-        row_by_key = context["row_by_key"]
-        field_columns = context["field_columns"]
+        if SOURCE_SHEET not in workbook.sheetnames:
+            raise ValueError("Falha de consistência do Excel ORION: a aba DPP não foi encontrada após salvar.")
+
+        sheet = workbook[SOURCE_SHEET]
+        rows = list(sheet.iter_rows(values_only=True))
+        if not rows:
+            raise ValueError("Falha de consistência do Excel ORION: a aba DPP está vazia após salvar.")
+
+        header_row = _find_header_row(rows)
+        headers = _headers(rows, header_row)
+        material_col = _find_column(headers, "Material")
+        origin_col = _find_column(headers, "Grupo Origem")
+        check_col = _find_column(headers, "Check")
+        real_row = _find_label_row(rows, header_row, "REAL")
+        kit_row = _find_label_row(rows, header_row, "KIT Disponivel PGD", contains=True)
+        if real_row is None or kit_row is None:
+            raise ValueError("Falha de consistência do Excel ORION: linhas KIT Disponível PGD/REAL não encontradas após salvar.")
+
+        projection = build_orion_projection(
+            scenario=scenario,
+            headers=headers,
+            material_col=material_col,
+            origin_col=origin_col,
+            check_col=check_col,
+        )
+        field_columns = _field_columns(projection)
+
+        row_values_by_key: dict[str, tuple[int, tuple]] = {}
+        for excel_row, row_values in enumerate(rows, start=1):
+            if excel_row <= header_row:
+                continue
+            key = _material_key(_value_at(row_values, material_col))
+            if key:
+                row_values_by_key[key] = (excel_row, row_values)
 
         expected_keys = {row["key"] for row in projection["rows"]}
-        if set(row_by_key) != expected_keys or len(row_by_key) != len(projection["rows"]):
+        if set(row_values_by_key) != expected_keys or len(row_values_by_key) != len(projection["rows"]):
             raise ValueError(
                 "Falha de consistência do Excel ORION após salvar: quantidade/lista de materiais difere do Dashboard."
             )
 
+        kit_values = rows[kit_row - 1]
+        real_values = rows[real_row - 1]
+        header_values = rows[header_row - 1]
         models = {
             _normalize(model.get("name")): model
             for model in (scenario.get("models") or [])
             if model.get("name")
         }
         for column in range(projection["model_start"], projection["model_end"] + 1):
-            model = models.get(_normalize(sheet.cell(context["header_row"], column).value))
+            model = models.get(_normalize(_value_at(header_values, column)))
             expected_kit = float(model.get("kit_pgd") or 0.0) if model else 0.0
             expected_real = float(model.get("real") or 0.0) if model else 0.0
-            if abs(float(sheet.cell(context["kit_row"], column).value or 0.0) - expected_kit) > 1e-4:
+            if abs(float(_value_at(kit_values, column) or 0.0) - expected_kit) > 1e-4:
                 raise ValueError("Falha de consistência do Excel ORION: KIT PGD divergiu do cenário após salvar.")
-            if abs(float(sheet.cell(context["real_row"], column).value or 0.0) - expected_real) > 1e-4:
+            if abs(float(_value_at(real_values, column) or 0.0) - expected_real) > 1e-4:
                 raise ValueError("Falha de consistência do Excel ORION: REAL divergiu do cenário após salvar.")
 
-        for projected_row in projection["rows"]:
-            excel_row = row_by_key[projected_row["key"]]
+        total_rows = max(len(projection["rows"]), 1)
+        last_progress = -1
+        for index, projected_row in enumerate(projection["rows"], start=1):
+            excel_row, row_values = row_values_by_key[projected_row["key"]]
             for column in projection["columns"]:
                 spec = projection["specs"][column]
-                actual = sheet.cell(excel_row, column).value
+                actual = _value_at(row_values, column)
 
                 if not spec["supported"]:
                     if actual not in (None, ""):
@@ -258,7 +299,7 @@ def _validate_canonical_projection(content: bytes, scenario: dict) -> None:
                         row=excel_row,
                         projection=projection,
                         field_columns=field_columns,
-                        real_row=context["real_row"],
+                        real_row=real_row,
                     )
                     if actual != expected_formula:
                         raise ValueError(
@@ -268,11 +309,17 @@ def _validate_canonical_projection(content: bytes, scenario: dict) -> None:
 
                 expected = projected_row["values"].get(column)
                 if not column_values_equal(actual, expected, spec.get("comparison")):
-                    header = context["headers"].get(column, str(column))
+                    header = headers.get(column, str(column))
                     raise ValueError(
                         "Falha de consistência do Excel ORION: "
                         f"a coluna '{header}' não corresponde ao cenário do Dashboard."
                     )
+
+            if progress is not None:
+                current = 96 + int((index / total_rows) * 3)
+                if current != last_progress:
+                    progress(current, f"Auditando Excel ORION · {index}/{len(projection['rows'])} materiais")
+                    last_progress = current
     finally:
         workbook.close()
 
@@ -303,7 +350,6 @@ def export_monthly_scenario_excel(
         def template_progress(value: int, activity: str) -> None:
             if progress is None:
                 return
-            # A montagem física ocupa a maior parte do trabalho. Ela vai de 5% a 76%.
             mapped = 5 + int((min(max(float(value), 0.0), 100.0) / 100.0) * 71)
             progress(mapped, activity)
 
@@ -323,7 +369,7 @@ def export_monthly_scenario_excel(
 
     if progress is not None:
         progress(96, "Auditando Excel ORION")
-    _validate_canonical_projection(canonical_content, scenario)
+    _validate_canonical_projection(canonical_content, scenario, progress=progress)
     if progress is not None:
         progress(99, "Excel ORION consistente com o Dashboard")
 
