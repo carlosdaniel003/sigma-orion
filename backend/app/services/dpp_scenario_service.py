@@ -108,9 +108,12 @@ def _calculate(materials: list[dict], models: list[dict], real_by_model: dict[st
         nec = calculate_nec(item, real_lookup)
         stock_total = calculate_stock_total(item)
         balance = calculate_balance(stock_total, nec)
+        price = _number(item.get("price"), 0.0)
         item["nec"] = nec
         item["stock_total"] = stock_total
         item["balance"] = balance
+        item["price"] = price
+        item["amount"] = price * balance
 
         if balance < 0:
             negative_all_units += 1
