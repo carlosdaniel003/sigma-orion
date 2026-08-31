@@ -101,9 +101,9 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
 
   if (!scenario) {
     return {
-      text: 'O cenário ORION ainda não está disponível neste workspace. Carregue e processe o pacote mensal para habilitar consultas determinísticas sobre materiais, modelos e cálculos.',
+      text: 'O cenário ORION ainda não está disponível para o pacote atual do DPP. Complete ou reprocesse o pacote mensal na aba DPP para habilitar consultas determinísticas.',
       evidence: [],
-      sources: ['Workspace local'],
+      sources: ['Workspace compartilhado do DPP'],
       entities: [],
       tool: 'workspace_status',
       confidence: 'Determinística',
@@ -139,7 +139,7 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
 
     if (changedModels.length) {
       return {
-        text: `Há ${changedModels.length} modelo(s) com alteração de REAL entre o cenário inicial e o DPP Final. Como o NEC depende de REAL × consumo, essas alterações são a primeira causa determinística a ser verificada para este material. A etapa seguinte do RAG poderá recuperar a explicação linha a linha já produzida pelo comparativo.`,
+        text: `Há ${changedModels.length} modelo(s) com alteração de REAL entre o cenário inicial e o DPP Final. Como o NEC depende de REAL × consumo, essas alterações são a primeira causa determinística a ser verificada para este material.`,
         evidence,
         sources: [...sources, 'Regra determinística NEC'],
         entities,
@@ -165,7 +165,7 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
     }
 
     return {
-      text: `Encontrei o material ${material.material || material.material_key}${material.description ? ` — ${material.description}` : ''}. No cenário inicial, NEC = ${formatNumber(material.nec)}, STK TTL = ${formatNumber(material.stock_total)} e SALDO = ${formatNumber(material.balance)}.`,
+      text: `Encontrei o material ${material.material || material.material_key}${material.description ? ` — ${material.description}` : ''}. No cenário atual, NEC = ${formatNumber(material.nec)}, STK TTL = ${formatNumber(material.stock_total)} e SALDO = ${formatNumber(material.balance)}.`,
       evidence,
       sources,
       entities,
@@ -184,7 +184,7 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
     evidence.push(
       { label: 'Modelo', value: model.name, detail: 'Cenário mensal' },
       { label: 'KIT disponível PGD', value: formatNumber(kitPgd), detail: 'Cenário ORION' },
-      { label: 'REAL ORION', value: formatNumber(orionReal), detail: 'Cenário inicial' },
+      { label: 'REAL ORION', value: formatNumber(orionReal), detail: 'Cenário atual' },
     )
     if (finalReal !== null) {
       evidence.push({ label: 'REAL DPP Final', value: formatNumber(finalReal), detail: `Δ ${formatNumber(finalReal - orionReal)}` })
@@ -192,8 +192,8 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
 
     return {
       text: finalReal === null
-        ? `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)} e REAL inicial de ${formatNumber(orionReal)}. O DPP Final não está disponível para comparação neste workspace.`
-        : `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)}, REAL inicial de ${formatNumber(orionReal)} e REAL no DPP Final de ${formatNumber(finalReal)}.`,
+        ? `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)} e REAL atual de ${formatNumber(orionReal)}. O DPP Final sincronizado não está disponível para comparação neste workspace.`
+        : `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)}, REAL ORION de ${formatNumber(orionReal)} e REAL no DPP Final de ${formatNumber(finalReal)}.`,
       evidence,
       sources,
       entities,
@@ -207,8 +207,8 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
     const finalCritical = finalDppAnalysis?.summary?.critical_materials
     return {
       text: finalCritical === undefined
-        ? `O cenário inicial possui ${critical.length} material(is) classificados para investigar.`
-        : `O cenário inicial possui ${critical.length} material(is) classificados para investigar. No DPP Final há ${formatNumber(finalCritical)} material(is) críticos pela mesma regra operacional.`,
+        ? `O cenário ORION atual possui ${critical.length} material(is) classificados para investigar.`
+        : `O cenário ORION atual possui ${critical.length} material(is) classificados para investigar. No DPP Final sincronizado há ${formatNumber(finalCritical)} material(is) críticos.`,
       evidence: [
         { label: 'Cenário ORION', value: `${critical.length}`, detail: 'Materiais para investigar' },
         ...(finalCritical === undefined ? [] : [{ label: 'DPP Final', value: formatNumber(finalCritical), detail: 'Materiais críticos' }]),
@@ -224,8 +224,8 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
     const finalTotal = finalDppAnalysis?.summary?.total_materials
     return {
       text: finalTotal === undefined
-        ? `O cenário ORION possui ${materials.length} materiais.`
-        : `O cenário ORION possui ${materials.length} materiais e o DPP Final possui ${formatNumber(finalTotal)} materiais.`,
+        ? `O cenário ORION atual possui ${materials.length} materiais.`
+        : `O cenário ORION atual possui ${materials.length} materiais e o DPP Final sincronizado possui ${formatNumber(finalTotal)} materiais.`,
       evidence: [
         { label: 'Cenário ORION', value: formatNumber(materials.length), detail: 'Materiais' },
         ...(finalTotal === undefined ? [] : [{ label: 'DPP Final', value: formatNumber(finalTotal), detail: 'Materiais' }]),
@@ -240,8 +240,8 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
   if (q.includes('real') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) {
     return {
       text: finalDppAnalysis
-        ? `Encontrei ${changedModels.length} modelo(s) com REAL diferente entre o cenário inicial e o DPP Final.`
-        : 'O DPP Final ainda não está disponível neste workspace, então não há uma segunda referência para comparar o REAL.',
+        ? `Encontrei ${changedModels.length} modelo(s) com REAL diferente entre o cenário ORION e o DPP Final sincronizado.`
+        : 'O DPP Final sincronizado ainda não está disponível para o pacote atual, então não há uma segunda referência válida para comparar o REAL.',
       evidence: changedModels.slice(0, 8).map((item) => ({
         label: item.name,
         value: `${formatNumber(item.orion)} → ${formatNumber(item.final)}`,
@@ -255,7 +255,7 @@ function offlineAnswer(question, { scenario, finalDppAnalysis, referenceMonth })
   }
 
   return {
-    text: 'Nesta primeira versão offline eu ainda não interpreto linguagem livre com uma LLM. Já consigo consultar dados estruturados do cenário por material, modelo, quantidade de materiais, materiais críticos, diferenças de REAL e a regra do NEC. O próximo passo será ligar o retrieval/RAG a esta mesma interface.',
+    text: 'Nesta primeira versão offline eu ainda não interpreto linguagem livre com uma LLM. Já consigo consultar os dados estruturados que estão sincronizados com o workspace do DPP: materiais, modelos, críticos, diferenças de REAL e regras determinísticas.',
     evidence: [
       { label: 'Modo atual', value: 'Consulta determinística', detail: 'Sem LLM e sem acesso externo' },
       { label: 'Contexto', value: formatMonth(month), detail: `${materials.length} materiais · ${models.length} modelos` },
@@ -274,16 +274,68 @@ const SUGGESTIONS = [
   'Como o ORION calcula o NEC?',
 ]
 
+function scenarioStatusText(state) {
+  if (state === 'current') return 'Cenário ORION sincronizado'
+  if (state === 'stale') return 'Cenário ORION desatualizado'
+  if (state === 'restoring') return 'Restaurando cenário ORION'
+  return 'Cenário ORION indisponível'
+}
+
+function finalStatusText(state) {
+  if (state === 'current') return 'DPP Final sincronizado'
+  if (state === 'stale') return 'DPP Final desatualizado'
+  if (state === 'pending') return 'DPP Final aguardando análise'
+  if (state === 'waiting-scenario') return 'DPP Final aguardando cenário atual'
+  if (state === 'restoring') return 'Restaurando DPP Final'
+  return 'DPP Final não carregado'
+}
+
+function packageStatusText(state) {
+  if (state === 'ready') return 'Pacote DPP completo'
+  if (state === 'incomplete') return 'Pacote DPP incompleto'
+  if (state === 'restoring') return 'Restaurando pacote DPP'
+  return 'Pacote DPP não carregado'
+}
+
+function staleWorkspaceAnswer(dppState) {
+  const bundle = dppState?.bundle
+  return {
+    text: 'O pacote compartilhado da aba DPP mudou desde o último processamento. Para não misturar dados antigos com os arquivos atuais, o Agente ORION bloqueou esta consulta até o cenário ser recalculado pela aba DPP.',
+    evidence: [
+      {
+        label: 'Pacote atual',
+        value: formatMonth(dppState?.currentMonth),
+        detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
+      },
+      {
+        label: 'Cenário',
+        value: 'Desatualizado',
+        detail: 'A assinatura do cenário não corresponde ao pacote DPP atual.',
+      },
+    ],
+    sources: ['Workspace compartilhado do DPP'],
+    entities: [],
+    tool: 'workspace_sync_guard',
+    confidence: 'Determinística',
+  }
+}
+
 function AgentOrion() {
-  const { generatedScenario, finalDppAnalysis, referenceMonth, workspaceReady } = useDppWorkspace()
+  const {
+    generatedScenario,
+    finalDppAnalysis,
+    referenceMonth,
+    workspaceReady,
+    dppState,
+  } = useDppWorkspace()
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState(() => [
     {
       id: 'initial',
       role: 'orion',
-      text: 'Estou em modo de validação offline. Posso consultar o cenário carregado e responder perguntas determinísticas sem LLM. As evidências usadas em cada resposta aparecem ao lado.',
+      text: 'Estou ligado ao mesmo workspace da aba DPP. Só utilizo cenário e DPP Final quando eles correspondem ao pacote compartilhado atual; as evidências usadas em cada resposta aparecem ao lado.',
       evidence: [],
-      sources: ['Workspace local'],
+      sources: ['Workspace compartilhado do DPP'],
       entities: [],
       tool: 'workspace_status',
       confidence: 'Determinística',
@@ -292,15 +344,21 @@ function AgentOrion() {
   const messageListRef = useRef(null)
   const latestAnswerRef = useRef(null)
 
-  const month = referenceMonth || generatedScenario?.reference_month || finalDppAnalysis?.column_comparison?.reference_month || ''
+  const month = dppState?.currentMonth
+    || referenceMonth
+    || generatedScenario?.reference_month
+    || finalDppAnalysis?.column_comparison?.reference_month
+    || ''
   const currentAnswer = [...messages].reverse().find((message) => message.role === 'orion') || messages[0]
-  const scenarioReady = Boolean(generatedScenario)
-  const finalReady = Boolean(finalDppAnalysis)
+  const scenarioReady = dppState?.scenario?.current ?? Boolean(generatedScenario)
+  const finalReady = dppState?.finalDpp?.current ?? Boolean(finalDppAnalysis)
+  const scenarioForChat = scenarioReady ? generatedScenario : null
+  const finalForChat = finalReady ? finalDppAnalysis : null
 
   const contextSummary = useMemo(() => ({
-    materials: generatedScenario?.materials?.length || 0,
-    models: generatedScenario?.models?.length || 0,
-  }), [generatedScenario])
+    materials: scenarioForChat?.materials?.length || 0,
+    models: scenarioForChat?.models?.length || 0,
+  }), [scenarioForChat])
 
   useEffect(() => {
     if (messages.length <= 1) return
@@ -323,11 +381,13 @@ function AgentOrion() {
     if (!trimmed) return
 
     const userMessage = { id: `user-${Date.now()}`, role: 'user', text: trimmed }
-    const answer = offlineAnswer(trimmed, {
-      scenario: generatedScenario,
-      finalDppAnalysis,
-      referenceMonth: month,
-    })
+    const answer = dppState?.scenario?.state === 'stale'
+      ? staleWorkspaceAnswer(dppState)
+      : offlineAnswer(trimmed, {
+          scenario: scenarioForChat,
+          finalDppAnalysis: finalForChat,
+          referenceMonth: month,
+        })
     const assistantMessage = { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer }
 
     setMessages((current) => [...current, userMessage, assistantMessage])
@@ -346,23 +406,35 @@ function AgentOrion() {
     }
   }
 
+  const packageState = dppState?.packageState || (workspaceReady ? 'empty' : 'restoring')
+  const scenarioState = dppState?.scenario?.state || (scenarioReady ? 'current' : 'missing')
+  const finalState = dppState?.finalDpp?.state || (finalReady ? 'current' : 'missing-file')
+  const statusContext = !workspaceReady
+    ? 'Restaurando workspace'
+    : scenarioState === 'current'
+      ? 'Sincronizado com a aba DPP'
+      : scenarioState === 'stale'
+        ? 'Pacote alterado · reprocessamento necessário'
+        : 'Aguardando cenário do DPP'
+
   return (
     <section className="agent-orion-page" aria-labelledby="agent-orion-title">
       <header className="agent-orion-header">
         <div>
           <span className="agent-orion-kicker">CONSULTA OPERACIONAL</span>
           <h2 id="agent-orion-title">Agente ORION</h2>
-          <p>Consulte o cenário, o DPP Final e as regras determinísticas. Nesta etapa, nenhuma LLM é utilizada.</p>
+          <p>Consulte exatamente o mesmo cenário, DPP Final e regras usados pela área DPP. Nesta etapa, nenhuma LLM é utilizada.</p>
         </div>
         <div className="agent-orion-context" aria-label="Contexto atual do agente">
           <strong>{formatMonth(month)}</strong>
-          <span>{workspaceReady ? (scenarioReady ? 'Cenário disponível' : 'Aguardando cenário') : 'Restaurando workspace'}</span>
+          <span>{statusContext}</span>
         </div>
       </header>
 
-      <div className="agent-orion-statusline" aria-label="Estado das fontes do agente">
-        <span><i data-state={scenarioReady ? 'ready' : 'pending'} aria-hidden="true" />Cenário ORION {scenarioReady ? 'carregado' : 'indisponível'}</span>
-        <span><i data-state={finalReady ? 'ready' : 'pending'} aria-hidden="true" />DPP Final {finalReady ? 'carregado' : 'indisponível'}</span>
+      <div className="agent-orion-statusline" aria-label="Estado das fontes compartilhadas com o DPP">
+        <span><i data-state={packageState === 'ready' ? 'ready' : 'pending'} aria-hidden="true" />{packageStatusText(packageState)}</span>
+        <span><i data-state={scenarioState === 'current' ? 'ready' : 'pending'} aria-hidden="true" />{scenarioStatusText(scenarioState)}</span>
+        <span><i data-state={finalState === 'current' ? 'ready' : 'pending'} aria-hidden="true" />{finalStatusText(finalState)}</span>
         <span><i data-state="ready" aria-hidden="true" />Modo offline determinístico</span>
       </div>
 
@@ -371,7 +443,7 @@ function AgentOrion() {
           <div className="agent-conversation-head">
             <div>
               <strong>Conversa</strong>
-              <span>Respostas baseadas somente no material já carregado no ORION.</span>
+              <span>Respostas baseadas somente nos dados sincronizados com o workspace atual do DPP.</span>
             </div>
             <small>{contextSummary.materials} materiais · {contextSummary.models} modelos</small>
           </div>
@@ -469,7 +541,7 @@ function AgentOrion() {
               </div>
               <div>
                 <dt>Execução</dt>
-                <dd>Local · sem LLM · sem rede externa</dd>
+                <dd>Local · mesmo workspace DPP · sem LLM · sem rede externa</dd>
               </div>
             </dl>
           </section>
