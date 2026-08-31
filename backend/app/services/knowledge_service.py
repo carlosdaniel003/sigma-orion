@@ -18,6 +18,13 @@ class KnowledgeChunk:
     score: float = 0.0
 
 
+@dataclass(slots=True)
+class KnowledgeAnswer:
+    answer: str
+    sources: list[str]
+    chunks: list[KnowledgeChunk]
+
+
 def _normalize(text: str) -> str:
     normalized = unicodedata.normalize("NFKD", text.lower())
     normalized = "".join(char for char in normalized if not unicodedata.combining(char))
@@ -32,22 +39,35 @@ def _tokens(text: str) -> set[str]:
     }
 
 
-def _chunk_markdown(source: str, content: str, max_chars: int = 1600) -> list[KnowledgeChunk]:
-    blocks = [block.strip() for block in re.split(r"\n\s*\n", content) if block.strip()]
+def _split_markdown_sections(content: str) -> list[str]:
+    sections = [
+        section.strip()
+        for section in re.split(r"(?=^#{2,4}\s+)", content, flags=re.MULTILINE)
+        if section.strip()
+    ]
+    return sections or ([content.strip()] if content.strip() else [])
+
+
+def _chunk_markdown(source: str, content: str, max_chars: int = 1800) -> list[KnowledgeChunk]:
     chunks: list[KnowledgeChunk] = []
-    current: list[str] = []
-    current_size = 0
 
-    for block in blocks:
-        if current and current_size + len(block) > max_chars:
+    for section in _split_markdown_sections(content):
+        if len(section) <= max_chars:
+            chunks.append(KnowledgeChunk(source=source, content=section))
+            continue
+
+        blocks = [block.strip() for block in re.split(r"\n\s*\n", section) if block.strip()]
+        current: list[str] = []
+        current_size = 0
+        for block in blocks:
+            if current and current_size + len(block) > max_chars:
+                chunks.append(KnowledgeChunk(source=source, content="\n\n".join(current)))
+                current = []
+                current_size = 0
+            current.append(block)
+            current_size += len(block)
+        if current:
             chunks.append(KnowledgeChunk(source=source, content="\n\n".join(current)))
-            current = []
-            current_size = 0
-        current.append(block)
-        current_size += len(block)
-
-    if current:
-        chunks.append(KnowledgeChunk(source=source, content="\n\n".join(current)))
 
     return chunks
 
@@ -94,6 +114,51 @@ def retrieve_context(query: str, top_k: int | None = None) -> list[KnowledgeChun
     return ranked[:limit]
 
 
+def _clean_markdown_for_chat(content: str) -> str:
+    lines: list[str] = []
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line == "---":
+            continue
+        line = re.sub(r"^#{1,6}\s*", "", line)
+        line = re.sub(r"^>\s*", "", line)
+        line = line.replace("**", "").replace("__", "")
+        line = re.sub(r"`([^`]+)`", r"\1", line)
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
+def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnswer:
+    chunks = retrieve_context(query, top_k=top_k or max(RAG_TOP_K, 4))
+    if not chunks:
+        return KnowledgeAnswer(
+            answer=(
+                "Não encontrei uma regra validada na base de conhecimento local para responder essa pergunta. "
+                "Posso responder somente sobre informações registradas e validadas do motor ORION nesta etapa."
+            ),
+            sources=[],
+            chunks=[],
+        )
+
+    best_score = chunks[0].score
+    selected = [chunks[0]]
+    for chunk in chunks[1:]:
+        if len(selected) >= 2:
+            break
+        if chunk.score >= max(best_score * 0.72, best_score - 4):
+            selected.append(chunk)
+
+    answer_parts = [_clean_markdown_for_chat(chunk.content) for chunk in selected]
+    answer_parts = [part for part in answer_parts if part]
+    sources = list(dict.fromkeys(chunk.source for chunk in selected))
+
+    return KnowledgeAnswer(
+        answer="\n\n".join(answer_parts),
+        sources=sources,
+        chunks=selected,
+    )
+
+
 def knowledge_status() -> dict:
     files = sorted(path.relative_to(KNOWLEDGE_DIR).as_posix() for path in KNOWLEDGE_DIR.rglob("*.md"))
     chunks = load_knowledge_chunks()
@@ -104,7 +169,7 @@ def knowledge_status() -> dict:
         "document_count": len(files),
         "chunk_count": len(chunks),
         "message": (
-            "RAG inicial ativo com recuperação lexical local. A interface já está desacoplada "
-            "para substituir este retriever por embeddings posteriormente."
+            "RAG local ativo com recuperação lexical por seções. No modo offline, o chat responde "
+            "diretamente com trechos validados desta base; uma LLM poderá usar os mesmos trechos depois."
         ),
     }
