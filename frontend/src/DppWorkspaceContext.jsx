@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { buildDppWorkspaceState } from './dpp-workspace-state'
 
 const DppWorkspaceContext = createContext(null)
 
@@ -222,6 +223,28 @@ export function DppWorkspaceProvider({ children }) {
     persistSignature(TEST_SIGNATURE_KEY, testSignature)
   }, [testSignature, workspaceReady])
 
+  const dppState = useMemo(() => buildDppWorkspaceState({
+    files,
+    referenceMonth,
+    generatedScenario,
+    generatedSignature,
+    finalDppAnalysis,
+    finalDppSignature,
+    testResult,
+    testSignature,
+    workspaceReady,
+  }), [
+    files,
+    referenceMonth,
+    generatedScenario,
+    generatedSignature,
+    finalDppAnalysis,
+    finalDppSignature,
+    testResult,
+    testSignature,
+    workspaceReady,
+  ])
+
   const value = useMemo(() => ({
     files,
     setFiles,
@@ -240,6 +263,7 @@ export function DppWorkspaceProvider({ children }) {
     finalDppSignature,
     setFinalDppSignature,
     workspaceReady,
+    dppState,
   }), [
     files,
     referenceMonth,
@@ -250,6 +274,7 @@ export function DppWorkspaceProvider({ children }) {
     finalDppAnalysis,
     finalDppSignature,
     workspaceReady,
+    dppState,
   ])
 
   return (
