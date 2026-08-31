@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './agent-orion.css'
 
@@ -289,6 +289,8 @@ function AgentOrion() {
       confidence: 'Determinística',
     },
   ])
+  const messageListRef = useRef(null)
+  const latestAnswerRef = useRef(null)
 
   const month = referenceMonth || generatedScenario?.reference_month || finalDppAnalysis?.column_comparison?.reference_month || ''
   const currentAnswer = [...messages].reverse().find((message) => message.role === 'orion') || messages[0]
@@ -299,6 +301,22 @@ function AgentOrion() {
     materials: generatedScenario?.materials?.length || 0,
     models: generatedScenario?.models?.length || 0,
   }), [generatedScenario])
+
+  useEffect(() => {
+    if (messages.length <= 1) return
+    const messageList = messageListRef.current
+    const latestAnswer = latestAnswerRef.current
+    if (!messageList || !latestAnswer) return
+
+    const listRect = messageList.getBoundingClientRect()
+    const answerRect = latestAnswer.getBoundingClientRect()
+    const targetTop = messageList.scrollTop + (answerRect.top - listRect.top) - 8
+
+    messageList.scrollTo({
+      top: Math.max(targetTop, 0),
+      behavior: 'smooth',
+    })
+  }, [messages])
 
   function submitQuestion(value = question) {
     const trimmed = String(value || '').trim()
@@ -358,19 +376,27 @@ function AgentOrion() {
             <small>{contextSummary.materials} materiais · {contextSummary.models} modelos</small>
           </div>
 
-          <div className="agent-message-list" aria-live="polite">
-            {messages.map((message) => (
-              <article className="agent-message" data-role={message.role} key={message.id}>
-                <div className="agent-message-author">{message.role === 'orion' ? 'ORION' : 'Você'}</div>
-                <p>{message.text}</p>
-                {message.role === 'orion' && message.confidence && (
-                  <div className="agent-message-meta">
-                    <span>Tipo de resposta: {message.confidence}</span>
-                    {message.tool && <span>Ferramenta: {message.tool}</span>}
-                  </div>
-                )}
-              </article>
-            ))}
+          <div className="agent-message-list" aria-live="polite" ref={messageListRef}>
+            {messages.map((message) => {
+              const latestOrionAnswer = message.role === 'orion' && message.id === currentAnswer.id
+              return (
+                <article
+                  className="agent-message"
+                  data-role={message.role}
+                  key={message.id}
+                  ref={latestOrionAnswer ? latestAnswerRef : null}
+                >
+                  <div className="agent-message-author">{message.role === 'orion' ? 'ORION' : 'Você'}</div>
+                  <p>{message.text}</p>
+                  {message.role === 'orion' && message.confidence && (
+                    <div className="agent-message-meta">
+                      <span>Tipo de resposta: {message.confidence}</span>
+                      {message.tool && <span>Ferramenta: {message.tool}</span>}
+                    </div>
+                  )}
+                </article>
+              )
+            })}
           </div>
 
           <div className="agent-suggestions" aria-label="Perguntas para testar o agente">
