@@ -9,6 +9,7 @@ import ScenarioDivergenceController from './ScenarioDivergenceController'
 import EvolutionDivergenceController from './EvolutionDivergenceController'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
+import { useDppWorkspace } from './DppWorkspaceContext'
 
 const API_URL = 'http://localhost:8000'
 const THEME_STORAGE_KEY = 'sigma-s-orion-theme'
@@ -22,7 +23,7 @@ function getInitialTheme() {
 function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('dpp')
   const [activeView, setActiveView] = useState('dashboard')
-  const [finalDppAnalysis, setFinalDppAnalysis] = useState(null)
+  const { finalDppAnalysis, setFinalDppAnalysis } = useDppWorkspace()
   const [theme, setTheme] = useState(getInitialTheme)
 
   useLayoutEffect(() => {
@@ -160,7 +161,7 @@ function SunIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="3.5" />
-      <path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5 7 7M17 17l1.5 1.5M18.5 5.5 17 7M7 17l-1.5 1.5" />
+      <path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5 7 7M17 17l1.5 1.5 3.5-3.5M18.5 5.5 17 7M7 17l-1.5 1.5" />
     </svg>
   )
 }
