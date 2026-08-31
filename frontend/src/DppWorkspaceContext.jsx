@@ -245,6 +245,28 @@ export function DppWorkspaceProvider({ children }) {
     workspaceReady,
   ])
 
+  useEffect(() => {
+    if (!workspaceReady) return
+
+    if (dppState.hasPackage && dppState.scenario.state === 'stale' && generatedScenario) {
+      setGeneratedScenario(null)
+      if (finalDppAnalysis) setFinalDppAnalysis(null)
+      if (finalDppSignature) setFinalDppSignature('')
+      return
+    }
+
+    if (dppState.finalDpp.state === 'stale' && finalDppAnalysis) {
+      setFinalDppAnalysis(null)
+      if (finalDppSignature) setFinalDppSignature('')
+    }
+  }, [
+    workspaceReady,
+    dppState,
+    generatedScenario,
+    finalDppAnalysis,
+    finalDppSignature,
+  ])
+
   const value = useMemo(() => ({
     files,
     setFiles,
