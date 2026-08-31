@@ -6,6 +6,7 @@ const DB_NAME = 'sigma-s-orion-workspace'
 const DB_VERSION = 1
 const STORE_NAME = 'dpp-package'
 const PACKAGE_KEY = 'current-package'
+const PROCESSED_STATE_KEY = 'processed-state'
 const GENERATED_SIGNATURE_KEY = 'sigma-s-orion-generated-signature'
 const TEST_SIGNATURE_KEY = 'sigma-s-orion-test-signature'
 
@@ -28,47 +29,71 @@ function openWorkspaceDb() {
   })
 }
 
-async function readPersistedPackage() {
+async function readStoredValue(key) {
   const database = await openWorkspaceDb()
   try {
     return await new Promise((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, 'readonly')
-      const request = transaction.objectStore(STORE_NAME).get(PACKAGE_KEY)
+      const request = transaction.objectStore(STORE_NAME).get(key)
       request.onsuccess = () => resolve(request.result || null)
-      request.onerror = () => reject(request.error || new Error('Falha ao restaurar pacote do DPP.'))
+      request.onerror = () => reject(request.error || new Error('Falha ao restaurar workspace do DPP.'))
     })
   } finally {
     database.close()
   }
 }
 
-async function writePersistedPackage(files, referenceMonth) {
+async function writeStoredValue(key, value) {
   const database = await openWorkspaceDb()
   try {
-    const persistedFiles = files.map((file) => ({
-      name: file.name,
-      type: file.type,
-      lastModified: file.lastModified,
-      blob: file,
-    }))
-
     await new Promise((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, 'readwrite')
-      transaction.objectStore(STORE_NAME).put(
-        {
-          files: persistedFiles,
-          referenceMonth,
-          updatedAt: Date.now(),
-        },
-        PACKAGE_KEY,
-      )
+      transaction.objectStore(STORE_NAME).put(value, key)
       transaction.oncomplete = () => resolve()
-      transaction.onerror = () => reject(transaction.error || new Error('Falha ao persistir pacote do DPP.'))
-      transaction.onabort = () => reject(transaction.error || new Error('Persistência do pacote foi interrompida.'))
+      transaction.onerror = () => reject(transaction.error || new Error('Falha ao persistir workspace do DPP.'))
+      transaction.onabort = () => reject(transaction.error || new Error('Persistência do workspace foi interrompida.'))
     })
   } finally {
     database.close()
   }
+}
+
+async function readPersistedPackage() {
+  return readStoredValue(PACKAGE_KEY)
+}
+
+async function readPersistedProcessedState() {
+  return readStoredValue(PROCESSED_STATE_KEY)
+}
+
+async function writePersistedPackage(files, referenceMonth) {
+  const persistedFiles = files.map((file) => ({
+    name: file.name,
+    type: file.type,
+    lastModified: file.lastModified,
+    blob: file,
+  }))
+
+  await writeStoredValue(PACKAGE_KEY, {
+    files: persistedFiles,
+    referenceMonth,
+    updatedAt: Date.now(),
+  })
+}
+
+async function writePersistedProcessedState({
+  generatedScenario,
+  generatedSignature,
+  testResult,
+  testSignature,
+}) {
+  await writeStoredValue(PROCESSED_STATE_KEY, {
+    generatedScenario,
+    generatedSignature,
+    testResult,
+    testSignature,
+    updatedAt: Date.now(),
+  })
 }
 
 function restoreFiles(entries) {
@@ -95,7 +120,7 @@ function persistSignature(key, value) {
     if (value) window.localStorage.setItem(key, value)
     else window.localStorage.removeItem(key)
   } catch {
-    // O workspace continua funcional em memória quando o storage do navegador não está disponível.
+    // O workspace continua funcional quando o localStorage não está disponível.
   }
 }
 
@@ -113,20 +138,32 @@ export function DppWorkspaceProvider({ children }) {
 
     async function restoreWorkspace() {
       try {
-        const persisted = await readPersistedPackage()
+        const [persistedPackage, persistedState] = await Promise.all([
+          readPersistedPackage(),
+          readPersistedProcessedState(),
+        ])
         if (cancelled) return
-        if (persisted) {
-          setFiles(restoreFiles(persisted.files))
-          setReferenceMonth(persisted.referenceMonth || '')
+
+        if (persistedPackage) {
+          setFiles(restoreFiles(persistedPackage.files))
+          setReferenceMonth(persistedPackage.referenceMonth || '')
         }
-        setGeneratedSignature(readStoredSignature(GENERATED_SIGNATURE_KEY))
-        setTestSignature(readStoredSignature(TEST_SIGNATURE_KEY))
+
+        const persistedGeneratedSignature = persistedState?.generatedSignature
+          || readStoredSignature(GENERATED_SIGNATURE_KEY)
+        const persistedTestSignature = persistedState?.testSignature
+          || readStoredSignature(TEST_SIGNATURE_KEY)
+
+        setGeneratedSignature(persistedGeneratedSignature || '')
+        setGeneratedScenario(persistedState?.generatedScenario || null)
+        setTestSignature(persistedTestSignature || '')
+        setTestResult(persistedState?.testResult || null)
 
         if (navigator.storage?.persist) {
           navigator.storage.persist().catch(() => {})
         }
       } catch (error) {
-        console.warn('Não foi possível restaurar o pacote persistido do DPP:', error)
+        console.warn('Não foi possível restaurar o workspace persistido do DPP:', error)
       } finally {
         if (!cancelled) setWorkspaceReady(true)
       }
@@ -141,9 +178,21 @@ export function DppWorkspaceProvider({ children }) {
   useEffect(() => {
     if (!workspaceReady) return
     writePersistedPackage(files, referenceMonth).catch((error) => {
-      console.warn('Não foi possível persistir o pacote do DPP:', error)
+      console.warn('Não foi possível persistir pacote do DPP:', error)
     })
   }, [files, referenceMonth, workspaceReady])
+
+  useEffect(() => {
+    if (!workspaceReady) return
+    writePersistedProcessedState({
+      generatedScenario,
+      generatedSignature,
+      testResult,
+      testSignature,
+    }).catch((error) => {
+      console.warn('Não foi possível persistir o estado processado do DPP:', error)
+    })
+  }, [generatedScenario, generatedSignature, testResult, testSignature, workspaceReady])
 
   useEffect(() => {
     if (!workspaceReady) return
