@@ -100,7 +100,7 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_agent_status_uses_mock_by_default() -> None:
+def test_agent_status_uses_offline_rag_by_default() -> None:
     with TestClient(app) as client:
         response = client.get("/api/agent/status")
 
@@ -108,7 +108,8 @@ def test_agent_status_uses_mock_by_default() -> None:
     payload = response.json()
     assert payload["provider"] == "mock"
     assert payload["model"] == "mock-local"
-    assert payload["mode"] == "demo"
+    assert payload["mode"] == "offline-rag"
+    assert "RAG" in payload["message"]
 
 
 def test_knowledge_status_loads_versioned_files() -> None:
@@ -119,9 +120,10 @@ def test_knowledge_status_loads_versioned_files() -> None:
     payload = response.json()
     assert payload["mode"] == "lexical-local"
     assert payload["embedding_enabled"] is False
-    assert payload["document_count"] >= 3
-    assert payload["chunk_count"] >= 3
+    assert payload["document_count"] >= 4
+    assert payload["chunk_count"] >= 4
     assert "guardrails.md" in payload["files"]
+    assert "motor-deterministico.md" in payload["files"]
 
 
 def test_agent_demo_is_explicitly_fake() -> None:
@@ -132,7 +134,7 @@ def test_agent_demo_is_explicitly_fake() -> None:
     payload = response.json()
     assert payload["provider"] == "mock"
     assert payload["is_demo"] is True
-    assert "fict" in payload["demo_notice"].lower()
+    assert "Demonstra" in payload["demo_notice"]
     assert payload["risks"]
     assert payload["recommendations"]
 
@@ -151,19 +153,26 @@ def test_agent_demo_chat() -> None:
     assert "-220" in payload["answer"]
 
 
-def test_agent_chat_uses_same_provider_contract() -> None:
+def test_agent_chat_uses_local_rag_without_external_llm() -> None:
     with TestClient(app) as client:
         response = client.post(
             "/api/agent/chat",
-            json={"question": "Quais limites o agente deve respeitar?"},
+            json={"question": "Qual a fórmula para calcular NEC?"},
         )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["provider"] == "mock"
-    assert payload["model"] == "mock-local"
-    assert payload["is_demo"] is True
-    assert isinstance(payload["knowledge_sources"], list)
+    assert payload["provider"] == "local-rag"
+    assert payload["model"] == "lexical-local"
+    assert payload["is_demo"] is False
+    assert "NEC" in payload["answer"]
+    assert "REAL" in payload["answer"]
+    assert "consumo" in payload["answer"].lower()
+    assert payload["knowledge_sources"]
+    assert any(
+        source in {"motor-deterministico.md", "regras-globais.md"}
+        for source in payload["knowledge_sources"]
+    )
 
 
 def test_structured_mock_analysis_is_saved_to_history() -> None:
