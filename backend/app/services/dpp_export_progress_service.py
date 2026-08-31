@@ -7,6 +7,8 @@ from time import monotonic
 from uuid import uuid4
 
 from app.services.dpp_canonical_export_service import export_monthly_scenario_excel
+from app.services.dpp_export_postprocess_service import enforce_final_dpp_header_and_gap
+from app.services.dpp_scenario_service import get_monthly_scenario
 
 MAX_JOBS = 6
 _JOBS: OrderedDict[str, dict] = OrderedDict()
@@ -116,6 +118,19 @@ def _run_export_job(job_id: str, payload: dict) -> None:
             template_filename=payload["base_dpp"][0] or "dpp.xlsx",
             progress=progress,
         )
+
+        # A decisão final sobre a fórmula REAL − KIT deve usar o próprio XLSX já
+        # serializado. Isso evita depender de metadados intermediários do cenário e
+        # garante a mesma estrutura do DPP Final: linha abaixo de REAL = REAL - KIT.
+        scenario = get_monthly_scenario(payload["scenario_id"])
+        if scenario is None:
+            raise ValueError("Cenário ORION não encontrado durante a validação final do Excel.")
+        progress(99, "Validando cabeçalho e diferença REAL × KIT")
+        content = enforce_final_dpp_header_and_gap(
+            content,
+            scenario.get("reference_month") or "",
+        )
+
         _complete_job(job_id, content, filename, media_type)
     except Exception as exc:
         _fail_job(job_id, exc)
