@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from io import BytesIO
+from pathlib import Path
 
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
 from app.services.dpp_consolidation_service import _material_key
-from app.services.dpp_export_service import export_monthly_scenario_excel as _render_template_excel
+from app.services.dpp_export_service import (
+    SUPPORTED_EXTENSIONS,
+    _output_name,
+    _write_orion_scenario_to_dpp,
+)
 from app.services.dpp_monthly_base import (
     SOURCE_SHEET,
     _find_column,
@@ -126,7 +131,7 @@ def _workbook_context(workbook, scenario: dict) -> dict:
     }
 
 
-def _apply_canonical_projection(workbook, scenario: dict) -> dict:
+def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict:
     context = _workbook_context(workbook, scenario)
     sheet = context["sheet"]
     projection = context["projection"]
@@ -155,12 +160,21 @@ def _apply_canonical_projection(workbook, scenario: dict) -> dict:
         sheet.cell(context["kit_row"], column).value = float(model.get("kit_pgd") or 0.0) if model else 0.0
         sheet.cell(context["real_row"], column).value = float(model.get("real") or 0.0) if model else 0.0
 
-    # Cada célula suportada é escrita pela projeção canônica. As únicas exceções são
-    # os três campos determinísticos mantidos como fórmula para conservar a semântica
-    # operacional da planilha; as fórmulas são geradas a partir das mesmas relações.
-    for projected_row in projection["rows"]:
+    # A primeira etapa já escreve a matriz Material × Modelo a partir do mesmo cenário.
+    # Reescrever dezenas de colunas para milhares de materiais aqui duplicava centenas
+    # de milhares de operações OpenPyXL. A etapa canônica passa a normalizar apenas os
+    # campos não-modelo e as fórmulas; a auditoria final continua verificando a matriz.
+    canonical_columns = [
+        column
+        for column in projection["columns"]
+        if projection["specs"][column].get("field") != "model"
+    ]
+    total_rows = max(len(projection["rows"]), 1)
+    last_progress = -1
+
+    for index, projected_row in enumerate(projection["rows"], start=1):
         excel_row = row_by_key[projected_row["key"]]
-        for column in projection["columns"]:
+        for column in canonical_columns:
             spec = projection["specs"][column]
             cell = sheet.cell(excel_row, column)
 
@@ -184,6 +198,12 @@ def _apply_canonical_projection(workbook, scenario: dict) -> dict:
                 cell.value = formula
             else:
                 cell.value = projected_row["values"].get(column)
+
+        if progress is not None:
+            current = 78 + int((index / total_rows) * 10)
+            if current != last_progress:
+                progress(current, f"Aplicando projeção canônica · {index}/{len(projection['rows'])} materiais")
+                last_progress = current
 
     _set_recalculation(workbook)
     return context
@@ -268,39 +288,48 @@ def export_monthly_scenario_excel(
     if scenario is None:
         raise ValueError("Cenário ORION não encontrado ou expirado. Gere o cenário mensal novamente.")
 
-    def template_progress(value: int, activity: str) -> None:
-        # A renderização do template é só a primeira etapa. Reservamos os percentuais
-        # finais para a projeção canônica e auditoria real do arquivo resultante.
-        if progress is not None:
-            mapped = min(91, max(1, int((float(value) / 99.0) * 91)))
+    extension = Path(template_filename or "dpp.xlsx").suffix.lower()
+    if extension not in SUPPORTED_EXTENSIONS:
+        raise ValueError("Use como modelo o DPP do mês anterior em formato .xlsx ou .xlsm.")
+    if not template_content:
+        raise ValueError("O DPP do mês anterior usado como modelo está vazio.")
+
+    keep_vba = extension == ".xlsm"
+    if progress is not None:
+        progress(3, "Abrindo workbook do mês anterior")
+
+    workbook = load_workbook(BytesIO(template_content), data_only=False, keep_vba=keep_vba)
+    try:
+        def template_progress(value: int, activity: str) -> None:
+            if progress is None:
+                return
+            # A montagem física ocupa a maior parte do trabalho. Ela vai de 5% a 76%.
+            mapped = 5 + int((min(max(float(value), 0.0), 100.0) / 100.0) * 71)
             progress(mapped, activity)
 
-    content, filename, media_type = _render_template_excel(
-        scenario_id=scenario_id,
-        template_content=template_content,
-        template_filename=template_filename,
-        progress=template_progress,
-    )
+        _write_orion_scenario_to_dpp(workbook, scenario, progress=template_progress)
 
-    if progress is not None:
-        progress(93, "Aplicando projeção canônica do Cenário ORION")
-
-    keep_vba = str(template_filename or "").lower().endswith(".xlsm")
-    workbook = load_workbook(BytesIO(content), data_only=False, keep_vba=keep_vba)
-    try:
-        _apply_canonical_projection(workbook, scenario)
-        output = BytesIO()
         if progress is not None:
-            progress(96, "Serializando Excel conectado ao Dashboard")
+            progress(78, "Aplicando projeção canônica do Cenário ORION")
+        _apply_canonical_projection(workbook, scenario, progress=progress)
+
+        if progress is not None:
+            progress(90, "Serializando Excel ORION")
+        output = BytesIO()
         workbook.save(output)
         canonical_content = output.getvalue()
     finally:
         workbook.close()
 
     if progress is not None:
-        progress(98, "Auditando todas as colunas do Excel ORION")
+        progress(96, "Auditando Excel ORION")
     _validate_canonical_projection(canonical_content, scenario)
     if progress is not None:
         progress(99, "Excel ORION consistente com o Dashboard")
 
-    return canonical_content, filename, media_type
+    media_type = (
+        "application/vnd.ms-excel.sheet.macroEnabled.12"
+        if keep_vba
+        else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    return canonical_content, _output_name(scenario.get("reference_month") or "", extension), media_type
