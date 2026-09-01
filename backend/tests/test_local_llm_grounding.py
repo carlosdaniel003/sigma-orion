@@ -45,6 +45,20 @@ def test_local_llm_resolves_follow_up_without_answering(monkeypatch) -> None:
     assert plan.needs_synthesis is True
 
 
+def test_standalone_short_query_does_not_inherit_previous_subject(monkeypatch) -> None:
+    provider = FakeLocalProvider([])
+    monkeypatch.setattr("app.services.llm_grounding_service._provider", lambda: provider)
+
+    question = "Quais materiais estão críticos?"
+    plan = plan_database_question(
+        question,
+        {"subject_type": "material", "subject_key": "010203-0010-01", "topic": "balance"},
+    )
+
+    assert plan.used is False
+    assert plan.resolved_question == question
+
+
 def test_local_llm_synthesizes_only_grounded_answer(monkeypatch) -> None:
     provider = FakeLocalProvider(["WIU é a lista de modelos associada ao material no DPP."])
     monkeypatch.setattr("app.services.llm_grounding_service._provider", lambda: provider)
