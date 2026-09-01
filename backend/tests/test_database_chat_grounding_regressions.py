@@ -52,9 +52,55 @@ def test_critical_followup_retrieves_rule_004_without_pre_query_llm() -> None:
     )
 
     assert "010203-0010-01" in payload["entities"]
+    assert "FORA_ESCOPO_UM" in payload["entities"]
+    assert "UM é G" in payload["answer"]
+    assert "UM = UN" in payload["answer"]
+    assert "REGRA-004" in payload["answer"]
+    assert "FORA_ESCOPO_UM" in payload["answer"]
     headings = "\n".join(item["heading"] for item in payload["retrieval"])
     assert "REGRA-004" in headings
     assert payload["llm_used"] is False  # CI usa provider mock; retrieval ocorre antes da LLM.
+
+
+def test_explicit_status_definition_uses_deterministic_registry() -> None:
+    payload = ask(
+        'E o que quer dizer esse status "FORA_ESCOPO_UM"?',
+        "explicit-status-definition",
+    )
+
+    assert payload["model"] == "deterministic-status-registry"
+    assert "FORA_ESCOPO_UM" in payload["entities"]
+    assert "unidade de medida é diferente de UN" in payload["answer"]
+    assert "mesmo que tenha SALDO negativo" in payload["answer"]
+    assert "REGRA-004" in payload["answer"]
+
+
+def test_status_followup_prefers_last_mentioned_status_over_material() -> None:
+    session_id = "status-followup-context"
+    ask("Qual o saldo do material 010203-0010-01?", session_id)
+    critical = ask(
+        "Por que esse material não está crítico mesmo estando com saldo negativo?",
+        session_id,
+    )
+    assert "FORA_ESCOPO_UM" in critical["entities"]
+
+    payload = ask("E o que quer dizer esse status?", session_id)
+
+    assert payload["model"] == "deterministic-status-registry"
+    assert payload["entities"][0] == "FORA_ESCOPO_UM"
+    assert "unidade de medida é diferente de UN" in payload["answer"]
+    assert payload["table"] is None
+
+
+def test_generic_isso_can_resolve_last_status_entity() -> None:
+    session_id = "status-isso-context"
+    ask("Qual o saldo do material 010203-0010-01?", session_id)
+    ask("Por que esse material não está crítico mesmo estando com saldo negativo?", session_id)
+
+    payload = ask("O que é isso?", session_id)
+
+    assert payload["model"] == "deterministic-status-registry"
+    assert "FORA_ESCOPO_UM" in payload["answer"]
 
 
 def test_smalltalk_is_handled_by_deterministic_router() -> None:

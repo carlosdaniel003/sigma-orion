@@ -6,6 +6,12 @@ import unicodedata
 from app.schemas.agent import ChatResponse
 from app.services.database_answer_service import DatabaseKnowledgeAnswer, answer_database_knowledge
 from app.services.database_chat_refinement_service import refine_database_answer
+from app.services.database_conversation_grounding_service import (
+    apply_deterministic_conclusions,
+    build_persisted_context,
+    semantic_coverage_missing,
+    status_knowledge_answer,
+)
 from app.services.database_query_planner_service import plan_database_question, smalltalk_answer
 from app.services.llm_grounding_service import enhance_grounded_answer
 from app.services.rag_runtime_service import load_chat_context, record_chat_audit
@@ -73,42 +79,60 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
     # O roteador é totalmente determinístico. Nenhuma LLM é chamada antes de
     # SQL/Python/RAG terem produzido e validado o contexto da resposta.
     plan = plan_database_question(question, previous_context)
+    status_direct = False
 
     if plan.smalltalk:
         knowledge = _smalltalk_knowledge(previous_context, question)
     else:
-        knowledge = answer_database_knowledge(plan.retrieval_question, context=previous_context)
-        knowledge = refine_database_answer(question, previous_context, knowledge)
-        knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
-        knowledge.resolved_question = plan.resolved_question
+        status_result = status_knowledge_answer(plan)
+        if status_result is not None and plan.intent in {"definition", "explanation", "fact"}:
+            knowledge = status_result
+            status_direct = True
+        else:
+            knowledge = answer_database_knowledge(plan.retrieval_question, context=previous_context)
+            knowledge = refine_database_answer(question, previous_context, knowledge)
+            knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
+            knowledge.resolved_question = plan.resolved_question
 
-        # Se o roteador reconheceu conceitos explícitos, eles substituem heurísticas
-        # lexicais genéricas na rastreabilidade/contexto persistido.
-        if plan.concept_entities:
-            subject_key = plan.concept_entities[0] if len(plan.concept_entities) == 1 else " + ".join(plan.concept_entities)
-            if knowledge.context.get("subject_type") in {None, "", "knowledge", "concept"}:
-                knowledge.context = {
-                    **knowledge.context,
-                    "subject_type": "concept",
-                    "subject_key": subject_key,
-                }
+            # Se o roteador reconheceu conceitos explícitos, eles substituem heurísticas
+            # lexicais genéricas na rastreabilidade/contexto persistido.
+            if plan.concept_entities:
+                subject_key = plan.concept_entities[0] if len(plan.concept_entities) == 1 else " + ".join(plan.concept_entities)
+                if knowledge.context.get("subject_type") in {None, "", "knowledge", "concept"}:
+                    knowledge.context = {
+                        **knowledge.context,
+                        "subject_type": "concept",
+                        "subject_key": subject_key,
+                    }
 
-        if _only_incidental_python(question, knowledge.sources):
-            knowledge.answer = (
-                "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
-                "Nenhuma resposta externa ou pré-definida foi usada."
-            )
-            knowledge.sources = []
-            knowledge.chunks = []
-            knowledge.entities = []
-            knowledge.table = None
+            if _only_incidental_python(question, knowledge.sources):
+                knowledge.answer = (
+                    "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
+                    "Nenhuma resposta externa ou pré-definida foi usada."
+                )
+                knowledge.sources = []
+                knowledge.chunks = []
+                knowledge.entities = []
+                knowledge.table = None
 
+        knowledge = apply_deterministic_conclusions(question, plan, knowledge)
+
+    deterministic_answer = knowledge.answer
     enhancement = enhance_grounded_answer(
         question=question,
         plan=plan,
         context=previous_context,
         knowledge=knowledge,
     )
+
+    # Além de validar fatos/números, a resposta precisa cobrir as conclusões que o
+    # motor determinístico marcou como essenciais. Se a LLM omitir a causa e apenas
+    # repetir o status, voltamos para a explicação determinística completa.
+    if enhancement.used and semantic_coverage_missing(enhancement.answer, knowledge.context):
+        enhancement.answer = deterministic_answer
+        enhancement.used = False
+        enhancement.fallback = True
+
     knowledge.answer = enhancement.answer
 
     sources = knowledge.sources
@@ -122,11 +146,16 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         for chunk in knowledge.chunks
     ]
     response_entities = _merge_entities(plan.entities, knowledge.entities)
+    persisted_context = knowledge.context if plan.smalltalk else build_persisted_context(knowledge, response_entities)
 
     if plan.smalltalk:
         audit_provider = "deterministic-router"
         response_provider = "local-router"
         response_model = "deterministic-router"
+    elif status_direct and not enhancement.used:
+        audit_provider = "deterministic-status-registry"
+        response_provider = "local-router"
+        response_model = "deterministic-status-registry"
     elif enhancement.used:
         audit_provider = f"grounded-llm:{enhancement.provider or 'configured'}"
         response_provider = enhancement.provider or "local-llm"
@@ -148,7 +177,7 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         workspace_fingerprint=runtime["workspace_fingerprint"],
         session_id=session_id,
         resolved_question=knowledge.resolved_question or plan.resolved_question,
-        context=knowledge.context,
+        context=persisted_context,
         retrieval=retrieval,
     )
     return ChatResponse(

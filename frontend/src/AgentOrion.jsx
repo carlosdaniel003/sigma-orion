@@ -63,6 +63,13 @@ function createSessionId() {
   return `orion-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function responseType(payload) {
+  if (payload.model === 'deterministic-router') return 'Conversacional'
+  if (payload.model === 'deterministic-status-registry') return 'Determinística'
+  if (payload.knowledge_sources?.length) return 'Fundamentada no SQLite'
+  return 'Sem evidência suficiente'
+}
+
 function MessageDataTable({ table }) {
   const rows = table?.rows || []
   const columns = table?.columns || []
@@ -164,7 +171,7 @@ function AgentOrion({ apiUrl }) {
     packageState,
     scenarioState,
     finalState,
-  }), [month, scenarioForDatabase, finalForDatabase, packageState, scenarioState, finalState])
+  }), [month, scenarioForDatabase, finalDppAnalysis, finalState, packageState, scenarioState, scenarioForDatabase, finalDppAnalysis])
 
   const currentAnswer = [...messages].reverse().find((message) => message.role === 'orion') || messages[0]
   const materials = scenarioForDatabase?.materials?.length || 0
@@ -241,7 +248,7 @@ function AgentOrion({ apiUrl }) {
       sources: payload.knowledge_sources || [],
       entities: payload.entities || [],
       tool: payload.model || 'sqlite-fts5-bm25+sql',
-      confidence: payload.knowledge_sources?.length ? 'Fundamentada no SQLite' : 'Sem evidência suficiente',
+      confidence: responseType(payload),
       auditId: payload.audit_id || null,
       database: payload.database || 'orion.db',
       fingerprint: payload.workspace_fingerprint || '',

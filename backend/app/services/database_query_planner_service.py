@@ -5,6 +5,7 @@ import re
 import unicodedata
 
 from app.core.config import KNOWLEDGE_DIR
+from app.services.dpp_status_registry import known_status_codes
 
 
 DEICTIC_WORDS = {
@@ -20,7 +21,9 @@ CODE_MARKERS = ("python", "codigo", "implementacao", "implementar", "funcao", "m
 SMALLTALK_PREFIXES = (
     "oi", "ola", "bom dia", "boa tarde", "boa noite", "obrigado", "obrigada", "valeu",
 )
-DEFINITION_FOCUS_MARKERS = ("significado", "significa", "definicao", "o que e", "o que sao", "sobre")
+DEFINITION_FOCUS_MARKERS = (
+    "significado", "significa", "definicao", "quer dizer", "o que e", "o que sao", "sobre",
+)
 
 
 @dataclass(slots=True)
@@ -31,6 +34,7 @@ class QueryPlan:
     intent: str
     entities: list[str] = field(default_factory=list)
     concept_entities: list[str] = field(default_factory=list)
+    status_entities: list[str] = field(default_factory=list)
     required_queries: list[str] = field(default_factory=list)
     required_terms: list[str] = field(default_factory=list)
     needs_synthesis: bool = False
@@ -87,6 +91,15 @@ def _concept_entities(question: str) -> list[str]:
     return matches
 
 
+def _status_entities(question: str) -> list[str]:
+    normalized = _normalize(question)
+    matches: list[str] = []
+    for code in known_status_codes():
+        if re.search(rf"(?<![a-z0-9_]){re.escape(_normalize(code))}(?![a-z0-9_])", normalized):
+            matches.append(code)
+    return matches
+
+
 def _definition_focus(question: str, concepts: list[str]) -> str | None:
     if not concepts:
         return None
@@ -108,16 +121,45 @@ def _definition_focus(question: str, concepts: list[str]) -> str | None:
     return ranked[0][2]
 
 
-def _context_reference(question: str, context: dict) -> tuple[str, str] | None:
-    subject_key = str(context.get("subject_key") or "").strip()
-    if not subject_key:
+def _last_entity(context: dict, entity_type: str | None = None) -> tuple[str, str] | None:
+    items = context.get("last_entities") or []
+    if not isinstance(items, list):
         return None
+    for item in reversed(items):
+        if not isinstance(item, dict):
+            continue
+        item_type = str(item.get("type") or "")
+        key = str(item.get("key") or "").strip()
+        if key and (entity_type is None or item_type == entity_type):
+            return item_type or "assunto", key
+    return None
+
+
+def _context_reference(question: str, context: dict) -> tuple[str, str] | None:
     words = _words(question)
     normalized = _normalize(question)
     elliptical = len(words) <= 5 and any(marker in normalized for marker in ("por que", "porque", "e esse", "e ele", "e ela"))
-    if words & DEICTIC_WORDS or elliptical:
+    if not (words & DEICTIC_WORDS or elliptical):
+        return None
+
+    if "status" in words:
+        status = _last_entity(context, "status")
+        if status:
+            return status
+    if "material" in words:
+        material = _last_entity(context, "material")
+        if material:
+            return material
+
+    if "isso" in words:
+        recent = _last_entity(context)
+        if recent:
+            return recent
+
+    subject_key = str(context.get("subject_key") or "").strip()
+    if subject_key:
         return str(context.get("subject_type") or "assunto"), subject_key
-    return None
+    return _last_entity(context)
 
 
 def _intent(question: str) -> str:
@@ -135,6 +177,7 @@ def _intent(question: str) -> str:
         "significa" in normalized
         or "significado" in normalized
         or "definicao" in normalized
+        or "quer dizer" in normalized
         or normalized.startswith("o que e ")
         or normalized.startswith("o que sao ")
         or normalized.startswith("o que sabemos sobre ")
@@ -152,7 +195,7 @@ def _is_smalltalk(question: str) -> bool:
     return len(words) <= 5 and any(normalized == prefix or normalized.startswith(prefix + " ") for prefix in SMALLTALK_PREFIXES)
 
 
-def _rule_requirements(question: str, context: dict, concepts: list[str], intent: str) -> tuple[list[str], list[str]]:
+def _rule_requirements(question: str, context: dict, concepts: list[str], statuses: list[str], intent: str) -> tuple[list[str], list[str]]:
     normalized = _normalize(question)
     normalized_concepts = {_normalize(item): item for item in concepts}
     queries: list[str] = []
@@ -171,6 +214,9 @@ def _rule_requirements(question: str, context: dict, concepts: list[str], intent
     if intent == "explanation" and ("critic" in normalized or context_topic == "critical"):
         add("REGRA-004 material crítico UM SALDO", "REGRA-004")
 
+    if any(status in {"FORA_ESCOPO_UM", "OK", "INVESTIGAR"} for status in statuses) and intent == "explanation":
+        add("REGRA-004 material crítico UM SALDO", "REGRA-004")
+
     if "opc" in normalized_concepts:
         add("REGRA-005 OPC STK OP material opcional", "OPC")
     if "stk ttl" in normalized_concepts:
@@ -186,7 +232,7 @@ def _rule_requirements(question: str, context: dict, concepts: list[str], intent
 def plan_database_question(question: str, context: dict | None = None) -> QueryPlan:
     """Planeja a consulta sem chamar LLM.
 
-    O plano usa somente a pergunta, o glossário versionado e o contexto persistido.
+    O plano usa somente a pergunta, o glossário/status registry versionados e o contexto persistido.
     A LLM só pode ser usada depois que SQL/Python/RAG produzirem evidências.
     """
 
@@ -202,35 +248,42 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         )
 
     concepts = _concept_entities(stripped)
+    statuses = _status_entities(stripped)
     normalized_question = _normalize(stripped)
     focus = _definition_focus(stripped, concepts)
-    has_definition_focus = any(marker in normalized_question for marker in ("significado", "significa", "definicao"))
+    has_definition_focus = any(marker in normalized_question for marker in ("significado", "significa", "definicao", "quer dizer"))
     if focus and has_definition_focus:
         concepts = [focus]
 
-    context_ref = _context_reference(stripped, context)
+    context_ref = None if statuses else _context_reference(stripped, context)
     resolved = stripped
-    entities = list(concepts)
+    entities = [*concepts, *statuses]
     if context_ref:
         subject_type, subject_key = context_ref
         if _normalize(subject_key) not in _normalize(resolved):
             resolved = f"{stripped} Contexto anterior: {subject_type} {subject_key}."
         if subject_key not in entities:
             entities.insert(0, subject_key)
+        if subject_type == "status" and subject_key.upper() in known_status_codes() and subject_key.upper() not in statuses:
+            statuses.append(subject_key.upper())
 
     intent = _intent(stripped)
     retrieval_question = resolved
 
-    if len(concepts) == 1 and (
+    if statuses and intent == "definition":
+        retrieval_question = f"Status {statuses[0]}"
+    elif len(concepts) == 1 and (
         intent == "definition"
         or (intent == "explanation" and ("significado" in normalized_question or "significa" in normalized_question))
     ):
         retrieval_question = f"O que significa {concepts[0]}?"
 
     allow_python = intent == "code"
-    required_queries, required_terms = _rule_requirements(stripped, context, concepts, intent)
+    required_queries, required_terms = _rule_requirements(stripped, context, concepts, statuses, intent)
 
     needs_synthesis = intent in {"explanation", "comparison", "code"}
+    if statuses and intent == "definition":
+        needs_synthesis = False
     if intent == "definition" and normalized_question.startswith(("explique ", "fale sobre ")):
         needs_synthesis = True
     if normalized_question.startswith("explique "):
@@ -243,6 +296,7 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         intent=intent,
         entities=entities,
         concept_entities=concepts,
+        status_entities=statuses,
         required_queries=required_queries,
         required_terms=required_terms,
         needs_synthesis=needs_synthesis,
