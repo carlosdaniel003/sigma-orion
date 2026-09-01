@@ -6,6 +6,7 @@ import unicodedata
 from app.schemas.agent import ChatResponse
 from app.services.database_answer_service import answer_database_knowledge
 from app.services.database_chat_refinement_service import refine_database_answer
+from app.services.llm_grounding_service import enhance_grounded_answer, plan_database_question
 from app.services.rag_runtime_service import load_chat_context, record_chat_audit
 from app.services.rag_runtime_status_service import runtime_workspace_status
 
@@ -46,7 +47,14 @@ def _label_structured_field_answer(answer: str, context: dict) -> str:
 def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
     runtime = runtime_workspace_status()
     previous_context = load_chat_context(session_id)
-    knowledge = answer_database_knowledge(question, context=previous_context)
+
+    # A LLM pode resolver uma referência conversacional antes da consulta, mas não
+    # responde nem recebe o banco nesta etapa. Se estiver offline, o fluxo atual
+    # continua funcionando com o resolvedor determinístico já existente.
+    plan = plan_database_question(question, previous_context)
+    resolved_question = plan.resolved_question or question
+
+    knowledge = answer_database_knowledge(resolved_question, context=previous_context)
     knowledge = refine_database_answer(question, previous_context, knowledge)
     knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
 
@@ -60,6 +68,16 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         knowledge.entities = []
         knowledge.table = None
 
+    # A LLM entra somente depois de SQL/Python/RAG terem produzido a evidência.
+    # Ela pode explicar/sintetizar, mas não altera tabelas nem executa cálculos.
+    enhancement = enhance_grounded_answer(
+        question=question,
+        plan=plan,
+        context=previous_context,
+        knowledge=knowledge,
+    )
+    knowledge.answer = enhancement.answer
+
     sources = knowledge.sources
     retrieval = [
         {
@@ -70,20 +88,34 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         }
         for chunk in knowledge.chunks
     ]
+
+    if enhancement.used:
+        audit_provider = f"grounded-llm:{enhancement.provider or 'configured'}"
+        response_provider = enhancement.provider or "local-llm"
+        response_model = enhancement.model or "local-model"
+    elif enhancement.fallback:
+        audit_provider = "local-rag-db:llm-fallback"
+        response_provider = "local-rag"
+        response_model = "sqlite-fts5-bm25"
+    else:
+        audit_provider = "local-rag-db"
+        response_provider = "local-rag"
+        response_model = "sqlite-fts5-bm25"
+
     audit_id = record_chat_audit(
         question=question,
         answer=knowledge.answer,
-        provider="local-rag-db",
+        provider=audit_provider,
         sources=sources,
         workspace_fingerprint=runtime["workspace_fingerprint"],
         session_id=session_id,
-        resolved_question=knowledge.resolved_question or question,
+        resolved_question=knowledge.resolved_question or resolved_question,
         context=knowledge.context,
         retrieval=retrieval,
     )
     return ChatResponse(
-        provider="local-rag",
-        model="sqlite-fts5-bm25",
+        provider=response_provider,
+        model=response_model,
         is_demo=False,
         answer=knowledge.answer,
         knowledge_sources=sources,
@@ -93,5 +125,8 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         database=runtime.get("database", "orion.db"),
         workspace_fingerprint=runtime["workspace_fingerprint"],
         audit_id=audit_id,
-        resolved_question=knowledge.resolved_question or question,
+        resolved_question=knowledge.resolved_question or resolved_question,
+        llm_used=enhancement.used,
+        llm_fallback=enhancement.fallback,
+        llm_provider=enhancement.provider,
     )
