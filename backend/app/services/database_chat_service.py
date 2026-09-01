@@ -4,9 +4,10 @@ import re
 import unicodedata
 
 from app.schemas.agent import ChatResponse
-from app.services.database_answer_service import answer_database_knowledge
+from app.services.database_answer_service import DatabaseKnowledgeAnswer, answer_database_knowledge
 from app.services.database_chat_refinement_service import refine_database_answer
-from app.services.llm_grounding_service import enhance_grounded_answer, plan_database_question
+from app.services.database_query_planner_service import plan_database_question, smalltalk_answer
+from app.services.llm_grounding_service import enhance_grounded_answer
 from app.services.rag_runtime_service import load_chat_context, record_chat_audit
 from app.services.rag_runtime_status_service import runtime_workspace_status
 
@@ -44,32 +45,64 @@ def _label_structured_field_answer(answer: str, context: dict) -> str:
     return answer.replace("Cenário ORION:", scenario_label).replace("DPP Final:", final_label)
 
 
+def _merge_entities(*groups: list[str]) -> list[str]:
+    result: list[str] = []
+    for group in groups:
+        for item in group:
+            text = str(item or "").strip()
+            if text and text not in result:
+                result.append(text)
+    return result
+
+
+def _smalltalk_knowledge(previous_context: dict, question: str) -> DatabaseKnowledgeAnswer:
+    return DatabaseKnowledgeAnswer(
+        answer=smalltalk_answer(),
+        sources=[],
+        chunks=[],
+        entities=[],
+        resolved_question=question,
+        context=previous_context,
+    )
+
+
 def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
     runtime = runtime_workspace_status()
     previous_context = load_chat_context(session_id)
 
-    # A LLM pode resolver uma referência conversacional antes da consulta, mas não
-    # responde nem recebe o banco nesta etapa. Se estiver offline, o fluxo atual
-    # continua funcionando com o resolvedor determinístico já existente.
+    # O roteador é totalmente determinístico. Nenhuma LLM é chamada antes de
+    # SQL/Python/RAG terem produzido e validado o contexto da resposta.
     plan = plan_database_question(question, previous_context)
-    resolved_question = plan.resolved_question or question
 
-    knowledge = answer_database_knowledge(resolved_question, context=previous_context)
-    knowledge = refine_database_answer(question, previous_context, knowledge)
-    knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
+    if plan.smalltalk:
+        knowledge = _smalltalk_knowledge(previous_context, question)
+    else:
+        knowledge = answer_database_knowledge(plan.retrieval_question, context=previous_context)
+        knowledge = refine_database_answer(question, previous_context, knowledge)
+        knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
+        knowledge.resolved_question = plan.resolved_question
 
-    if _only_incidental_python(question, knowledge.sources):
-        knowledge.answer = (
-            "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
-            "Nenhuma resposta externa ou pré-definida foi usada."
-        )
-        knowledge.sources = []
-        knowledge.chunks = []
-        knowledge.entities = []
-        knowledge.table = None
+        # Se o roteador reconheceu conceitos explícitos, eles substituem heurísticas
+        # lexicais genéricas na rastreabilidade/contexto persistido.
+        if plan.concept_entities:
+            subject_key = plan.concept_entities[0] if len(plan.concept_entities) == 1 else " + ".join(plan.concept_entities)
+            if knowledge.context.get("subject_type") in {None, "", "knowledge", "concept"}:
+                knowledge.context = {
+                    **knowledge.context,
+                    "subject_type": "concept",
+                    "subject_key": subject_key,
+                }
 
-    # A LLM entra somente depois de SQL/Python/RAG terem produzido a evidência.
-    # Ela pode explicar/sintetizar, mas não altera tabelas nem executa cálculos.
+        if _only_incidental_python(question, knowledge.sources):
+            knowledge.answer = (
+                "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
+                "Nenhuma resposta externa ou pré-definida foi usada."
+            )
+            knowledge.sources = []
+            knowledge.chunks = []
+            knowledge.entities = []
+            knowledge.table = None
+
     enhancement = enhance_grounded_answer(
         question=question,
         plan=plan,
@@ -88,8 +121,13 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         }
         for chunk in knowledge.chunks
     ]
+    response_entities = _merge_entities(plan.entities, knowledge.entities)
 
-    if enhancement.used:
+    if plan.smalltalk:
+        audit_provider = "deterministic-router"
+        response_provider = "local-router"
+        response_model = "deterministic-router"
+    elif enhancement.used:
         audit_provider = f"grounded-llm:{enhancement.provider or 'configured'}"
         response_provider = enhancement.provider or "local-llm"
         response_model = enhancement.model or "local-model"
@@ -109,7 +147,7 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         sources=sources,
         workspace_fingerprint=runtime["workspace_fingerprint"],
         session_id=session_id,
-        resolved_question=knowledge.resolved_question or resolved_question,
+        resolved_question=knowledge.resolved_question or plan.resolved_question,
         context=knowledge.context,
         retrieval=retrieval,
     )
@@ -120,12 +158,12 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         answer=knowledge.answer,
         knowledge_sources=sources,
         retrieval=retrieval,
-        entities=knowledge.entities,
+        entities=response_entities,
         table=knowledge.table,
         database=runtime.get("database", "orion.db"),
         workspace_fingerprint=runtime["workspace_fingerprint"],
         audit_id=audit_id,
-        resolved_question=knowledge.resolved_question or resolved_question,
+        resolved_question=knowledge.resolved_question or plan.resolved_question,
         llm_used=enhancement.used,
         llm_fallback=enhancement.fallback,
         llm_provider=enhancement.provider,

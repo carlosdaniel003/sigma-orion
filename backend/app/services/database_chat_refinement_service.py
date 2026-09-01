@@ -9,11 +9,6 @@ from app.services.knowledge_service import KnowledgeChunk
 
 
 _CODE_WORDS = {"python", "codigo", "implementacao", "implementar", "funcao", "metodo"}
-_ABOUT_STOP_WORDS = {
-    "o", "a", "os", "as", "que", "de", "do", "da", "dos", "das", "e", "em", "no", "na",
-    "nos", "nas", "um", "uma", "sobre", "sabemos", "sabe", "conhecemos", "conhecimento", "qual",
-    "quais", "me", "diga", "fale", "explique", "orion",
-}
 _NOISE_SOURCE_RE = re.compile(r"(?:demo|mock|test|fixture)", flags=re.IGNORECASE)
 
 
@@ -60,10 +55,9 @@ def _python_candidate_score(item, subject: str) -> float:
     score += 3.0 * len(subject_words & searchable_words)
     score += min(content.count(subject_normalized), 8) * 1.5 if subject_normalized else 0.0
 
-    normalized_content = _normalize(item.content)
-    if "tipo funcao" in normalized_content or "tipo metodo" in normalized_content:
+    if "tipo funcao" in content or "tipo metodo" in content:
         score += 12.0
-    if "tipo constante" in normalized_content:
+    if "tipo constante" in content:
         score -= 8.0
     return score
 
@@ -127,125 +121,17 @@ def _direct_python_answer(question: str, previous_context: dict) -> DatabaseKnow
     )
 
 
-def _topical_subject(question: str) -> str | None:
-    normalized = _normalize(question)
-    if not (
-        normalized.startswith("o que sabemos sobre ")
-        or normalized.startswith("o que sabe sobre ")
-        or normalized.startswith("fale sobre ")
-        or normalized.startswith("explique ")
-    ):
-        return None
-    words = [word for word in _normalize(question).split() if len(word) > 1 and word not in _ABOUT_STOP_WORDS]
-    if not words:
-        return None
-    return max(words, key=len)
-
-
-def _source_authority(source: str) -> float:
-    source_lower = source.lower()
-    if source_lower.endswith("readme.md"):
-        return 0.05
-    if _NOISE_SOURCE_RE.search(source_lower):
-        return 0.01
-    if source == "motor-deterministico.md":
-        return 1.50
-    if source == "regras-globais.md":
-        return 1.45
-    if source == "glossario.md":
-        return 1.35
-    if source.startswith("python://"):
-        return 0.45
-    return 1.0
-
-
-def _clean_sentence(text: str) -> str:
-    cleaned = re.sub(r"^#{1,6}\s*", "", text.strip())
-    return cleaned.replace("**", "").replace("__", "").strip()
-
-
-def _subject_sentences(subject: str, content: str, max_chars: int = 1300) -> str:
-    subject_words = _words(subject)
-    parts = [
-        _clean_sentence(part)
-        for part in re.split(r"(?<=[.!?])\s+|\n+", content)
-        if part.strip()
-    ]
-    selected: list[str] = []
-    size = 0
-    for part in parts:
-        if not part or part.startswith("|") or part == "---":
-            continue
-        if not (subject_words & _words(part)):
-            continue
-        if selected and size + len(part) > max_chars:
-            break
-        selected.append(part)
-        size += len(part)
-        if len(selected) >= 5:
-            break
-    return " ".join(selected).strip()
-
-
-def _topical_answer(question: str) -> DatabaseKnowledgeAnswer | None:
-    subject = _topical_subject(question)
-    if not subject:
-        return None
-    candidates = bm25_retrieve(subject, limit=80)
-    if not candidates:
-        return None
-
-    subject_words = _words(subject)
-    ranked = []
-    for item in candidates:
-        if _source_authority(item.source) < 0.1:
-            continue
-        heading_overlap = len(subject_words & _words(item.heading))
-        content_overlap = len(subject_words & _words(item.content))
-        if not heading_overlap and not content_overlap:
-            continue
-        score = float(item.score) * _source_authority(item.source)
-        score += heading_overlap * 25.0
-        score += min(content_overlap, 3) * 4.0
-        ranked.append((score, item))
-    if not ranked:
-        return None
-    ranked.sort(key=lambda row: row[0], reverse=True)
-
-    selected = []
-    for _, item in ranked:
-        text = _subject_sentences(subject, item.content)
-        if not text:
-            continue
-        selected.append((item, text))
-        if len(selected) >= 2:
-            break
-    if not selected:
-        return None
-
-    answer = " ".join(text for _, text in selected)
-    sources = list(dict.fromkeys(item.source for item, _ in selected))
-    return DatabaseKnowledgeAnswer(
-        answer=answer[:1800],
-        sources=sources,
-        chunks=[_as_chunk(item) for item, _ in selected],
-        entities=[subject.upper() if len(subject) <= 8 else subject],
-        resolved_question=question,
-        context={"subject_type": "knowledge", "subject_key": subject.upper(), "topic": selected[0][0].heading},
-    )
-
-
 def refine_database_answer(
     question: str,
     previous_context: dict,
     current: DatabaseKnowledgeAnswer,
 ) -> DatabaseKnowledgeAnswer:
+    """Refino restrito ao código Python contextual.
+
+    A antiga heurística de tópico por 'palavra mais longa' foi removida porque podia
+    transformar `Explique ... WIU` em assunto `operacional` e degradar o retrieval.
+    Entidades conceituais agora são resolvidas pelo roteador determinístico.
+    """
+
     python_answer = _direct_python_answer(question, previous_context)
-    if python_answer is not None:
-        return python_answer
-
-    topical = _topical_answer(question)
-    if topical is not None:
-        return topical
-
-    return current
+    return python_answer if python_answer is not None else current
