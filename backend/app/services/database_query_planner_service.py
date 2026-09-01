@@ -37,6 +37,7 @@ class QueryPlan:
     concept_entities: list[str] = field(default_factory=list)
     status_entities: list[str] = field(default_factory=list)
     rule_entities: list[str] = field(default_factory=list)
+    context_rule_entities: list[str] = field(default_factory=list)
     required_queries: list[str] = field(default_factory=list)
     required_terms: list[str] = field(default_factory=list)
     needs_synthesis: bool = False
@@ -147,30 +148,62 @@ def _last_entity(context: dict, entity_type: str | None = None) -> tuple[str, st
     return None
 
 
-def _context_reference(question: str, context: dict) -> tuple[str, str] | None:
+def _typed_deictic(normalized: str, noun: str) -> bool:
+    return bool(re.search(rf"\b(?:esse|essa|este|esta|nesse|nessa|neste|nesta)\s+{re.escape(noun)}\b", normalized))
+
+
+def _context_reference(question: str, context: dict, intent: str) -> tuple[str, str] | None:
+    """Resolve referências ao contexto sem deixar o passado sequestrar a pergunta atual.
+
+    A regra principal é: informação explícita e substantivos da pergunta atual têm
+    precedência sobre o último assunto da conversa. Referências como "essa diferença"
+    pertencem à comparação em curso; não significam "a última entidade mencionada".
+    """
+
     words = _words(question)
     normalized = _normalize(question)
-    elliptical = len(words) <= 5 and any(marker in normalized for marker in ("por que", "porque", "e esse", "e ele", "e ela"))
-    if not (words & DEICTIC_WORDS or elliptical):
+    has_deictic = bool(words & DEICTIC_WORDS)
+    elliptical = len(words) <= 6 and any(
+        marker in normalized for marker in ("por que", "porque", "e esse", "e essa", "e ele", "e ela")
+    )
+    if not (has_deictic or elliptical):
         return None
 
-    if "status" in words:
-        status = _last_entity(context, "status")
-        if status:
-            return status
-    if "regra" in words:
-        rule = _last_entity(context, "rule")
-        if rule:
-            return rule
-    if "material" in words:
-        material = _last_entity(context, "material")
-        if material:
-            return material
+    # Referências tipadas ganham de qualquer fallback genérico.
+    if "status" in words and any(_typed_deictic(normalized, noun) for noun in ("status",)):
+        return _last_entity(context, "status")
+    if "regra" in words and any(_typed_deictic(normalized, noun) for noun in ("regra",)):
+        return _last_entity(context, "rule")
+    if "material" in words and any(_typed_deictic(normalized, noun) for noun in ("material",)):
+        return _last_entity(context, "material")
+    if "modelo" in words and any(_typed_deictic(normalized, noun) for noun in ("modelo",)):
+        return _last_entity(context, "model")
 
+    # "essa diferença/divergência/comparação" aponta para o assunto comparativo.
+    # Se já existe um modelo recente, ele pode ser reutilizado em um follow-up curto;
+    # jamais herdamos uma regra/status apenas por causa do pronome demonstrativo.
+    comparison_reference = any(
+        _typed_deictic(normalized, noun)
+        for noun in ("diferenca", "divergencia", "comparacao")
+    )
+    if comparison_reference:
+        return _last_entity(context, "model") if len(words) <= 10 else None
+
+    # Perguntas comparativas longas com números/modelos explícitos são autossuficientes.
+    # Contexto anterior fica apenas como memória, não como entidade ativa do plano.
+    if intent == "comparison":
+        number_count = len(re.findall(r"[-+]?\d[\d.,]*", question))
+        if len(words) > 10 or number_count >= 2 or "modelo" in words:
+            return None
+        return _last_entity(context, "model")
+
+    # "isso" só herda a entidade anterior quando a frase é realmente elíptica.
     if "isso" in words:
-        recent = _last_entity(context)
-        if recent:
-            return recent
+        return _last_entity(context) if len(words) <= 8 else None
+
+    # Perguntas completas não recebem subject_key antigo por padrão.
+    if len(words) > 8:
+        return None
 
     subject_key = str(context.get("subject_key") or "").strip()
     if subject_key:
@@ -243,6 +276,8 @@ def _rule_requirements(question: str, context: dict, concepts: list[str], status
         add("REGRA-003 SALDO STK TTL NEC", "SALDO")
     if "nec" in normalized_concepts:
         add("REGRA-001 NEC REAL consumo", "NEC")
+    if "amount" in normalized_concepts:
+        add("REGRA-006 Amount Preço SALDO", "Amount")
 
     return queries, terms
 
@@ -268,14 +303,18 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
 
     concepts = _concept_entities(stripped)
     statuses = _status_entities(stripped)
-    rules = _rule_entities(stripped)
+    explicit_rules = _rule_entities(stripped)
+    rules = list(explicit_rules)
+    context_rules: list[str] = []
     normalized_question = _normalize(stripped)
+    intent = _intent(stripped)
+
     focus = _definition_focus(stripped, concepts)
     has_definition_focus = any(marker in normalized_question for marker in ("significado", "significa", "definicao", "quer dizer"))
     if focus and has_definition_focus:
         concepts = [focus]
 
-    context_ref = None if statuses or rules else _context_reference(stripped, context)
+    context_ref = None if statuses or explicit_rules else _context_reference(stripped, context, intent)
     resolved = stripped
     entities = [*concepts, *statuses, *rules]
     if context_ref:
@@ -287,13 +326,17 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         if subject_type == "status" and subject_key.upper() in known_status_codes() and subject_key.upper() not in statuses:
             statuses.append(subject_key.upper())
         if subject_type == "rule" and subject_key.upper() in known_rule_codes() and subject_key.upper() not in rules:
-            rules.append(subject_key.upper())
+            code = subject_key.upper()
+            rules.append(code)
+            context_rules.append(code)
 
-    intent = _intent(stripped)
     retrieval_question = resolved
+    explicit_rule_for_direct_answer = next((code for code in rules if code not in context_rules), None)
 
-    if rules:
-        retrieval_question = rules[0]
+    if explicit_rule_for_direct_answer and intent != "comparison":
+        retrieval_question = explicit_rule_for_direct_answer
+    elif context_rules and intent in {"definition", "fact"}:
+        retrieval_question = context_rules[0]
     elif statuses and intent == "definition":
         retrieval_question = f"Status {statuses[0]}"
     elif len(concepts) == 1 and (
@@ -306,7 +349,9 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
     required_queries, required_terms = _rule_requirements(stripped, context, concepts, statuses, intent)
 
     needs_synthesis = intent in {"explanation", "comparison", "code"}
-    if rules:
+    if explicit_rule_for_direct_answer and intent != "comparison":
+        needs_synthesis = False
+    if context_rules and intent in {"definition", "fact"}:
         needs_synthesis = False
     if statuses and intent == "definition":
         needs_synthesis = False
@@ -324,6 +369,7 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         concept_entities=concepts,
         status_entities=statuses,
         rule_entities=rules,
+        context_rule_entities=context_rules,
         required_queries=required_queries,
         required_terms=required_terms,
         needs_synthesis=needs_synthesis,

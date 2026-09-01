@@ -46,6 +46,40 @@ def test_planner_treats_diferenca_as_comparison() -> None:
     assert plan.needs_synthesis is True
 
 
+def test_long_comparison_does_not_inherit_previous_rule_context() -> None:
+    context = {
+        "subject_type": "rule",
+        "subject_key": "REGRA-004",
+        "topic": "rule_definition",
+        "last_entities": [{"type": "rule", "key": "REGRA-004"}],
+    }
+    question = (
+        'No CENÁRIO ORION por que na coluna "KIT disponivel PGD" diz ter 27.267 e o real também diz 27.267 '
+        'enquanto o DPP FINAL diz que o kit pgd tbm era 27.267 e o real ficou 25.000 com diferença de -2.267, '
+        'pq essa diferença?'
+    )
+
+    plan = plan_database_question(question, context)
+
+    assert plan.intent == "comparison"
+    assert plan.rule_entities == []
+    assert plan.context_rule_entities == []
+    assert "REGRA-004" not in plan.resolved_question
+
+
+def test_short_typed_rule_reference_still_inherits_rule_context() -> None:
+    context = {
+        "subject_type": "rule",
+        "subject_key": "REGRA-004",
+        "last_entities": [{"type": "rule", "key": "REGRA-004"}],
+    }
+
+    plan = plan_database_question("E essa regra?", context)
+
+    assert plan.rule_entities == ["REGRA-004"]
+    assert plan.context_rule_entities == ["REGRA-004"]
+
+
 def test_reverse_model_resolver_uses_structured_values_and_ignores_unrelated_models(monkeypatch) -> None:
     records = [
         {
@@ -150,3 +184,93 @@ def test_reverse_model_resolver_blocks_ambiguous_matches_instead_of_using_bm25(m
     assert knowledge.sources == []
     assert knowledge.chunks == []
     assert "identificar de forma única" in knowledge.answer
+
+
+def test_model_real_impact_uses_material_matrix_and_rag_rules(monkeypatch) -> None:
+    records = [
+        {
+            "entity_type": "model",
+            "entity_key": "CM-220-N",
+            "scope": "scenario",
+            "source": "workspace://scenario/test/model/CM-220-N",
+            "payload": {"name": "CM-220-N", "kit_pgd": 27267, "real": 27267, "difference_real_vs_kit": 0},
+        },
+        {
+            "entity_type": "model",
+            "entity_key": "CM-220-N",
+            "scope": "final",
+            "source": "workspace://final/test/model/CM-220-N",
+            "payload": {"name": "CM-220-N", "pgd": 27267, "real": 25000, "delta": -2267},
+        },
+        {
+            "entity_type": "material",
+            "entity_key": "MAT-001",
+            "scope": "scenario",
+            "source": "workspace://scenario/test/material/MAT-001",
+            "payload": {
+                "material": "MAT-001",
+                "description": "Material de teste",
+                "um": "UN",
+                "consumption_by_model": {"CM-220-N": 2},
+                "nec": 54534,
+                "stock_total": 60000,
+                "balance": 5466,
+                "price": 10,
+                "amount": 54660,
+            },
+        },
+        {
+            "entity_type": "material",
+            "entity_key": "MAT-001",
+            "scope": "final",
+            "source": "workspace://final/test/material/MAT-001",
+            "payload": {
+                "material": "MAT-001",
+                "description": "Material de teste",
+                "um": "UN",
+                "nec": 50000,
+                "stock_total": 60000,
+                "balance": 10000,
+            },
+        },
+    ]
+
+    def fake_load_runtime_entities(*, entity_type=None, entity_key=None, scope=None):
+        selected = records
+        if entity_type:
+            selected = [item for item in selected if item["entity_type"] == entity_type]
+        if entity_key:
+            selected = [item for item in selected if item["entity_key"].lower() == entity_key.lower()]
+        if scope:
+            selected = [item for item in selected if item["scope"] == scope]
+        return selected
+
+    monkeypatch.setattr(structured, "load_runtime_entities", fake_load_runtime_entities)
+
+    question = (
+        'Estou falando do modelo "CM-220-N". No CENÁRIO ORION o KIT é 27.267 e o REAL 27.267; '
+        'no DPP FINAL o KIT é 27.267 e o REAL 25.000, diferença -2.267. '
+        'Isso influenciou NEC, SALDO, STK TTL e AMOUNT?'
+    )
+    plan = plan_database_question(question)
+    knowledge, route = structured.structured_knowledge_answer(plan, {})
+
+    assert route == "model-comparison"
+    assert knowledge is not None
+    assert knowledge.context["topic"] == "model_real_impact"
+    assert "REGRA-001" in knowledge.answer
+    assert "REGRA-002" in knowledge.answer
+    assert "REGRA-003" in knowledge.answer
+    assert "REGRA-006" in knowledge.answer
+    assert "REAL não entra diretamente no STK TTL" in knowledge.answer
+    assert "regras-globais.md" in knowledge.sources
+    assert knowledge.chunks[0].source == "regras-globais.md"
+    assert knowledge.table is not None
+    assert knowledge.table["title"].startswith("Impacto isolado do ΔREAL de CM-220-N")
+    row = knowledge.table["rows"][0]
+    assert row["material"] == "MAT-001"
+    assert row["consumption"] == "2"
+    assert row["nec_effect"] == "-4.534"
+    assert row["saldo_effect"] == "4.534"
+    assert row["amount_effect"] == "45.340"
+    assert row["observed_stk_delta"] == "0"

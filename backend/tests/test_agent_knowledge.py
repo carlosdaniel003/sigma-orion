@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.knowledge_catalog_service import bm25_retrieve, sync_knowledge_index
 
 
 def ask(question: str) -> dict:
@@ -39,3 +40,22 @@ def test_out_of_scope_question_abstains_without_predefined_answer() -> None:
     assert "banco de conhecimento SQLite" in payload["answer"]
     assert payload["retrieval"] == []
     assert payload["audit_id"] is not None
+
+
+def test_model_impact_rules_remain_retrievable_by_bm25() -> None:
+    sync_knowledge_index(force=True)
+    cases = (
+        ("REGRA-001 NEC REAL consumo", "REGRA-001"),
+        ("REGRA-002 STK TTL STK SAP EXPLOSÃO STK OP", "REGRA-002"),
+        ("REGRA-003 SALDO STK TTL NEC", "REGRA-003"),
+        ("REGRA-006 Amount Preço SALDO", "REGRA-006"),
+    )
+
+    for query, rule_code in cases:
+        chunks = bm25_retrieve(query, limit=40, category="deterministic")
+        matched = [
+            chunk for chunk in chunks
+            if chunk.source == "regras-globais.md"
+            and rule_code in f"{chunk.heading}\n{chunk.content}"
+        ]
+        assert matched, f"{rule_code} deixou de ser recuperável pelo RAG/BM25"
