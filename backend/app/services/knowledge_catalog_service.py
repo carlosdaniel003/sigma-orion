@@ -58,7 +58,7 @@ def _normalize(text: str) -> str:
 
 def _search_terms(query: str) -> list[str]:
     terms: list[str] = []
-    for token in _normalize(query).split():
+    for token in re.findall(r"[a-z0-9]+", _normalize(query)):
         if len(token) <= 2 or token in _SEARCH_STOP_WORDS:
             continue
         if token not in terms:
