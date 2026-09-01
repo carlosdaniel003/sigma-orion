@@ -7,21 +7,23 @@ from app.llm.provider import MockProvider, get_llm_provider
 from app.schemas.agent import AgentAnalysis, AgentAnalysisRequest, ChatResponse
 from app.services.history_service import save_analysis_history
 from app.services.knowledge_service import answer_from_knowledge, load_guardrails, retrieve_context
+from app.services.rag_runtime_service import record_chat_audit, sync_runtime_workspace
 
 
 DEMO_NOTICE = (
-    "Demonstração com dados fictícios. Use /api/agent/chat para consultar o conhecimento real validado do ORION."
+    "Demonstração com dados fictícios. Use /api/agent/chat para consultar o banco RAG real do ORION."
 )
 
 
 BASE_AGENT_RULES = """Você é um agente de apoio à análise do DPP.
 
 Regras obrigatórias:
-- Os fatos e cálculos recebidos do backend são a fonte numérica da análise.
+- Responda somente com fatos presentes no contexto recuperado do banco RAG do ORION.
+- Os fatos e cálculos recuperados do backend são a fonte numérica da análise.
 - Não refaça nem substitua cálculos determinísticos do Python.
 - Não invente valores, materiais, datas, regras ou evidências ausentes.
 - Diferencie fato, interpretação e recomendação.
-- Quando os dados forem insuficientes, declare explicitamente a insuficiência.
+- Quando o banco não possuir informação suficiente, declare explicitamente a insuficiência.
 - Toda ação sugerida depende de validação humana.
 - Nunca afirme que uma ação foi executada ou aprovada sem evidência explícita.
 """
@@ -34,9 +36,9 @@ def provider_status() -> dict:
         {
             "mode": "live" if provider.configured and provider.name != "mock" else "offline-rag",
             "message": (
-                "Provider configurado e pronto para chamadas reais."
+                "Provider configurado. Toda resposta continua limitada ao contexto recuperado do SQLite/RAG."
                 if provider.configured and provider.name != "mock"
-                else "LLM externa desativada. O chat continua disponível com RAG lexical local e conhecimento validado."
+                else "LLM externa desativada. O chat responde diretamente do SQLite/FTS5/BM25 sincronizado."
             ),
         }
     )
@@ -62,117 +64,112 @@ def build_demo_analysis() -> AgentAnalysis:
                 "attention": 9,
                 "ok": 107,
             },
-            "risks": [
-                {
-                    "id": "risk-demo-001",
-                    "material": "MAT-DEMO-001",
-                    "severity": "high",
-                    "title": "Déficit projetado no cenário fictício",
-                    "explanation": (
-                        "A disponibilidade calculada no exemplo é inferior à necessidade. "
-                        "Este caso existe somente para validar a apresentação das evidências."
-                    ),
-                    "evidence": [
-                        {"label": "Necessidade", "value": "1.000", "source": "PGD_DEMO.xlsx"},
-                        {"label": "Disponibilidade", "value": "780", "source": "ESTOQUE_DEMO.xlsx"},
-                        {"label": "Gap", "value": "-220", "source": "Cálculo Python demonstrativo"},
-                    ],
-                },
-                {
-                    "id": "risk-demo-002",
-                    "material": "MAT-DEMO-002",
-                    "severity": "medium",
-                    "title": "Atendimento próximo do limite no cenário fictício",
-                    "explanation": (
-                        "O exemplo foi criado para validar uma situação de atenção sem definir "
-                        "qualquer critério real do processo."
-                    ),
-                    "evidence": [
-                        {"label": "Necessidade", "value": "500", "source": "PGD_DEMO.xlsx"},
-                        {"label": "Disponibilidade", "value": "520", "source": "ESTOQUE_DEMO.xlsx"},
-                        {"label": "Saldo", "value": "+20", "source": "Cálculo Python demonstrativo"},
-                    ],
-                },
-            ],
-            "recommendations": [
-                {
-                    "id": "rec-demo-001",
-                    "title": "Revisar o item MAT-DEMO-001 com o analista",
-                    "reason": "A recomendação é fictícia e serve para validar o fluxo de aprovação humana.",
-                    "requires_human_validation": True,
-                },
-                {
-                    "id": "rec-demo-002",
-                    "title": "Verificar fontes complementares do item MAT-DEMO-002",
-                    "reason": (
-                        "A recomendação demonstra como o agente poderá sugerir uma próxima ação "
-                        "sem executar qualquer decisão automaticamente."
-                    ),
-                    "requires_human_validation": True,
-                },
-            ],
+            "risks": [],
+            "recommendations": [],
             "knowledge_sources": ["guardrails.md"],
         }
     )
 
 
 def answer_demo_question(question: str) -> ChatResponse:
-    normalized = question.lower()
-
-    if "mat-demo-001" in normalized or "crítico" in normalized or "critico" in normalized:
-        answer = (
-            "No cenário fictício, MAT-DEMO-001 aparece como crítico porque o exemplo informa "
-            "necessidade de 1.000 unidades, disponibilidade de 780 e gap calculado de -220. "
-            "Esses valores são apenas dados de demonstração e não representam uma regra real do DPP."
-        )
-    elif "ação" in normalized or "acao" in normalized or "recomend" in normalized:
-        answer = (
-            "As ações exibidas nesta etapa são mocks. O fluxo definitivo é: Python calcula os fatos, "
-            "o RAG fornece conhecimento, a LLM sugere ações e o analista aprova, rejeita ou corrige."
-        )
-    else:
-        answer = (
-            "Este endpoint é somente de demonstração. Para consultar regras reais do ORION, use o chat principal."
-        )
-
-    chunks = retrieve_context(question)
     return ChatResponse(
         provider="mock",
         model="mock-local",
         is_demo=True,
-        answer=answer,
-        knowledge_sources=_unique_sources(chunks),
+        answer=(
+            "Este endpoint existe apenas para compatibilidade da demonstração. "
+            "O chat operacional é /api/agent/chat e consulta exclusivamente o banco RAG sincronizado."
+        ),
+        knowledge_sources=[],
     )
 
 
-def answer_agent_question(question: str) -> ChatResponse:
+def _retrieval_payload(chunks: list) -> list[dict]:
+    return [
+        {
+            "source": chunk.source,
+            "heading": getattr(chunk, "heading", "") or "",
+            "category": getattr(chunk, "category", "") or "",
+            "score": float(getattr(chunk, "score", 0.0) or 0.0),
+        }
+        for chunk in chunks
+    ]
+
+
+def answer_agent_question(question: str, workspace: dict | None = None) -> ChatResponse:
+    runtime = sync_runtime_workspace(workspace)
     provider = get_llm_provider()
-    chunks = retrieve_context(question)
 
     if isinstance(provider, MockProvider):
         local_answer = answer_from_knowledge(question)
+        sources = local_answer.sources
+        audit_id = record_chat_audit(
+            question=question,
+            answer=local_answer.answer,
+            provider="local-rag-db",
+            sources=sources,
+            workspace_fingerprint=runtime["workspace_fingerprint"],
+        )
         return ChatResponse(
             provider="local-rag",
-            model="lexical-local",
+            model="sqlite-fts5-bm25",
             is_demo=False,
             answer=local_answer.answer,
-            knowledge_sources=local_answer.sources,
+            knowledge_sources=sources,
+            retrieval=_retrieval_payload(local_answer.chunks),
+            database=runtime.get("database", "orion.db"),
+            workspace_fingerprint=runtime["workspace_fingerprint"],
+            audit_id=audit_id,
+        )
+
+    chunks = retrieve_context(question, top_k=12)
+    if not chunks:
+        local_answer = answer_from_knowledge(question)
+        audit_id = record_chat_audit(
+            question=question,
+            answer=local_answer.answer,
+            provider="rag-abstention",
+            sources=[],
+            workspace_fingerprint=runtime["workspace_fingerprint"],
+        )
+        return ChatResponse(
+            provider=provider.name,
+            model=provider.model,
+            is_demo=False,
+            answer=local_answer.answer,
+            knowledge_sources=[],
+            retrieval=[],
+            database=runtime.get("database", "orion.db"),
+            workspace_fingerprint=runtime["workspace_fingerprint"],
+            audit_id=audit_id,
         )
 
     system_prompt = _build_system_prompt(chunks)
     user_prompt = (
-        "Responda à pergunta do analista usando apenas o conhecimento fornecido. "
-        "Se a base não possuir informação suficiente, informe isso.\n\n"
+        "Responda somente com o conhecimento recuperado do banco abaixo. "
+        "Não utilize conhecimento externo ou memória do modelo. "
+        "Se os trechos não sustentarem a resposta, declare que o banco não contém evidência suficiente.\n\n"
         f"Pergunta: {question}"
     )
-    answer = provider.complete(system_prompt, user_prompt)
-
+    answer = provider.complete(system_prompt, user_prompt).strip()
+    sources = _unique_sources(chunks)
+    audit_id = record_chat_audit(
+        question=question,
+        answer=answer,
+        provider=provider.name,
+        sources=sources,
+        workspace_fingerprint=runtime["workspace_fingerprint"],
+    )
     return ChatResponse(
         provider=provider.name,
         model=provider.model,
         is_demo=False,
-        answer=answer.strip(),
-        knowledge_sources=_unique_sources(chunks),
+        answer=answer,
+        knowledge_sources=sources,
+        retrieval=_retrieval_payload(chunks),
+        database=runtime.get("database", "orion.db"),
+        workspace_fingerprint=runtime["workspace_fingerprint"],
+        audit_id=audit_id,
     )
 
 
@@ -269,15 +266,15 @@ Não crie métricas: elas já foram calculadas pelo Python e serão anexadas pel
 def _build_system_prompt(chunks: list) -> str:
     guardrails = load_guardrails()
     context_parts = [
-        f"FONTE: {chunk.source}\n{chunk.content}"
+        f"FONTE NO BANCO: {chunk.source}\n{chunk.content}"
         for chunk in chunks
     ]
-    retrieved = "\n\n---\n\n".join(context_parts) or "Nenhum contexto adicional foi recuperado."
+    retrieved = "\n\n---\n\n".join(context_parts) or "Nenhum contexto foi recuperado do banco."
 
     return (
         f"{BASE_AGENT_RULES}\n\n"
-        f"GUARDRAILS VERSIONADOS:\n{guardrails or 'Nenhum guardrail encontrado.'}\n\n"
-        f"CONHECIMENTO RECUPERADO PELO RAG:\n{retrieved}"
+        f"GUARDRAILS RECUPERADOS DO BANCO:\n{guardrails or 'Nenhum guardrail indexado.'}\n\n"
+        f"CONHECIMENTO RECUPERADO DO SQLITE/RAG:\n{retrieved}"
     )
 
 
