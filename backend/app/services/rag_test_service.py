@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from app.services.database_answer_service import answer_database_knowledge
 from app.services.knowledge_catalog_service import bm25_retrieve, sync_knowledge_index
 from app.services.knowledge_inventory_service import DETERMINISTIC_DOCUMENTS, build_knowledge_inventory
-from app.services.knowledge_service import answer_from_knowledge
 
 
 ABSTENTION_CASE = {
@@ -24,7 +24,7 @@ def _category_for_item(item: dict) -> str:
 
 
 def _run_answer_test(item: dict) -> dict:
-    answer = answer_from_knowledge(item["query"], top_k=12)
+    answer = answer_database_knowledge(item["query"])
     failures: list[str] = []
     expected_source = item["expected_source"]
     if expected_source not in answer.sources:
@@ -71,9 +71,6 @@ def _run_retrieval_test(item: dict) -> dict:
 
 def _run_inventory_item(item: dict) -> dict:
     kind = item["kind"]
-    # Conceitos e sinônimos validam a resposta final do Agente. Fórmulas, regras,
-    # documentos e casos validam a recuperabilidade da fonte específica inventariada;
-    # a autoridade canônica da resposta de fórmula é testada separadamente.
     if kind in {"conceito", "sinônimo"}:
         execution = _run_answer_test(item)
     else:
@@ -98,7 +95,7 @@ def _run_inventory_item(item: dict) -> dict:
 
 
 def _run_abstention_test() -> dict:
-    answer = answer_from_knowledge(ABSTENTION_CASE["question"])
+    answer = answer_database_knowledge(ABSTENTION_CASE["question"])
     failures = [] if not answer.sources else ["A consulta deveria se abster, mas recuperou fonte."]
     return {
         "id": ABSTENTION_CASE["id"],
