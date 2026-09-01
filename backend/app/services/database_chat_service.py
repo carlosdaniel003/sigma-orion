@@ -33,7 +33,7 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
     )
     return ChatResponse(
         provider="local-rag",
-        model="sqlite-fts5-bm25+sql",
+        model="sqlite-fts5-bm25",
         is_demo=False,
         answer=knowledge.answer,
         knowledge_sources=sources,
