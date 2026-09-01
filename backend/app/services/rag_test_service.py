@@ -71,7 +71,10 @@ def _run_retrieval_test(item: dict) -> dict:
 
 def _run_inventory_item(item: dict) -> dict:
     kind = item["kind"]
-    if kind in {"conceito", "sinônimo", "fórmula"}:
+    # Conceitos e sinônimos validam a resposta final do Agente. Fórmulas, regras,
+    # documentos e casos validam a recuperabilidade da fonte específica inventariada;
+    # a autoridade canônica da resposta de fórmula é testada separadamente.
+    if kind in {"conceito", "sinônimo"}:
         execution = _run_answer_test(item)
     else:
         execution = _run_retrieval_test(item)
