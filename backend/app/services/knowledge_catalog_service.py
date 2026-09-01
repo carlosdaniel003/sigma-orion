@@ -263,6 +263,7 @@ def bm25_retrieve(query: str, limit: int = 5, category: str | None = None) -> li
         params.append(category)
     params.append(max(1, min(int(limit), 50)))
 
+    source_priority = "CASE WHEN c.source = 'motor-deterministico.md' THEN 0 WHEN c.source = 'regras-globais.md' THEN 1 ELSE 2 END"
     sql = f"""
         SELECT
             c.id,
@@ -274,7 +275,7 @@ def bm25_retrieve(query: str, limit: int = 5, category: str | None = None) -> li
         FROM knowledge_chunks_fts
         JOIN knowledge_chunks c ON c.id = CAST(knowledge_chunks_fts.chunk_id AS INTEGER)
         WHERE knowledge_chunks_fts MATCH ?{category_clause}
-        ORDER BY bm25_rank ASC, c.source ASC, c.ordinal ASC
+        ORDER BY {source_priority} ASC, bm25_rank ASC, c.source ASC, c.ordinal ASC
         LIMIT ?
     """
 
