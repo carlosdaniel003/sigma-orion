@@ -19,6 +19,7 @@ import './dashboard-export.css'
 import './product-language.css'
 import './dashboard-operational-scope.css'
 import './dpp-test-context.css'
+import './knowledge-audit.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
