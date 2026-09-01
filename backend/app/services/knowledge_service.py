@@ -28,6 +28,16 @@ ENGINE_KNOWLEDGE_SOURCES = {
     "regras-globais.md",
 }
 
+ORION_SCOPE_TOKENS = {
+    "orion", "dpp", "material", "materiais", "modelo", "modelos", "nec", "stk", "saldo",
+    "amount", "real", "wiu", "check", "opc", "pgd", "explosao", "estoque", "estoques",
+    "divergencia", "divergencias", "cenario", "cenarios", "final", "python", "motor", "regra",
+    "regras", "formula", "formulas", "calculo", "calculos", "comparacao", "comparativo", "excel",
+    "open", "bom", "backend", "api", "arquivo", "arquivos", "planilha", "planilhas", "codigo",
+    "funcao", "funcoes", "metodo", "metodos", "servico", "servicos", "sistema", "dashboard",
+    "projecao", "consolidacao", "validacao", "tolerancia", "consumo", "fonte", "fontes",
+}
+
 MIN_GENERIC_SCORE = 0.000001
 
 
@@ -135,6 +145,19 @@ def _is_definition_query(query: str) -> bool:
         or normalized.startswith("o que sao ")
         or normalized.startswith("o que significa ")
     )
+
+
+def _is_in_scope_query(query: str) -> bool:
+    raw_tokens = _raw_tokens(query)
+    if raw_tokens & ORION_SCOPE_TOKENS:
+        return True
+    normalized = _normalize(query)
+    # Perguntas técnicas podem apontar diretamente para símbolos/arquivos Python.
+    if re.search(r"\b[a-z][a-z0-9]*_[a-z0-9_]+\b", normalized):
+        return True
+    if ".py" in str(query).lower() or "python://" in str(query).lower():
+        return True
+    return False
 
 
 def _lexical_fallback(query: str, limit: int) -> list[KnowledgeChunk]:
@@ -348,6 +371,9 @@ def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnsw
     glossary_answer = _glossary_answer(query)
     if glossary_answer is not None:
         return glossary_answer
+
+    if not _is_in_scope_query(query):
+        return _insufficient_answer()
 
     chunks = retrieve_context(query, top_k=top_k or max(RAG_TOP_K, 6))
     if not chunks:
