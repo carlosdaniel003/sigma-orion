@@ -10,6 +10,7 @@ import ScenarioDivergenceController from './ScenarioDivergenceController'
 import EvolutionDivergenceController from './EvolutionDivergenceController'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
+import KnowledgeBase from './KnowledgeBase'
 import { useDppWorkspace } from './DppWorkspaceContext'
 
 const API_URL = 'http://localhost:8000'
@@ -24,6 +25,7 @@ function getInitialTheme() {
 function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('dpp')
   const [activeView, setActiveView] = useState('dashboard')
+  const [activeKnowledgeView, setActiveKnowledgeView] = useState('operational')
   const { finalDppAnalysis, setFinalDppAnalysis } = useDppWorkspace()
   const [theme, setTheme] = useState(getInitialTheme)
 
@@ -40,6 +42,11 @@ function App() {
 
   function openAgent() {
     setActiveWorkspace('agent')
+  }
+
+  function openKnowledge(view = 'operational') {
+    setActiveWorkspace('knowledge')
+    setActiveKnowledgeView(view)
   }
 
   function toggleTheme() {
@@ -69,6 +76,16 @@ function App() {
           onClick={openAgent}
         >
           <AgentIcon />
+        </button>
+
+        <button
+          className={`workspace-button ${activeWorkspace === 'knowledge' ? 'workspace-active' : ''}`}
+          type="button"
+          aria-label="Base de conhecimento"
+          data-tooltip="Base de conhecimento"
+          onClick={() => openKnowledge('operational')}
+        >
+          <KnowledgeIcon />
         </button>
 
         <span className="workspace-dock-separator" aria-hidden="true" />
@@ -113,6 +130,43 @@ function App() {
             </button>
           </nav>
         )}
+
+        {activeWorkspace === 'knowledge' && (
+          <nav className="knowledge-topbar-nav" aria-label="Navegação da Base de conhecimento">
+            <button
+              className="knowledge-topbar-button"
+              data-active={activeKnowledgeView === 'operational' ? 'true' : 'false'}
+              type="button"
+              onClick={() => openKnowledge('operational')}
+            >
+              Conhecimento Operacional
+            </button>
+            <button
+              className="knowledge-topbar-button"
+              data-active={activeKnowledgeView === 'deterministic' ? 'true' : 'false'}
+              type="button"
+              onClick={() => openKnowledge('deterministic')}
+            >
+              Regras Determinísticas
+            </button>
+            <button
+              className="knowledge-topbar-button"
+              data-active={activeKnowledgeView === 'current' ? 'true' : 'false'}
+              type="button"
+              onClick={() => openKnowledge('current')}
+            >
+              Dados Atuais
+            </button>
+            <button
+              className="knowledge-topbar-button"
+              data-active={activeKnowledgeView === 'tests' ? 'true' : 'false'}
+              type="button"
+              onClick={() => openKnowledge('tests')}
+            >
+              Testes do RAG
+            </button>
+          </nav>
+        )}
       </header>
 
       <main className="content">
@@ -137,6 +191,7 @@ function App() {
           </section>
         )}
         {activeWorkspace === 'agent' && <AgentOrion apiUrl={API_URL} />}
+        {activeWorkspace === 'knowledge' && <KnowledgeBase apiUrl={API_URL} view={activeKnowledgeView} />}
       </main>
     </div>
   )
@@ -157,6 +212,16 @@ function AgentIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M5 5.5h14v10.8H9.2L5 19.5Z" />
       <path d="M8.5 9.2h7M8.5 12.6h4.8" />
+    </svg>
+  )
+}
+
+function KnowledgeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 4.5h5.2A2.8 2.8 0 0 1 13 7.3v12.2H7.8A2.8 2.8 0 0 1 5 16.7Z" />
+      <path d="M19 4.5h-5.2A2.8 2.8 0 0 0 11 7.3v12.2h5.2a2.8 2.8 0 0 0 2.8-2.8Z" />
+      <path d="M7.8 8.2h2M14.2 8.2h2M7.8 11.2h2M14.2 11.2h2" />
     </svg>
   )
 }
