@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './agent-orion.css'
+import './agent-data-table.css'
 
 const NUMBER_FORMAT = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 })
 const CONTEXTUAL_COLUMN_NAMES = new Set(['coments', 'comments', 'comentario', 'comentarios'])
@@ -21,6 +22,13 @@ function number(value) {
 
 function formatNumber(value) {
   return NUMBER_FORMAT.format(number(value))
+}
+
+function formatTableNumber(value, signed = false) {
+  if (value === null || value === undefined || value === '') return '—'
+  const numeric = number(value)
+  if (!signed || Math.abs(numeric) <= CRITICAL_TOLERANCE) return formatNumber(numeric)
+  return `${numeric > 0 ? '+' : '−'}${formatNumber(Math.abs(numeric))}`
 }
 
 function formatMonth(value) {
@@ -211,14 +219,28 @@ function comparisonSummaryAnswer(finalDppAnalysis, month) {
   const totalDifferences = divergent.reduce((total, column) => total + number(column.difference_count), 0)
 
   return {
-    text: `O componente Comparativo completo das colunas do DPP possui ${columns.length} colunas, ${comparable.length} comparáveis e ${divergent.length} coluna(s) com divergência. Somando os registros de cada coluna divergente, há ${formatNumber(totalDifferences)} ocorrências de divergência de coluna; esse total não representa materiais únicos, pois o mesmo material pode divergir em mais de uma coluna.`,
-    evidence: divergent.map((column) => ({
-      label: column.name,
-      value: `${formatNumber(column.difference_count)} divergência(s)`,
-      detail: `Diferença agregada: ${formatNumber(column.delta)}`,
-    })),
+    text: `O comparativo possui ${columns.length} colunas, ${comparable.length} comparáveis e ${divergent.length} com divergência. As ${formatNumber(totalDifferences)} ocorrências abaixo são divergências de coluna, não materiais únicos.`,
+    table: {
+      title: 'Colunas com divergência',
+      totalRows: divergent.length,
+      columns: [
+        { key: 'column', label: 'Coluna' },
+        { key: 'count', label: 'Valores divergentes', align: 'right' },
+        { key: 'delta', label: 'Diferença agregada', align: 'right' },
+      ],
+      rows: divergent.map((column) => ({
+        column: column.name,
+        count: formatNumber(column.difference_count),
+        delta: formatTableNumber(column.delta, true),
+      })),
+    },
+    evidence: [{
+      label: 'Comparativo completo',
+      value: `${divergent.length} coluna(s) com divergência`,
+      detail: `${formatNumber(totalDifferences)} ocorrências de divergência de coluna`,
+    }],
     sources: [`Comparativo DPP Final × Cenário ORION · ${formatMonth(month)}`],
-    entities: ['Comparativo completo das colunas do DPP', ...divergent.map((column) => column.name)],
+    entities: ['Comparativo completo das colunas do DPP'],
     tool: 'get_column_comparison_summary',
     confidence: 'Determinística',
   }
@@ -270,24 +292,41 @@ function localColumnDivergences(finalDppAnalysis, scenario, column) {
 }
 
 function divergenceItemsAnswer(column, items, count, source, tool) {
-  const renderedItems = items.slice(0, 20)
-  const rendered = renderedItems.map((item) => (
-    `${item.material}: ORION ${formatNumber(item.orion_value)} → Final ${formatNumber(item.final_value)} (Δ ${item.delta > 0 ? '+' : ''}${formatNumber(item.delta)})`
-  ))
+  const renderedItems = items.slice(0, 100)
   const total = count || items.length
-  const suffix = total > renderedItems.length
-    ? ` Mostrando ${renderedItems.length} de ${formatNumber(total)}; os demais permanecem disponíveis no comparativo.`
-    : ''
+  const shown = renderedItems.length
 
   return {
-    text: `A coluna ${column.name} possui ${formatNumber(total)} divergência(s). ${rendered.join('; ')}.${suffix}`,
-    evidence: renderedItems.slice(0, 16).map((item) => ({
-      label: item.material || column.name,
-      value: `${formatNumber(item.orion_value)} → ${formatNumber(item.final_value)}`,
-      detail: `Δ ${item.delta > 0 ? '+' : ''}${formatNumber(item.delta)}${item.reason ? ` · ${item.reason}` : ''}`,
-    })),
+    text: shown < total
+      ? `A coluna ${column.name} possui ${formatNumber(total)} divergência(s). A tabela mostra ${shown} registros desta consulta.`
+      : `A coluna ${column.name} possui ${formatNumber(total)} divergência(s). Os registros estão organizados na tabela abaixo.`,
+    table: {
+      title: `Divergências · ${column.name}`,
+      totalRows: total,
+      columns: [
+        { key: 'material', label: 'Material', kind: 'code' },
+        { key: 'description', label: 'Descrição', kind: 'description' },
+        { key: 'orion', label: 'Cenário ORION', align: 'right' },
+        { key: 'final', label: 'DPP Final', align: 'right' },
+        { key: 'delta', label: 'Diferença', align: 'right' },
+      ],
+      rows: renderedItems.map((item) => ({
+        material: item.material || '—',
+        description: item.description || '—',
+        orion: formatTableNumber(item.orion_value),
+        final: formatTableNumber(item.final_value),
+        delta: formatTableNumber(item.delta, true),
+      })),
+    },
+    evidence: [{
+      label: column.name,
+      value: `${formatNumber(total)} divergência(s)`,
+      detail: tool === 'get_column_divergences_local_fallback'
+        ? 'Detalhes reconstruídos do workspace DPP persistido.'
+        : 'Detalhes retornados pelo drill-down do comparativo.',
+    }],
     sources: [source],
-    entities: [column.name, ...renderedItems.map((item) => item.material).filter(Boolean)],
+    entities: [column.name],
     tool,
     confidence: 'Determinística',
   }
@@ -457,28 +496,42 @@ async function workspaceAnswer(question, { scenario, finalDppAnalysis, reference
   if (isCriticalDataQuestion(question)) {
     const critical = materials.filter((item) => normalize(item.um) === 'un' && number(item.balance) < -CRITICAL_TOLERANCE)
     const finalCritical = finalDppAnalysis?.summary?.critical_materials
-    const codes = critical.map((item) => item.material || item.material_key).filter(Boolean)
-    const asksWhich = q.includes('quais') || q.includes('lista') || q.includes('mostr') || q.includes('estao')
-    const shownCodes = codes.slice(0, 20)
-    const listText = asksWhich && shownCodes.length
-      ? ` ${codes.length > shownCodes.length ? `Primeiros ${shownCodes.length} materiais` : 'Materiais'}: ${shownCodes.join(', ')}.`
-      : ''
-    const remainingText = asksWhich && codes.length > shownCodes.length
-      ? ` Há mais ${codes.length - shownCodes.length}; o painel de evidências mantém a consulta ligada ao cenário atual.`
-      : ''
     const finalText = finalCritical === undefined
       ? ''
       : ` No DPP Final sincronizado, o resumo registra ${formatNumber(finalCritical)} material(is) críticos.`
 
     return {
-      text: `O Cenário ORION atual possui ${critical.length} material(is) críticos pela regra UM = UN e SALDO < -0,0001.${finalText}${listText}${remainingText}`,
-      evidence: critical.slice(0, 16).map((item) => ({
-        label: item.material || item.material_key || 'Material',
-        value: `SALDO ${formatNumber(item.balance)}`,
-        detail: item.description || 'UM = UN',
-      })),
+      text: `O Cenário ORION atual possui ${critical.length} material(is) críticos pela regra UM = UN e SALDO < -0,0001.${finalText} Os materiais estão organizados na tabela abaixo.`,
+      table: {
+        title: 'Materiais críticos · Cenário ORION',
+        totalRows: critical.length,
+        columns: [
+          { key: 'material', label: 'Material', kind: 'code' },
+          { key: 'description', label: 'Descrição', kind: 'description' },
+          { key: 'um', label: 'UM' },
+          { key: 'balance', label: 'SALDO ORION', align: 'right' },
+        ],
+        rows: critical.map((item) => ({
+          material: item.material || item.material_key || '—',
+          description: item.description || '—',
+          um: item.um || '—',
+          balance: formatTableNumber(item.balance),
+        })),
+      },
+      evidence: [
+        {
+          label: 'Cenário ORION',
+          value: `${critical.length} crítico(s)`,
+          detail: 'Regra: UM = UN e SALDO < -0,0001',
+        },
+        ...(finalCritical === undefined ? [] : [{
+          label: 'DPP Final',
+          value: `${formatNumber(finalCritical)} crítico(s)`,
+          detail: 'Resumo sincronizado do mês',
+        }]),
+      ],
       sources,
-      entities: ['Materiais críticos', ...shownCodes],
+      entities: ['Materiais críticos'],
       tool: 'get_critical_materials',
       confidence: 'Determinística',
     }
@@ -562,6 +615,48 @@ async function knowledgeAnswer(apiUrl, question) {
       confidence: 'Indisponível',
     }
   }
+}
+
+function MessageDataTable({ table }) {
+  const rows = table?.rows || []
+  const columns = table?.columns || []
+  if (!rows.length || !columns.length) return null
+
+  const totalRows = Number(table.totalRows) || rows.length
+  return (
+    <div className="agent-data-table-block">
+      <div className="agent-data-table-caption">
+        <strong>{table.title || 'Dados da consulta'}</strong>
+        <span>{rows.length === totalRows ? `${totalRows} linha(s)` : `${rows.length} de ${totalRows} linha(s)`}</span>
+      </div>
+      <div className="agent-data-table-wrap" role="region" aria-label={table.title || 'Tabela de dados da resposta'} tabIndex="0">
+        <table className="agent-data-table">
+          <thead>
+            <tr>
+              {columns.map((column) => (
+                <th key={column.key} scope="col" data-align={column.align || 'left'}>{column.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={`${row.material || row.column || 'row'}-${rowIndex}`}>
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    data-align={column.align || 'left'}
+                    data-kind={column.kind || 'text'}
+                  >
+                    {row[column.key] ?? '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 const SUGGESTIONS = [
@@ -771,15 +866,18 @@ function AgentOrion({ apiUrl }) {
           <div className="agent-message-list" aria-live="polite" ref={messageListRef}>
             {messages.map((message) => {
               const latestOrionAnswer = message.role === 'orion' && message.id === currentAnswer.id
+              const hasTable = Boolean(message.table?.rows?.length)
               return (
                 <article
                   className="agent-message"
                   data-role={message.role}
+                  data-has-table={hasTable ? 'true' : 'false'}
                   key={message.id}
                   ref={latestOrionAnswer ? latestAnswerRef : null}
                 >
                   <div className="agent-message-author">{message.role === 'orion' ? 'ORION' : 'Você'}</div>
                   <p>{message.text}</p>
+                  {hasTable && <MessageDataTable table={message.table} />}
                   {message.role === 'orion' && message.confidence && (
                     <div className="agent-message-meta">
                       <span>Tipo de resposta: {message.confidence}</span>
