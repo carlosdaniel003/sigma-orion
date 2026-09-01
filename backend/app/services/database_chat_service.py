@@ -63,17 +63,16 @@ def _merge_entities(*groups: list[str]) -> list[str]:
 
 
 def _traceable_knowledge_entities(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswer) -> list[str]:
-    """Remove entidades lexicais incidentais sem manter blacklist de palavras.
+    """Mantém somente entidades com origem ou formato de domínio demonstrável.
 
-    A rastreabilidade aceita entidades que tenham origem demonstrável: conceitos reconhecidos
-    pelo planejador, status determinísticos, o assunto estruturado da resposta ou códigos de
-    material. Palavras escolhidas apenas por heurística lexical do fallback RAG não aparecem
-    como entidades no frontend nem contaminam o contexto persistido.
+    Conceitos vêm do catálogo do planejador; status vêm do registro determinístico; códigos
+    estruturados preservam identificadores como materiais/modelos e siglas em caixa alta.
+    Uma palavra textual genérica não vira entidade apenas porque o fallback RAG a escolheu
+    como assunto da resposta.
     """
 
     recognized = {_normalize(item) for item in plan.concept_entities}
     statuses = {item.upper() for item in known_status_codes()}
-    subject_key = str(knowledge.context.get("subject_key") or "").strip()
     result: list[str] = []
 
     for raw in knowledge.entities:
@@ -83,9 +82,11 @@ def _traceable_knowledge_entities(plan: QueryPlan, knowledge: DatabaseKnowledgeA
         normalized = _normalize(item)
         is_recognized_concept = normalized in recognized
         is_status = item.upper() in statuses
-        is_context_subject = bool(subject_key) and normalized == _normalize(subject_key)
-        is_material_code = bool(re.fullmatch(r"[0-9A-Za-z]+(?:-[0-9A-Za-z]+){2,}", item))
-        if is_recognized_concept or is_status or is_context_subject or is_material_code:
+        is_domain_identifier = bool(
+            re.fullmatch(r"[A-Z0-9_]+(?:-[A-Z0-9_]+)*", item)
+            and (len(item) >= 2)
+        )
+        if is_recognized_concept or is_status or is_domain_identifier:
             result.append(item.upper() if is_status else item)
 
     return result
