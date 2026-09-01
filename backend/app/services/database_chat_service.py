@@ -5,6 +5,7 @@ import unicodedata
 
 from app.schemas.agent import ChatResponse
 from app.services.database_answer_service import answer_database_knowledge
+from app.services.database_chat_refinement_service import refine_database_answer
 from app.services.rag_runtime_service import load_chat_context, record_chat_audit
 from app.services.rag_runtime_status_service import runtime_workspace_status
 
@@ -46,6 +47,7 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
     runtime = runtime_workspace_status()
     previous_context = load_chat_context(session_id)
     knowledge = answer_database_knowledge(question, context=previous_context)
+    knowledge = refine_database_answer(question, previous_context, knowledge)
     knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
 
     if _only_incidental_python(question, knowledge.sources):
