@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
+from app.llm.provider import MockProvider, get_llm_provider
 from app.schemas.agent import ChatRequest, ChatResponse
 from app.services.database_chat_service import answer_database_question
 from app.services.knowledge_catalog_service import list_catalog_entries, sync_knowledge_index
@@ -28,6 +29,35 @@ def knowledge_inventory() -> dict:
 @router.post("/index/sync")
 def sync_knowledge_catalog() -> dict:
     return sync_knowledge_index(force=True)
+
+
+@router.get("/llm/status")
+def local_llm_status() -> dict:
+    try:
+        provider = get_llm_provider()
+        status = provider.status()
+    except Exception as exc:
+        return {
+            "provider": "unavailable",
+            "model": None,
+            "configured": False,
+            "available": False,
+            "mode": "sqlite-rag-fallback",
+            "message": str(exc),
+        }
+
+    available = bool(status.get("available")) and not isinstance(provider, MockProvider)
+    status.update(
+        {
+            "mode": "grounded-local-llm" if available else "sqlite-rag-fallback",
+            "message": (
+                "LLM local disponível. SQL/Python/RAG continuam como fontes de verdade e a LLM atua somente na interpretação."
+                if available
+                else "LLM local não está ativa. O chat continua em SQL + SQLite/FTS5/BM25."
+            ),
+        }
+    )
+    return status
 
 
 @router.post("/workspace/sync")
