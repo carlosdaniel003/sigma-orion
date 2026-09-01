@@ -118,7 +118,8 @@ def test_knowledge_status_loads_versioned_files() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["mode"] == "lexical-local"
+    assert payload["mode"] == "sqlite-fts5-bm25"
+    assert payload["fts5_enabled"] is True
     assert payload["embedding_enabled"] is False
     assert payload["document_count"] >= 4
     assert payload["chunk_count"] >= 4
