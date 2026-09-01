@@ -3,7 +3,8 @@ import re
 import unicodedata
 
 from app.core.config import KNOWLEDGE_DIR, RAG_TOP_K
-from app.services.knowledge_catalog_service import bm25_retrieve, knowledge_index_status, sync_knowledge_index
+from app.services.knowledge_catalog_service import bm25_retrieve, sync_knowledge_index
+from app.services.python_knowledge_inventory_service import scan_python_knowledge
 
 
 STOP_WORDS = {
@@ -99,6 +100,11 @@ def load_knowledge_chunks() -> list[KnowledgeChunk]:
         content = path.read_text(encoding="utf-8").strip()
         if content:
             chunks.extend(_chunk_markdown(relative, content))
+    python_rules, _ = scan_python_knowledge()
+    chunks.extend(
+        KnowledgeChunk(source=rule.source, content=rule.content)
+        for rule in python_rules
+    )
     return chunks
 
 
@@ -214,6 +220,8 @@ def _best_formula_chunk(query: str, chunks: list[KnowledgeChunk]) -> KnowledgeCh
         if subject_tokens and not (subject_tokens & _tokens(_heading(chunk))):
             continue
         candidates.append(chunk)
+    source_order = {"motor-deterministico.md": 0, "regras-globais.md": 1}
+    candidates.sort(key=lambda item: (source_order.get(item.source, 99), -item.score))
     return candidates[0] if candidates else None
 
 
@@ -323,6 +331,19 @@ def _insufficient_answer() -> KnowledgeAnswer:
     )
 
 
+def _formula_candidates(query: str, initial: list[KnowledgeChunk]) -> list[KnowledgeChunk]:
+    try:
+        indexed = bm25_retrieve(query, limit=max(25, RAG_TOP_K * 5), category="deterministic")
+        if indexed:
+            return [
+                KnowledgeChunk(source=item.source, content=item.content, score=item.score)
+                for item in indexed
+            ]
+    except Exception:
+        pass
+    return initial
+
+
 def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnswer:
     glossary_answer = _glossary_answer(query)
     if glossary_answer is not None:
@@ -333,7 +354,7 @@ def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnsw
         return _insufficient_answer()
 
     if _is_formula_query(query):
-        formula_chunk = _best_formula_chunk(query, chunks)
+        formula_chunk = _best_formula_chunk(query, _formula_candidates(query, chunks))
         if formula_chunk is not None:
             answer = _formula_answer(formula_chunk)
             if answer:
@@ -367,14 +388,15 @@ def knowledge_status() -> dict:
             {
                 "files": sorted(path.relative_to(KNOWLEDGE_DIR).as_posix() for path in KNOWLEDGE_DIR.rglob("*.md")),
                 "message": (
-                    "RAG local ativo com índice persistido em SQLite, recuperação FTS5/BM25, "
-                    "tratamento determinístico para definições e fórmulas e fallback lexical quando necessário."
+                    "RAG local ativo com inventário de Markdown e regras extraídas automaticamente do código Python via AST, "
+                    "índice persistido em SQLite e recuperação FTS5/BM25."
                 ),
             }
         )
         return status
     except Exception:
         chunks = load_knowledge_chunks()
+        python_rules, scan_errors = scan_python_knowledge()
         return {
             "mode": "lexical-local",
             "embedding_enabled": False,
@@ -382,5 +404,7 @@ def knowledge_status() -> dict:
             "files": sorted(path.relative_to(KNOWLEDGE_DIR).as_posix() for path in KNOWLEDGE_DIR.rglob("*.md")),
             "document_count": len({chunk.source for chunk in chunks}),
             "chunk_count": len(chunks),
-            "message": "Índice SQLite indisponível; RAG operando em fallback lexical local.",
+            "python_rule_count": len(python_rules),
+            "scan_error_count": len(scan_errors),
+            "message": "Índice SQLite indisponível; RAG operando em fallback lexical local com inventário Python.",
         }
