@@ -28,10 +28,25 @@ def _only_incidental_python(question: str, sources: list[str]) -> bool:
     return not explicitly_code
 
 
+def _label_structured_field_answer(answer: str, context: dict) -> str:
+    topic = str(context.get("topic") or "")
+    labels = {
+        "balance": ("SALDO ORION:", "SALDO Final:"),
+        "nec": ("NEC ORION:", "NEC Final:"),
+        "stock_total": ("STK TTL ORION:", "STK TTL Final:"),
+        "stock_op": ("STK OP ORION:", "STK OP Final:"),
+    }
+    if topic not in labels:
+        return answer
+    scenario_label, final_label = labels[topic]
+    return answer.replace("Cenário ORION:", scenario_label).replace("DPP Final:", final_label)
+
+
 def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
     runtime = runtime_workspace_status()
     previous_context = load_chat_context(session_id)
     knowledge = answer_database_knowledge(question, context=previous_context)
+    knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
 
     if _only_incidental_python(question, knowledge.sources):
         knowledge.answer = (
