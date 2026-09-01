@@ -113,11 +113,11 @@ def test_material_lookup_is_concise_and_uses_structured_sqlite_entities() -> Non
         payload = _ask(client, "Qual o saldo do material 010203-0010-01?", "material-flow")
 
     assert "SALDO do material 010203-0010-01" in payload["answer"]
-    assert "Cenário ORION" in payload["answer"]
-    assert "DPP Final" in payload["answer"]
+    assert "SALDO ORION" in payload["answer"]
+    assert "SALDO Final" in payload["answer"]
     assert "Dados completos" not in payload["answer"]
     assert "010203-0010-01" in payload["entities"]
-    assert payload["model"] == "sqlite-fts5-bm25+sql"
+    assert payload["model"] == "sqlite-fts5-bm25"
 
 
 def test_follow_up_resolves_esse_material_from_sqlite_chat_context() -> None:
