@@ -12,7 +12,8 @@ from app.services.database_conversation_grounding_service import (
     semantic_coverage_missing,
     status_knowledge_answer,
 )
-from app.services.database_query_planner_service import plan_database_question, smalltalk_answer
+from app.services.database_query_planner_service import QueryPlan, plan_database_question, smalltalk_answer
+from app.services.dpp_status_registry import known_status_codes
 from app.services.llm_grounding_service import enhance_grounded_answer
 from app.services.rag_runtime_service import load_chat_context, record_chat_audit
 from app.services.rag_runtime_status_service import runtime_workspace_status
@@ -58,6 +59,35 @@ def _merge_entities(*groups: list[str]) -> list[str]:
             text = str(item or "").strip()
             if text and text not in result:
                 result.append(text)
+    return result
+
+
+def _traceable_knowledge_entities(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswer) -> list[str]:
+    """Remove entidades lexicais incidentais sem manter blacklist de palavras.
+
+    A rastreabilidade aceita entidades que tenham origem demonstrável: conceitos reconhecidos
+    pelo planejador, status determinísticos, o assunto estruturado da resposta ou códigos de
+    material. Palavras escolhidas apenas por heurística lexical do fallback RAG não aparecem
+    como entidades no frontend nem contaminam o contexto persistido.
+    """
+
+    recognized = {_normalize(item) for item in plan.concept_entities}
+    statuses = {item.upper() for item in known_status_codes()}
+    subject_key = str(knowledge.context.get("subject_key") or "").strip()
+    result: list[str] = []
+
+    for raw in knowledge.entities:
+        item = str(raw or "").strip()
+        if not item:
+            continue
+        normalized = _normalize(item)
+        is_recognized_concept = normalized in recognized
+        is_status = item.upper() in statuses
+        is_context_subject = bool(subject_key) and normalized == _normalize(subject_key)
+        is_material_code = bool(re.fullmatch(r"[0-9A-Za-z]+(?:-[0-9A-Za-z]+){2,}", item))
+        if is_recognized_concept or is_status or is_context_subject or is_material_code:
+            result.append(item.upper() if is_status else item)
+
     return result
 
 
@@ -145,7 +175,7 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         }
         for chunk in knowledge.chunks
     ]
-    response_entities = _merge_entities(plan.entities, knowledge.entities)
+    response_entities = _merge_entities(plan.entities, _traceable_knowledge_entities(plan, knowledge))
     persisted_context = knowledge.context if plan.smalltalk else build_persisted_context(knowledge, response_entities)
 
     if plan.smalltalk:

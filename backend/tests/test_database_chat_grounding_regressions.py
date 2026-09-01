@@ -33,6 +33,7 @@ def test_opc_stk_ttl_retrieval_has_both_rules_and_no_incidental_python() -> None
 
     assert "OPC" in payload["entities"]
     assert "STK TTL" in payload["entities"]
+    assert "interfere" not in [str(item).lower() for item in payload["entities"]]
     assert all(not source.startswith("python://") for source in payload["knowledge_sources"])
     assert all(not item["source"].startswith("python://") for item in payload["retrieval"])
     headings = "\n".join(item["heading"] for item in payload["retrieval"])
