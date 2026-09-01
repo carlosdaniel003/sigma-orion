@@ -59,6 +59,7 @@ class AgentAnalysisRequest(BaseModel):
 class ChatRequest(BaseModel):
     question: str = Field(min_length=2, max_length=2000)
     workspace: dict[str, Any] | None = None
+    session_id: str = Field(default="", max_length=120)
 
 
 class ChatRetrievedSource(BaseModel):
@@ -68,6 +69,20 @@ class ChatRetrievedSource(BaseModel):
     score: float = 0.0
 
 
+class ChatTableColumn(BaseModel):
+    key: str
+    label: str
+    align: Literal["left", "right", "center"] = "left"
+    kind: str = "text"
+
+
+class ChatTable(BaseModel):
+    title: str
+    total_rows: int = 0
+    columns: list[ChatTableColumn] = Field(default_factory=list)
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class ChatResponse(BaseModel):
     provider: str
     model: str | None = None
@@ -75,9 +90,12 @@ class ChatResponse(BaseModel):
     answer: str
     knowledge_sources: list[str] = Field(default_factory=list)
     retrieval: list[ChatRetrievedSource] = Field(default_factory=list)
+    entities: list[str] = Field(default_factory=list)
+    table: ChatTable | None = None
     database: str = "orion.db"
     workspace_fingerprint: str = ""
     audit_id: int | None = None
+    resolved_question: str = ""
 
 
 class FeedbackCreate(BaseModel):
