@@ -8,7 +8,8 @@ import sqlite3
 from threading import Lock
 import unicodedata
 
-from app.core.config import DATABASE_URL, KNOWLEDGE_DIR
+from app.core.config import BASE_DIR, DATABASE_URL, KNOWLEDGE_DIR
+from app.services.python_knowledge_inventory_service import scan_python_knowledge
 
 
 _INDEX_LOCK = Lock()
@@ -30,6 +31,8 @@ class IndexedKnowledgeChunk:
     heading: str
     content: str
     score: float = 0.0
+    kind: str = "documento"
+    location: str = ""
 
 
 def _database_path() -> Path:
@@ -65,6 +68,8 @@ def _search_terms(query: str) -> list[str]:
 
 def _category_for_source(source: str) -> str:
     normalized = source.lower()
+    if normalized.startswith("python://"):
+        return "deterministic"
     if normalized in {"motor-deterministico.md", "regras-globais.md", "guardrails.md"}:
         return "deterministic"
     if normalized.startswith("casos-aprovados/"):
@@ -111,7 +116,11 @@ def _fingerprint() -> tuple[tuple[str, int, int], ...]:
     result: list[tuple[str, int, int]] = []
     for path in sorted(KNOWLEDGE_DIR.rglob("*.md")):
         stat = path.stat()
-        result.append((path.relative_to(KNOWLEDGE_DIR).as_posix(), stat.st_mtime_ns, stat.st_size))
+        result.append((f"knowledge/{path.relative_to(KNOWLEDGE_DIR).as_posix()}", stat.st_mtime_ns, stat.st_size))
+    python_root = BASE_DIR / "backend" / "app"
+    for path in sorted(python_root.rglob("*.py")):
+        stat = path.stat()
+        result.append((path.relative_to(BASE_DIR).as_posix(), stat.st_mtime_ns, stat.st_size))
     return tuple(result)
 
 
@@ -167,6 +176,41 @@ def _ensure_schema(connection: sqlite3.Connection) -> bool:
     return bool(_FTS5_AVAILABLE)
 
 
+def _insert_document(
+    connection: sqlite3.Connection,
+    *,
+    source: str,
+    category: str,
+    title: str,
+    content: str,
+    chunks: list[tuple[str, str]],
+    fts5_enabled: bool,
+) -> None:
+    checksum = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    cursor = connection.execute(
+        "INSERT INTO knowledge_documents(source, category, title, checksum, content) VALUES (?, ?, ?, ?, ?)",
+        (source, category, title, checksum, content),
+    )
+    document_id = int(cursor.lastrowid)
+    for ordinal, (heading, chunk) in enumerate(chunks):
+        chunk_cursor = connection.execute(
+            """
+            INSERT INTO knowledge_chunks(document_id, source, category, heading, ordinal, content)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (document_id, source, category, heading, ordinal, chunk),
+        )
+        chunk_id = int(chunk_cursor.lastrowid)
+        if fts5_enabled:
+            connection.execute(
+                """
+                INSERT INTO knowledge_chunks_fts(chunk_id, heading, content, source, category)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (chunk_id, heading, chunk, source, category),
+            )
+
+
 def sync_knowledge_index(force: bool = False) -> dict:
     global _LAST_FINGERPRINT
 
@@ -188,38 +232,38 @@ def sync_knowledge_index(force: bool = False) -> dict:
                 if not content:
                     continue
                 category = _category_for_source(source)
-                checksum = hashlib.sha256(content.encode("utf-8")).hexdigest()
-                title = _heading(content, source)
-                cursor = connection.execute(
-                    "INSERT INTO knowledge_documents(source, category, title, checksum, content) VALUES (?, ?, ?, ?, ?)",
-                    (source, category, title, checksum, content),
-                )
-                document_id = int(cursor.lastrowid)
-                ordinal = 0
+                document_chunks: list[tuple[str, str]] = []
                 for section in _split_markdown_sections(content):
                     for chunk in _chunk_section(section):
-                        heading = _heading(chunk, source)
-                        chunk_cursor = connection.execute(
-                            """
-                            INSERT INTO knowledge_chunks(document_id, source, category, heading, ordinal, content)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                            """,
-                            (document_id, source, category, heading, ordinal, chunk),
-                        )
-                        chunk_id = int(chunk_cursor.lastrowid)
-                        if fts5_enabled:
-                            connection.execute(
-                                """
-                                INSERT INTO knowledge_chunks_fts(chunk_id, heading, content, source, category)
-                                VALUES (?, ?, ?, ?, ?)
-                                """,
-                                (chunk_id, heading, chunk, source, category),
-                            )
-                        ordinal += 1
+                        document_chunks.append((_heading(chunk, source), chunk))
+                _insert_document(
+                    connection,
+                    source=source,
+                    category=category,
+                    title=_heading(content, source),
+                    content=content,
+                    chunks=document_chunks,
+                    fts5_enabled=fts5_enabled,
+                )
+
+            python_rules, scan_errors = scan_python_knowledge()
+            for rule in python_rules:
+                _insert_document(
+                    connection,
+                    source=rule.source,
+                    category="deterministic",
+                    title=rule.heading,
+                    content=rule.content,
+                    chunks=[(rule.heading, rule.content)],
+                    fts5_enabled=fts5_enabled,
+                )
 
             connection.commit()
             _LAST_FINGERPRINT = current_fingerprint
-            return knowledge_index_status(connection=connection, fts5_enabled=fts5_enabled)
+            status = knowledge_index_status(connection=connection, fts5_enabled=fts5_enabled)
+            status["python_scan_errors"] = scan_errors
+            status["scan_error_count"] = len(scan_errors)
+            return status
 
 
 def knowledge_index_status(
@@ -233,6 +277,10 @@ def knowledge_index_status(
     try:
         document_count = int(connection.execute("SELECT COUNT(*) FROM knowledge_documents").fetchone()[0])
         chunk_count = int(connection.execute("SELECT COUNT(*) FROM knowledge_chunks").fetchone()[0])
+        python_rule_count = int(
+            connection.execute("SELECT COUNT(*) FROM knowledge_documents WHERE source LIKE 'python://%'").fetchone()[0]
+        )
+        markdown_document_count = document_count - python_rule_count
         return {
             "mode": "sqlite-fts5-bm25" if fts5_enabled else "sqlite-lexical-fallback",
             "database": _database_path().name,
@@ -240,10 +288,22 @@ def knowledge_index_status(
             "embedding_enabled": False,
             "document_count": document_count,
             "chunk_count": chunk_count,
+            "markdown_document_count": markdown_document_count,
+            "python_rule_count": python_rule_count,
         }
     finally:
         if owns_connection:
             connection.close()
+
+
+def _kind_and_location(source: str, content: str) -> tuple[str, str]:
+    if source.startswith("python://"):
+        kind_match = re.search(r"^Tipo:\s*([^\.]+)", content, flags=re.MULTILINE)
+        kind = kind_match.group(1).strip() if kind_match else "regra Python"
+        return kind, source.removeprefix("python://")
+    if source.startswith("casos-aprovados/") and not source.endswith("README.md"):
+        return "caso aprovado", source
+    return "documentação", source
 
 
 def bm25_retrieve(query: str, limit: int = 5, category: str | None = None) -> list[IndexedKnowledgeChunk]:
@@ -261,9 +321,8 @@ def bm25_retrieve(query: str, limit: int = 5, category: str | None = None) -> li
     if category:
         category_clause = " AND c.category = ?"
         params.append(category)
-    params.append(max(1, min(int(limit), 50)))
+    params.append(max(1, min(int(limit), 100)))
 
-    source_priority = "CASE WHEN c.source = 'motor-deterministico.md' THEN 0 WHEN c.source = 'regras-globais.md' THEN 1 ELSE 2 END"
     sql = f"""
         SELECT
             c.id,
@@ -275,29 +334,34 @@ def bm25_retrieve(query: str, limit: int = 5, category: str | None = None) -> li
         FROM knowledge_chunks_fts
         JOIN knowledge_chunks c ON c.id = CAST(knowledge_chunks_fts.chunk_id AS INTEGER)
         WHERE knowledge_chunks_fts MATCH ?{category_clause}
-        ORDER BY {source_priority} ASC, bm25_rank ASC, c.source ASC, c.ordinal ASC
+        ORDER BY bm25_rank ASC, c.source ASC, c.ordinal ASC
         LIMIT ?
     """
 
     with _connect() as connection:
         rows = connection.execute(sql, params).fetchall()
-    return [
-        IndexedKnowledgeChunk(
-            chunk_id=int(row["id"]),
-            source=str(row["source"]),
-            category=str(row["category"]),
-            heading=str(row["heading"]),
-            content=str(row["content"]),
-            score=max(0.0, -float(row["bm25_rank"])),
+    result: list[IndexedKnowledgeChunk] = []
+    for row in rows:
+        kind, location = _kind_and_location(str(row["source"]), str(row["content"]))
+        result.append(
+            IndexedKnowledgeChunk(
+                chunk_id=int(row["id"]),
+                source=str(row["source"]),
+                category=str(row["category"]),
+                heading=str(row["heading"]),
+                content=str(row["content"]),
+                score=max(0.0, -float(row["bm25_rank"])),
+                kind=kind,
+                location=location,
+            )
         )
-        for row in rows
-    ]
+    return result
 
 
-def list_catalog_entries(category: str, query: str = "", limit: int = 250) -> dict:
+def list_catalog_entries(category: str, query: str = "", limit: int = 500) -> dict:
     status = sync_knowledge_index()
     normalized_category = category if category in {"operational", "deterministic"} else "operational"
-    requested_limit = max(1, min(int(limit), 500))
+    requested_limit = max(1, min(int(limit), 2000))
 
     if query.strip() and status["fts5_enabled"]:
         chunks = bm25_retrieve(query, limit=requested_limit, category=normalized_category)
@@ -309,6 +373,8 @@ def list_catalog_entries(category: str, query: str = "", limit: int = 250) -> di
                 "heading": chunk.heading,
                 "content": chunk.content,
                 "score": round(chunk.score, 6),
+                "kind": chunk.kind,
+                "location": chunk.location,
             }
             for chunk in chunks
         ]
@@ -319,7 +385,7 @@ def list_catalog_entries(category: str, query: str = "", limit: int = 250) -> di
                 SELECT id, source, category, heading, content
                 FROM knowledge_chunks
                 WHERE category = ?
-                ORDER BY source ASC, ordinal ASC
+                ORDER BY CASE WHEN source LIKE 'python://%' THEN 1 ELSE 0 END ASC, source ASC, ordinal ASC
                 LIMIT ?
                 """,
                 (normalized_category, requested_limit),
@@ -327,8 +393,10 @@ def list_catalog_entries(category: str, query: str = "", limit: int = 250) -> di
         query_normalized = _normalize(query)
         items = []
         for row in rows:
-            if query_normalized and query_normalized not in _normalize(f"{row['heading']} {row['content']} {row['source']}"):
+            searchable = _normalize(f"{row['heading']} {row['content']} {row['source']}")
+            if query_normalized and query_normalized not in searchable:
                 continue
+            kind, location = _kind_and_location(str(row["source"]), str(row["content"]))
             items.append(
                 {
                     "id": int(row["id"]),
@@ -337,6 +405,8 @@ def list_catalog_entries(category: str, query: str = "", limit: int = 250) -> di
                     "heading": str(row["heading"]),
                     "content": str(row["content"]),
                     "score": None,
+                    "kind": kind,
+                    "location": location,
                 }
             )
 
