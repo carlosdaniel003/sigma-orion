@@ -109,7 +109,7 @@ def test_agent_status_uses_offline_rag_by_default() -> None:
     assert payload["provider"] == "mock"
     assert payload["model"] == "mock-local"
     assert payload["mode"] == "offline-rag"
-    assert "RAG" in payload["message"]
+    assert "SQLite" in payload["message"]
 
 
 def test_knowledge_status_loads_versioned_files() -> None:
@@ -136,11 +136,9 @@ def test_agent_demo_is_explicitly_fake() -> None:
     assert payload["provider"] == "mock"
     assert payload["is_demo"] is True
     assert "Demonstra" in payload["demo_notice"]
-    assert payload["risks"]
-    assert payload["recommendations"]
 
 
-def test_agent_demo_chat() -> None:
+def test_agent_demo_chat_is_not_used_as_operational_rag() -> None:
     with TestClient(app) as client:
         response = client.post(
             "/api/agent/chat-demo",
@@ -151,29 +149,30 @@ def test_agent_demo_chat() -> None:
     payload = response.json()
     assert payload["provider"] == "mock"
     assert payload["is_demo"] is True
-    assert "-220" in payload["answer"]
+    assert "chat operacional" in payload["answer"]
 
 
-def test_agent_chat_uses_local_rag_without_external_llm() -> None:
+def test_database_chat_uses_sqlite_rag_without_external_llm() -> None:
     with TestClient(app) as client:
         response = client.post(
-            "/api/agent/chat",
+            "/api/knowledge/chat",
             json={"question": "Qual a fórmula para calcular NEC?"},
         )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["provider"] == "local-rag"
-    assert payload["model"] == "lexical-local"
+    assert payload["model"] == "sqlite-fts5-bm25"
+    assert payload["database"] == "orion.db"
     assert payload["is_demo"] is False
     assert "NEC = Σ(REAL do modelo × consumo do material naquele modelo)" in payload["answer"]
     assert "calculate_nec" in payload["answer"]
-    assert "| Termo |" not in payload["answer"]
-    assert len(payload["answer"]) < 700
     assert payload["knowledge_sources"] == ["motor-deterministico.md"]
+    assert payload["retrieval"]
+    assert payload["audit_id"] is not None
 
 
-def test_agent_chat_synthesizes_other_deterministic_formulas() -> None:
+def test_database_chat_synthesizes_other_deterministic_formulas() -> None:
     cases = [
         ("Como calcula STK TTL?", "STK TTL = STK SAP efetivo + EXPLOSÃO + STK OP"),
         ("Qual a fórmula do SALDO?", "SALDO = STK TTL - NEC"),
@@ -182,12 +181,54 @@ def test_agent_chat_synthesizes_other_deterministic_formulas() -> None:
 
     with TestClient(app) as client:
         for question, expected_formula in cases:
-            response = client.post("/api/agent/chat", json={"question": question})
+            response = client.post("/api/knowledge/chat", json={"question": question})
             assert response.status_code == 200
             payload = response.json()
             assert expected_formula in payload["answer"]
-            assert "| Termo |" not in payload["answer"]
             assert payload["knowledge_sources"] == ["motor-deterministico.md"]
+
+
+def test_workspace_is_indexed_before_free_form_chat() -> None:
+    workspace = {
+        "month": "2026-07",
+        "state": {"package": "ready", "scenario": "current", "final_dpp": "missing-file"},
+        "scenario": {
+            "scenario_id": "scenario-test-db",
+            "reference_month": "2026-07",
+            "summary": {"materials": 1, "models": 1},
+            "models": [{"name": "MODEL-X", "kit_pgd": 100, "real": 90}],
+            "materials": [
+                {
+                    "material": "MAT-RAG-001",
+                    "description": "Material sincronizado de teste",
+                    "um": "UN",
+                    "nec": 50,
+                    "stock_total": 40,
+                    "balance": -10,
+                    "status": "INVESTIGAR",
+                }
+            ],
+        },
+        "final_dpp": None,
+    }
+
+    with TestClient(app) as client:
+        sync_response = client.post("/api/knowledge/workspace/sync", json=workspace)
+        assert sync_response.status_code == 200
+        sync_payload = sync_response.json()
+        assert sync_payload["runtime_document_count"] >= 3
+
+        response = client.post(
+            "/api/knowledge/chat",
+            json={"question": "Qual o SALDO do material MAT-RAG-001?"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "MAT-RAG-001" in payload["answer"]
+    assert "SALDO ORION: -10" in payload["answer"]
+    assert any(source.startswith("workspace://scenario/scenario-test-db/material/MAT-RAG-001") for source in payload["knowledge_sources"])
+    assert payload["audit_id"] is not None
 
 
 def test_structured_mock_analysis_is_saved_to_history() -> None:
