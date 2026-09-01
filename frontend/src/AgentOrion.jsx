@@ -1,35 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './agent-orion.css'
-import './agent-data-table.css'
-
-const NUMBER_FORMAT = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 })
-const CONTEXTUAL_COLUMN_NAMES = new Set(['coments', 'comments', 'comentario', 'comentarios'])
-const CRITICAL_TOLERANCE = 1e-4
-
-function normalize(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
-}
-
-function number(value) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function formatNumber(value) {
-  return NUMBER_FORMAT.format(number(value))
-}
-
-function formatTableNumber(value, signed = false) {
-  if (value === null || value === undefined || value === '') return '—'
-  const numeric = number(value)
-  if (!signed || Math.abs(numeric) <= CRITICAL_TOLERANCE) return formatNumber(numeric)
-  return `${numeric > 0 ? '+' : '−'}${formatNumber(Math.abs(numeric))}`
-}
 
 function formatMonth(value) {
   if (!value || !/^\d{4}-\d{2}$/.test(value)) return 'Mês não definido'
@@ -38,633 +9,6 @@ function formatMonth(value) {
   const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
-
-function findMaterial(question, materials) {
-  const normalizedQuestion = normalize(question)
-  return (materials || []).find((material) => {
-    const code = normalize(material.material || material.material_key)
-    return code && normalizedQuestion.includes(code)
-  }) || null
-}
-
-function findModel(question, models) {
-  const normalizedQuestion = normalize(question)
-  return [...(models || [])]
-    .sort((left, right) => String(right.name || '').length - String(left.name || '').length)
-    .find((model) => {
-      const name = normalize(model.name)
-      return name && normalizedQuestion.includes(name)
-    }) || null
-}
-
-function finalModelLookup(finalDppAnalysis) {
-  return new Map(
-    (finalDppAnalysis?.models || []).map((model) => [normalize(model.name), model]),
-  )
-}
-
-function changedRealModels(scenario, finalDppAnalysis) {
-  const finalByName = finalModelLookup(finalDppAnalysis)
-  return (scenario?.models || []).flatMap((model) => {
-    const finalModel = finalByName.get(normalize(model.name))
-    if (!finalModel) return []
-    const orionReal = number(model.real)
-    const finalReal = number(finalModel.real)
-    if (Math.abs(orionReal - finalReal) <= CRITICAL_TOLERANCE) return []
-    return [{ name: model.name, orion: orionReal, final: finalReal, delta: finalReal - orionReal }]
-  })
-}
-
-function materialEvidence(material) {
-  if (!material) return []
-  const evidence = [{
-    label: 'Material',
-    value: material.material || material.material_key || '—',
-    detail: material.description || '',
-  }]
-
-  if (material.nec !== undefined && material.nec !== null) {
-    evidence.push({ label: 'NEC ORION', value: formatNumber(material.nec), detail: 'Motor determinístico' })
-  }
-  if (material.stock_total !== undefined && material.stock_total !== null) {
-    evidence.push({ label: 'STK TTL ORION', value: formatNumber(material.stock_total), detail: 'Cenário atual' })
-  }
-  if (material.balance !== undefined && material.balance !== null) {
-    evidence.push({ label: 'SALDO ORION', value: formatNumber(material.balance), detail: 'STK TTL − NEC' })
-  }
-  return evidence
-}
-
-function resolveColumnMode(column) {
-  if (column?.mode) return column.mode
-  const name = normalize(column?.name)
-  if (name === 'opc') return 'reference_final'
-  if (CONTEXTUAL_COLUMN_NAMES.has(name)) return 'contextual'
-  return column?.supported ? 'compare' : 'unsupported'
-}
-
-function comparisonColumns(finalDppAnalysis) {
-  return (finalDppAnalysis?.column_comparison?.columns || []).map((column) => ({
-    ...column,
-    mode: resolveColumnMode(column),
-  }))
-}
-
-function isDivergentColumn(column) {
-  return column?.mode === 'compare'
-    && Boolean(column?.supported)
-    && (Math.abs(number(column?.delta)) > CRITICAL_TOLERANCE || number(column?.difference_count) > 0)
-}
-
-function findComparisonColumn(question, finalDppAnalysis) {
-  const q = normalize(question)
-  return comparisonColumns(finalDppAnalysis)
-    .filter((column) => normalize(column.name).length >= 3)
-    .sort((left, right) => normalize(right.name).length - normalize(left.name).length)
-    .find((column) => q.includes(normalize(column.name))) || null
-}
-
-function isDivergenceDataRequest(question) {
-  const q = normalize(question)
-  if (!(q.includes('diverg') || q.includes('diferenc'))) return false
-  return q.includes('quant')
-    || q.includes('quais')
-    || q.includes('lista')
-    || q.includes('mostr')
-    || q.includes('estao')
-    || q.includes('tem ')
-    || q.endsWith(' tem')
-}
-
-function isCriticalDataQuestion(question) {
-  const q = normalize(question)
-  if (!(q.includes('materia') && (q.includes('critic') || q.includes('investigar')))) return false
-  return q.includes('quant')
-    || q.includes('quais')
-    || q.includes('lista')
-    || q.includes('mostr')
-    || q.includes('estao')
-}
-
-function isWorkspaceDataQuestion(question, scenario, finalDppAnalysis) {
-  const q = normalize(question)
-  if (findMaterial(question, scenario?.materials || [])) return true
-  if (findModel(question, scenario?.models || [])) return true
-  if (isCriticalDataQuestion(question)) return true
-  if (q.includes('quant') && q.includes('materia')) return true
-  if (q.includes('real') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) return true
-  if (q.includes('cenario atual')) return true
-  if (isDivergenceDataRequest(question)) {
-    if (q.includes('comparativo') || q.includes('comparacao') || q.includes('coluna') || q.includes('dpp final')) return true
-    if (findComparisonColumn(question, finalDppAnalysis)) return true
-  }
-  if (q.includes('dpp final') && (q.includes('quant') || q.includes('valor') || q.includes('difer'))) return true
-  return false
-}
-
-function workspaceUnavailableAnswer(dppState) {
-  const bundle = dppState?.bundle
-  return {
-    text: 'O cenário ORION ainda não está disponível para o pacote atual do DPP. Para responder sobre valores do mês, materiais ou modelos, complete ou reprocesse o pacote na aba DPP.',
-    evidence: [{
-      label: 'Pacote atual',
-      value: formatMonth(dppState?.currentMonth),
-      detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
-    }],
-    sources: ['Workspace compartilhado do DPP'],
-    entities: [],
-    tool: 'workspace_status',
-    confidence: 'Determinística',
-  }
-}
-
-function staleWorkspaceAnswer(dppState) {
-  const bundle = dppState?.bundle
-  return {
-    text: 'O pacote compartilhado da aba DPP mudou desde o último processamento. Para não misturar dados antigos com os arquivos atuais, o Agente ORION bloqueou esta consulta de dados mensais até o cenário ser recalculado.',
-    evidence: [
-      {
-        label: 'Pacote atual',
-        value: formatMonth(dppState?.currentMonth),
-        detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
-      },
-      {
-        label: 'Cenário',
-        value: 'Desatualizado',
-        detail: 'A assinatura do cenário não corresponde ao pacote DPP atual.',
-      },
-    ],
-    sources: ['Workspace compartilhado do DPP'],
-    entities: [],
-    tool: 'workspace_sync_guard',
-    confidence: 'Determinística',
-  }
-}
-
-function comparisonSummaryAnswer(finalDppAnalysis, month) {
-  if (!finalDppAnalysis?.column_comparison) {
-    return {
-      text: 'O DPP Final sincronizado ainda não possui o comparativo completo de colunas disponível para este pacote.',
-      evidence: [],
-      sources: [`DPP Final · ${formatMonth(month)}`],
-      entities: ['Comparativo completo das colunas do DPP'],
-      tool: 'get_column_comparison_summary',
-      confidence: 'Determinística',
-    }
-  }
-
-  const columns = comparisonColumns(finalDppAnalysis)
-  const divergent = columns.filter(isDivergentColumn)
-  const comparable = columns.filter((column) => column.mode === 'compare' && column.supported)
-  const totalDifferences = divergent.reduce((total, column) => total + number(column.difference_count), 0)
-
-  return {
-    text: `O comparativo possui ${columns.length} colunas, ${comparable.length} comparáveis e ${divergent.length} com divergência. As ${formatNumber(totalDifferences)} ocorrências abaixo são divergências de coluna, não materiais únicos.`,
-    table: {
-      title: 'Colunas com divergência',
-      totalRows: divergent.length,
-      columns: [
-        { key: 'column', label: 'Coluna' },
-        { key: 'count', label: 'Valores divergentes', align: 'right' },
-        { key: 'delta', label: 'Diferença agregada', align: 'right' },
-      ],
-      rows: divergent.map((column) => ({
-        column: column.name,
-        count: formatNumber(column.difference_count),
-        delta: formatTableNumber(column.delta, true),
-      })),
-    },
-    evidence: [{
-      label: 'Comparativo completo',
-      value: `${divergent.length} coluna(s) com divergência`,
-      detail: `${formatNumber(totalDifferences)} ocorrências de divergência de coluna`,
-    }],
-    sources: [`Comparativo DPP Final × Cenário ORION · ${formatMonth(month)}`],
-    entities: ['Comparativo completo das colunas do DPP'],
-    tool: 'get_column_comparison_summary',
-    confidence: 'Determinística',
-  }
-}
-
-function directColumnFields(column) {
-  const name = normalize(column?.name)
-  if (name === 'nec') return { finalField: 'nec', orionField: 'nec' }
-  if (name === 'stk op') return { finalField: 'stock_op', orionField: 'stock_op' }
-  if (name === 'stk ttl') return { finalField: 'stock_total', orionField: 'stock_total' }
-  if (name === 'saldo') return { finalField: 'balance', orionField: 'balance' }
-  if (name.startsWith('explosao')) return { finalField: 'explosion', orionField: 'explosion' }
-  if (name.startsWith('stk ') && name !== 'stk op' && name !== 'stk ttl') {
-    return { finalField: 'stock', orionField: 'stock_sap_effective' }
-  }
-  return null
-}
-
-function localColumnDivergences(finalDppAnalysis, scenario, column) {
-  const fields = directColumnFields(column)
-  if (!fields) return null
-
-  const orionByMaterial = new Map(
-    (scenario?.materials || []).map((item) => [normalize(item.material || item.material_key), item]),
-  )
-  const items = []
-
-  for (const finalItem of finalDppAnalysis?.material_details || []) {
-    const key = normalize(finalItem.material)
-    const orionItem = orionByMaterial.get(key)
-    if (!key || !orionItem) continue
-
-    const finalValue = number(finalItem[fields.finalField])
-    const orionValue = number(orionItem[fields.orionField])
-    const delta = finalValue - orionValue
-    if (Math.abs(delta) <= CRITICAL_TOLERANCE) continue
-
-    items.push({
-      material: finalItem.material,
-      description: finalItem.description || orionItem.description || '',
-      orion_value: orionValue,
-      final_value: finalValue,
-      delta,
-      reason: `${column.name} difere entre o Cenário ORION e o DPP Final em ${formatNumber(delta)}.`,
-    })
-  }
-
-  return items
-}
-
-function divergenceItemsAnswer(column, items, count, source, tool) {
-  const renderedItems = items.slice(0, 100)
-  const total = count || items.length
-  const shown = renderedItems.length
-
-  return {
-    text: shown < total
-      ? `A coluna ${column.name} possui ${formatNumber(total)} divergência(s). A tabela mostra ${shown} registros desta consulta.`
-      : `A coluna ${column.name} possui ${formatNumber(total)} divergência(s). Os registros estão organizados na tabela abaixo.`,
-    table: {
-      title: `Divergências · ${column.name}`,
-      totalRows: total,
-      columns: [
-        { key: 'material', label: 'Material', kind: 'code' },
-        { key: 'description', label: 'Descrição', kind: 'description' },
-        { key: 'orion', label: 'Cenário ORION', align: 'right' },
-        { key: 'final', label: 'DPP Final', align: 'right' },
-        { key: 'delta', label: 'Diferença', align: 'right' },
-      ],
-      rows: renderedItems.map((item) => ({
-        material: item.material || '—',
-        description: item.description || '—',
-        orion: formatTableNumber(item.orion_value),
-        final: formatTableNumber(item.final_value),
-        delta: formatTableNumber(item.delta, true),
-      })),
-    },
-    evidence: [{
-      label: column.name,
-      value: `${formatNumber(total)} divergência(s)`,
-      detail: tool === 'get_column_divergences_local_fallback'
-        ? 'Detalhes reconstruídos do workspace DPP persistido.'
-        : 'Detalhes retornados pelo drill-down do comparativo.',
-    }],
-    sources: [source],
-    entities: [column.name],
-    tool,
-    confidence: 'Determinística',
-  }
-}
-
-async function columnDivergenceAnswer(apiUrl, finalDppAnalysis, scenario, column, month) {
-  const count = number(column?.difference_count)
-  const source = `Comparativo DPP Final × Cenário ORION · ${formatMonth(month)}`
-
-  if (!isDivergentColumn(column) || count <= 0) {
-    return {
-      text: `A coluna ${column?.name || 'solicitada'} não possui divergências no comparativo sincronizado atual.`,
-      evidence: [],
-      sources: [source],
-      entities: [column?.name].filter(Boolean),
-      tool: 'get_column_divergences',
-      confidence: 'Determinística',
-    }
-  }
-
-  const analysisId = finalDppAnalysis?.analysis_id || finalDppAnalysis?.column_comparison?.analysis_id
-  if (analysisId && apiUrl) {
-    try {
-      const limit = Math.max(1, Math.min(100, Math.ceil(count)))
-      const response = await fetch(
-        `${apiUrl}/api/dpp/dashboard/final/${analysisId}/columns/${column.column}/divergences?offset=0&limit=${limit}`,
-        { cache: 'no-store' },
-      )
-      const payload = await response.json().catch(() => null)
-      if (response.ok) {
-        return divergenceItemsAnswer(column, payload?.items || [], payload?.total || count, source, 'get_column_divergences')
-      }
-      if (response.status !== 404) {
-        throw new Error(payload?.detail || 'Não foi possível carregar o drill-down desta coluna.')
-      }
-    } catch (error) {
-      const fallbackItems = localColumnDivergences(finalDppAnalysis, scenario, column)
-      if (fallbackItems) {
-        return divergenceItemsAnswer(column, fallbackItems, count, source, 'get_column_divergences_local_fallback')
-      }
-      return {
-        text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s), mas não foi possível carregar os detalhes agora: ${error.message || 'falha desconhecida'}`,
-        evidence: [{ label: column.name, value: `${formatNumber(count)} divergência(s)`, detail: 'Contagem do comparativo sincronizado' }],
-        sources: [source],
-        entities: [column.name],
-        tool: 'get_column_divergences',
-        confidence: 'Determinística',
-      }
-    }
-  }
-
-  const fallbackItems = localColumnDivergences(finalDppAnalysis, scenario, column)
-  if (fallbackItems) {
-    return divergenceItemsAnswer(column, fallbackItems, count, source, 'get_column_divergences_local_fallback')
-  }
-
-  return {
-    text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s), mas os detalhes não estão disponíveis no estado persistido desta análise.`,
-    evidence: [{ label: column.name, value: `${formatNumber(count)} divergência(s)`, detail: 'Resumo persistido do comparativo' }],
-    sources: [source],
-    entities: [column.name],
-    tool: 'get_column_divergences',
-    confidence: 'Determinística',
-  }
-}
-
-async function workspaceAnswer(question, { scenario, finalDppAnalysis, referenceMonth, apiUrl }) {
-  if (!scenario) return null
-
-  const q = normalize(question)
-  const materials = scenario?.materials || []
-  const models = scenario?.models || []
-  const material = findMaterial(question, materials)
-  const model = findModel(question, models)
-  const changedModels = changedRealModels(scenario, finalDppAnalysis)
-  const month = referenceMonth || scenario?.reference_month || finalDppAnalysis?.column_comparison?.reference_month || ''
-  const sources = [`Cenário ORION · ${formatMonth(month)}`]
-  const entities = []
-  const evidence = []
-  if (finalDppAnalysis) sources.push(`DPP Final · ${formatMonth(month)}`)
-
-  if (isDivergenceDataRequest(question)) {
-    const column = findComparisonColumn(question, finalDppAnalysis)
-    if (column) return columnDivergenceAnswer(apiUrl, finalDppAnalysis, scenario, column, month)
-
-    if (q.includes('comparativo') || q.includes('comparacao') || q.includes('coluna') || q.includes('dpp final')) {
-      return comparisonSummaryAnswer(finalDppAnalysis, month)
-    }
-  }
-
-  if (material && q.includes('nec') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) {
-    entities.push(material.material || material.material_key, 'NEC')
-    evidence.push(...materialEvidence(material))
-    changedModels.slice(0, 6).forEach((item) => {
-      evidence.push({
-        label: item.name,
-        value: `${formatNumber(item.orion)} → ${formatNumber(item.final)}`,
-        detail: `REAL · Δ ${item.delta > 0 ? '+' : ''}${formatNumber(item.delta)}`,
-      })
-    })
-
-    if (changedModels.length) {
-      return {
-        text: `Há ${changedModels.length} modelo(s) com alteração de REAL entre o Cenário ORION e o DPP Final sincronizado. Como NEC depende de REAL × consumo, essas alterações são causas determinísticas que devem ser verificadas para este material.`,
-        evidence,
-        sources,
-        entities,
-        tool: 'compare_real_models + get_material',
-        confidence: 'Determinística',
-      }
-    }
-  }
-
-  if (material) {
-    const usedModels = Object.entries(material.consumption_by_model || {})
-      .filter(([, usage]) => Math.abs(number(usage)) > 1e-9)
-      .map(([name]) => name)
-
-    entities.push(material.material || material.material_key)
-    evidence.push(...materialEvidence(material))
-    if (usedModels.length) {
-      evidence.push({
-        label: 'Modelos relacionados',
-        value: `${usedModels.length}`,
-        detail: usedModels.slice(0, 5).join(' · '),
-      })
-    }
-
-    return {
-      text: `Encontrei o material ${material.material || material.material_key}${material.description ? ` — ${material.description}` : ''}. No cenário atual, NEC = ${formatNumber(material.nec)}, STK TTL = ${formatNumber(material.stock_total)} e SALDO = ${formatNumber(material.balance)}.`,
-      evidence,
-      sources,
-      entities,
-      tool: 'get_material',
-      confidence: 'Determinística',
-    }
-  }
-
-  if (model) {
-    const finalModel = finalModelLookup(finalDppAnalysis).get(normalize(model.name))
-    const orionReal = number(model.real)
-    const kitPgd = number(model.kit_pgd)
-    const finalReal = finalModel ? number(finalModel.real) : null
-
-    entities.push(model.name)
-    evidence.push(
-      { label: 'Modelo', value: model.name, detail: 'Cenário mensal' },
-      { label: 'KIT disponível PGD', value: formatNumber(kitPgd), detail: 'Cenário ORION' },
-      { label: 'REAL ORION', value: formatNumber(orionReal), detail: 'Cenário atual' },
-    )
-    if (finalReal !== null) {
-      evidence.push({ label: 'REAL DPP Final', value: formatNumber(finalReal), detail: `Δ ${formatNumber(finalReal - orionReal)}` })
-    }
-
-    return {
-      text: finalReal === null
-        ? `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)} e REAL atual de ${formatNumber(orionReal)}. O DPP Final sincronizado não está disponível para comparação.`
-        : `O modelo ${model.name} possui KIT disponível PGD de ${formatNumber(kitPgd)}, REAL ORION de ${formatNumber(orionReal)} e REAL no DPP Final de ${formatNumber(finalReal)}.`,
-      evidence,
-      sources,
-      entities,
-      tool: 'get_model + compare_final_model',
-      confidence: 'Determinística',
-    }
-  }
-
-  if (isCriticalDataQuestion(question)) {
-    const critical = materials.filter((item) => normalize(item.um) === 'un' && number(item.balance) < -CRITICAL_TOLERANCE)
-    const finalCritical = finalDppAnalysis?.summary?.critical_materials
-    const finalText = finalCritical === undefined
-      ? ''
-      : ` No DPP Final sincronizado, o resumo registra ${formatNumber(finalCritical)} material(is) críticos.`
-
-    return {
-      text: `O Cenário ORION atual possui ${critical.length} material(is) críticos pela regra UM = UN e SALDO < -0,0001.${finalText} Os materiais estão organizados na tabela abaixo.`,
-      table: {
-        title: 'Materiais críticos · Cenário ORION',
-        totalRows: critical.length,
-        columns: [
-          { key: 'material', label: 'Material', kind: 'code' },
-          { key: 'description', label: 'Descrição', kind: 'description' },
-          { key: 'um', label: 'UM' },
-          { key: 'balance', label: 'SALDO ORION', align: 'right' },
-        ],
-        rows: critical.map((item) => ({
-          material: item.material || item.material_key || '—',
-          description: item.description || '—',
-          um: item.um || '—',
-          balance: formatTableNumber(item.balance),
-        })),
-      },
-      evidence: [
-        {
-          label: 'Cenário ORION',
-          value: `${critical.length} crítico(s)`,
-          detail: 'Regra: UM = UN e SALDO < -0,0001',
-        },
-        ...(finalCritical === undefined ? [] : [{
-          label: 'DPP Final',
-          value: `${formatNumber(finalCritical)} crítico(s)`,
-          detail: 'Resumo sincronizado do mês',
-        }]),
-      ],
-      sources,
-      entities: ['Materiais críticos'],
-      tool: 'get_critical_materials',
-      confidence: 'Determinística',
-    }
-  }
-
-  if (q.includes('quant') && q.includes('materia')) {
-    const finalTotal = finalDppAnalysis?.summary?.total_materials
-    return {
-      text: finalTotal === undefined
-        ? `O Cenário ORION atual possui ${materials.length} materiais.`
-        : `O Cenário ORION atual possui ${materials.length} materiais e o DPP Final sincronizado possui ${formatNumber(finalTotal)} materiais.`,
-      evidence: [
-        { label: 'Cenário ORION', value: formatNumber(materials.length), detail: 'Materiais' },
-        ...(finalTotal === undefined ? [] : [{ label: 'DPP Final', value: formatNumber(finalTotal), detail: 'Materiais' }]),
-      ],
-      sources,
-      entities: ['Materiais'],
-      tool: 'get_scenario_summary',
-      confidence: 'Determinística',
-    }
-  }
-
-  if (q.includes('real') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) {
-    return {
-      text: finalDppAnalysis
-        ? `Encontrei ${changedModels.length} modelo(s) com REAL diferente entre o Cenário ORION e o DPP Final sincronizado.`
-        : 'O DPP Final sincronizado ainda não está disponível para o pacote atual, então não há uma segunda referência válida para comparar o REAL.',
-      evidence: changedModels.slice(0, 8).map((item) => ({
-        label: item.name,
-        value: `${formatNumber(item.orion)} → ${formatNumber(item.final)}`,
-        detail: `Δ ${item.delta > 0 ? '+' : ''}${formatNumber(item.delta)}`,
-      })),
-      sources,
-      entities: changedModels.map((item) => item.name),
-      tool: 'compare_real_models',
-      confidence: 'Determinística',
-    }
-  }
-
-  return null
-}
-
-async function knowledgeAnswer(apiUrl, question) {
-  try {
-    const response = await fetch(`${apiUrl}/api/agent/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
-    })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.detail || 'Não foi possível consultar a base de conhecimento do ORION.')
-
-    const sources = payload.knowledge_sources || []
-    const localRag = payload.provider === 'local-rag'
-    const supported = !localRag || sources.length > 0
-    return {
-      text: payload.answer,
-      evidence: supported
-        ? sources.map((source) => ({
-            label: 'Base de conhecimento',
-            value: source,
-            detail: localRag ? 'Trecho recuperado localmente pelo backend' : 'Contexto fornecido à LLM',
-          }))
-        : [],
-      sources,
-      entities: [],
-      tool: supported
-        ? (localRag ? 'rag_local_lexical' : `llm_rag:${payload.provider}`)
-        : 'knowledge_scope_guard',
-      confidence: supported
-        ? (localRag ? 'Conhecimento validado' : 'LLM + RAG')
-        : 'Escopo não suportado',
-    }
-  } catch (error) {
-    return {
-      text: `Não consegui consultar a base de conhecimento do backend: ${error.message || 'falha desconhecida'}`,
-      evidence: [],
-      sources: [],
-      entities: [],
-      tool: 'rag_backend',
-      confidence: 'Indisponível',
-    }
-  }
-}
-
-function MessageDataTable({ table }) {
-  const rows = table?.rows || []
-  const columns = table?.columns || []
-  if (!rows.length || !columns.length) return null
-
-  const totalRows = Number(table.totalRows) || rows.length
-  return (
-    <div className="agent-data-table-block">
-      <div className="agent-data-table-caption">
-        <strong>{table.title || 'Dados da consulta'}</strong>
-        <span>{rows.length === totalRows ? `${totalRows} linha(s)` : `${rows.length} de ${totalRows} linha(s)`}</span>
-      </div>
-      <div className="agent-data-table-wrap" role="region" aria-label={table.title || 'Tabela de dados da resposta'} tabIndex="0">
-        <table className="agent-data-table">
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th key={column.key} scope="col" data-align={column.align || 'left'}>{column.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={`${row.material || row.column || 'row'}-${rowIndex}`}>
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    data-align={column.align || 'left'}
-                    data-kind={column.kind || 'text'}
-                  >
-                    {row[column.key] ?? '—'}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-const SUGGESTIONS = [
-  'Qual a fórmula para calcular NEC?',
-  'O que significa WIU?',
-  'Quais materiais estão críticos?',
-  'Quantas colunas estão com divergência no comparativo?',
-]
 
 function scenarioStatusText(state) {
   if (state === 'current') return 'Cenário ORION sincronizado'
@@ -689,6 +33,31 @@ function packageStatusText(state) {
   return 'Pacote DPP não carregado'
 }
 
+function databaseStatusText(status) {
+  if (status.state === 'ready') {
+    return `SQLite/RAG sincronizado · ${status.runtimeDocuments || 0} dado(s) atuais`
+  }
+  if (status.state === 'syncing') return 'Sincronizando SQLite/RAG'
+  if (status.state === 'error') return 'SQLite/RAG indisponível'
+  return 'Verificando SQLite/RAG'
+}
+
+function buildWorkspaceVersion({ month, scenario, finalDpp, packageState, scenarioState, finalState }) {
+  const modelState = (scenario?.models || [])
+    .map((model) => `${model?.name || ''}:${Number(model?.real) || 0}:${Number(model?.kit_pgd) || 0}`)
+    .join('|')
+  return [
+    month || '',
+    scenario?.scenario_id || '',
+    modelState,
+    finalDpp?.analysis_id || '',
+    finalDpp?.filename || '',
+    packageState || '',
+    scenarioState || '',
+    finalState || '',
+  ].join('::')
+}
+
 function AgentOrion({ apiUrl }) {
   const {
     generatedScenario,
@@ -697,65 +66,98 @@ function AgentOrion({ apiUrl }) {
     workspaceReady,
     dppState,
   } = useDppWorkspace()
+
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
-  const [knowledgeStatus, setKnowledgeStatus] = useState({ state: 'checking', documents: 0 })
+  const [databaseStatus, setDatabaseStatus] = useState({ state: 'checking', runtimeDocuments: 0, database: 'orion.db' })
   const [messages, setMessages] = useState(() => [
     {
       id: 'initial',
       role: 'orion',
-      text: 'Estou ligado ao mesmo workspace da aba DPP e à base de conhecimento validada do motor Python. Perguntas sobre valores do mês usam o cenário sincronizado; perguntas sobre regras e fórmulas usam o RAG local do backend.',
+      text: 'O chat não possui respostas ou perguntas pré-definidas no frontend. Toda consulta é enviada ao backend e respondida somente a partir do banco SQLite/RAG atualmente sincronizado com o DPP.',
       evidence: [],
-      sources: ['Workspace compartilhado do DPP', 'Base de conhecimento local'],
-      entities: [],
-      tool: 'workspace_status + rag_status',
-      confidence: 'Determinística',
+      sources: [],
+      tool: 'sqlite_fts5_bm25',
+      confidence: 'Banco RAG',
+      auditId: null,
     },
   ])
+
   const messageListRef = useRef(null)
   const latestAnswerRef = useRef(null)
+  const syncedVersionRef = useRef('')
 
   const month = dppState?.currentMonth
     || referenceMonth
     || generatedScenario?.reference_month
     || finalDppAnalysis?.column_comparison?.reference_month
     || ''
-  const currentAnswer = [...messages].reverse().find((message) => message.role === 'orion') || messages[0]
+
   const scenarioReady = dppState?.scenario?.current ?? Boolean(generatedScenario)
   const finalReady = dppState?.finalDpp?.current ?? Boolean(finalDppAnalysis)
-  const scenarioForChat = scenarioReady ? generatedScenario : null
-  const finalForChat = finalReady ? finalDppAnalysis : null
+  const scenarioForDatabase = scenarioReady ? generatedScenario : null
+  const finalForDatabase = finalReady ? finalDppAnalysis : null
+  const packageState = dppState?.packageState || (workspaceReady ? 'empty' : 'restoring')
+  const scenarioState = dppState?.scenario?.state || (scenarioReady ? 'current' : 'missing')
+  const finalState = dppState?.finalDpp?.state || (finalReady ? 'current' : 'missing-file')
 
-  const contextSummary = useMemo(() => ({
-    materials: scenarioForChat?.materials?.length || 0,
-    models: scenarioForChat?.models?.length || 0,
-  }), [scenarioForChat])
+  const workspacePayload = useMemo(() => ({
+    month,
+    state: {
+      package: packageState,
+      scenario: scenarioState,
+      final_dpp: finalState,
+    },
+    scenario: scenarioForDatabase,
+    final_dpp: finalForDatabase,
+  }), [month, packageState, scenarioState, finalState, scenarioForDatabase, finalForDatabase])
+
+  const workspaceVersion = useMemo(() => buildWorkspaceVersion({
+    month,
+    scenario: scenarioForDatabase,
+    finalDpp: finalForDatabase,
+    packageState,
+    scenarioState,
+    finalState,
+  }), [month, scenarioForDatabase, finalForDatabase, packageState, scenarioState, finalState])
+
+  const currentAnswer = [...messages].reverse().find((message) => message.role === 'orion') || messages[0]
+  const materials = scenarioForDatabase?.materials?.length || 0
+  const models = scenarioForDatabase?.models?.length || 0
+
+  async function synchronizeWorkspace(payload = workspacePayload, version = workspaceVersion, signal = undefined) {
+    setDatabaseStatus((current) => ({ ...current, state: 'syncing' }))
+    const response = await fetch(`${apiUrl}/api/knowledge/workspace/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      cache: 'no-store',
+      signal,
+    })
+    const result = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(result?.detail || 'Não foi possível sincronizar o workspace com o banco RAG.')
+    }
+    syncedVersionRef.current = version
+    setDatabaseStatus({
+      state: 'ready',
+      runtimeDocuments: Number(result.runtime_document_count) || 0,
+      documents: Number(result.document_count) || 0,
+      chunks: Number(result.chunk_count) || 0,
+      database: result.database || 'orion.db',
+      fingerprint: result.workspace_fingerprint || '',
+    })
+    return result
+  }
 
   useEffect(() => {
-    let cancelled = false
-
-    async function loadKnowledgeStatus() {
-      try {
-        const response = await fetch(`${apiUrl}/api/knowledge/status`, { cache: 'no-store' })
-        const payload = await response.json()
-        if (!response.ok) throw new Error(payload.detail || 'Base indisponível')
-        if (!cancelled) {
-          setKnowledgeStatus({
-            state: 'ready',
-            documents: Number(payload.document_count) || 0,
-            chunks: Number(payload.chunk_count) || 0,
-          })
-        }
-      } catch {
-        if (!cancelled) setKnowledgeStatus({ state: 'unavailable', documents: 0, chunks: 0 })
-      }
-    }
-
-    loadKnowledgeStatus()
-    return () => {
-      cancelled = true
-    }
-  }, [apiUrl])
+    const controller = new AbortController()
+    synchronizeWorkspace(workspacePayload, workspaceVersion, controller.signal).catch((error) => {
+      if (error.name === 'AbortError') return
+      setDatabaseStatus((current) => ({ ...current, state: 'error', error: error.message }))
+    })
+    return () => controller.abort()
+  }, [apiUrl, workspacePayload, workspaceVersion])
 
   useEffect(() => {
     if (messages.length <= 1) return
@@ -766,42 +168,75 @@ function AgentOrion({ apiUrl }) {
     const listRect = messageList.getBoundingClientRect()
     const answerRect = latestAnswer.getBoundingClientRect()
     const targetTop = messageList.scrollTop + (answerRect.top - listRect.top) - 8
-
     messageList.scrollTo({
       top: Math.max(targetTop, 0),
       behavior: 'smooth',
     })
   }, [messages])
 
+  async function askDatabase(questionText) {
+    const response = await fetch(`${apiUrl}/api/knowledge/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: questionText }),
+      cache: 'no-store',
+    })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(payload?.detail || 'Não foi possível consultar o banco RAG do ORION.')
+    }
+
+    const retrieval = payload.retrieval || []
+    return {
+      text: payload.answer,
+      evidence: retrieval.map((item) => ({
+        label: item.heading || 'Trecho recuperado',
+        value: item.source,
+        detail: `${item.category || 'knowledge'} · score ${Number(item.score || 0).toFixed(4)}`,
+      })),
+      sources: payload.knowledge_sources || [],
+      tool: 'sqlite_fts5_bm25',
+      confidence: payload.knowledge_sources?.length ? 'Fundamentada no banco RAG' : 'Sem evidência suficiente',
+      auditId: payload.audit_id || null,
+      database: payload.database || 'orion.db',
+      fingerprint: payload.workspace_fingerprint || '',
+    }
+  }
+
   async function submitQuestion(value = question) {
     const trimmed = String(value || '').trim()
     if (!trimmed || asking) return
 
-    const userMessage = { id: `user-${Date.now()}`, role: 'user', text: trimmed }
-    setMessages((current) => [...current, userMessage])
+    setMessages((current) => [...current, { id: `user-${Date.now()}`, role: 'user', text: trimmed }])
     setQuestion('')
     setAsking(true)
 
-    const workspaceDependent = isWorkspaceDataQuestion(trimmed, generatedScenario, finalForChat)
-    let answer
-
-    if (workspaceDependent && dppState?.scenario?.state === 'stale') {
-      answer = staleWorkspaceAnswer(dppState)
-    } else if (workspaceDependent && !scenarioForChat) {
-      answer = workspaceUnavailableAnswer(dppState)
-    } else {
-      answer = await workspaceAnswer(trimmed, {
-        scenario: scenarioForChat,
-        finalDppAnalysis: finalForChat,
-        referenceMonth: month,
-        apiUrl,
-      })
-      if (!answer) answer = await knowledgeAnswer(apiUrl, trimmed)
+    try {
+      if (syncedVersionRef.current !== workspaceVersion) {
+        await synchronizeWorkspace(workspacePayload, workspaceVersion)
+      }
+      const answer = await askDatabase(trimmed)
+      setMessages((current) => [
+        ...current,
+        { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer },
+      ])
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: `orion-${Date.now() + 1}`,
+          role: 'orion',
+          text: `Não foi possível consultar o banco RAG sincronizado: ${error.message || 'falha desconhecida'}`,
+          evidence: [],
+          sources: [],
+          tool: 'sqlite_fts5_bm25',
+          confidence: 'Indisponível',
+          auditId: null,
+        },
+      ])
+    } finally {
+      setAsking(false)
     }
-
-    const assistantMessage = { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer }
-    setMessages((current) => [...current, assistantMessage])
-    setAsking(false)
   }
 
   function handleSubmit(event) {
@@ -816,29 +251,21 @@ function AgentOrion({ apiUrl }) {
     }
   }
 
-  const packageState = dppState?.packageState || (workspaceReady ? 'empty' : 'restoring')
-  const scenarioState = dppState?.scenario?.state || (scenarioReady ? 'current' : 'missing')
-  const finalState = dppState?.finalDpp?.state || (finalReady ? 'current' : 'missing-file')
   const statusContext = !workspaceReady
     ? 'Restaurando workspace'
-    : scenarioState === 'current'
-      ? 'Sincronizado com a aba DPP'
-      : scenarioState === 'stale'
-        ? 'Pacote alterado · reprocessamento necessário'
-        : 'Conhecimento disponível · cenário mensal pendente'
-  const knowledgeStatusText = knowledgeStatus.state === 'ready'
-    ? `RAG local · ${knowledgeStatus.documents} documento(s)`
-    : knowledgeStatus.state === 'checking'
-      ? 'Verificando base de conhecimento'
-      : 'Base de conhecimento indisponível'
+    : databaseStatus.state === 'ready'
+      ? 'Banco RAG sincronizado com a aba DPP'
+      : databaseStatus.state === 'error'
+        ? 'Falha de sincronização com o banco RAG'
+        : 'Sincronizando conhecimento atual'
 
   return (
     <section className="agent-orion-page" aria-labelledby="agent-orion-title">
       <header className="agent-orion-header">
         <div>
-          <span className="agent-orion-kicker">CONSULTA OPERACIONAL</span>
+          <span className="agent-orion-kicker">CONSULTA AO BANCO RAG</span>
           <h2 id="agent-orion-title">Agente ORION</h2>
-          <p>Consulte o mesmo cenário da área DPP e o conhecimento validado do motor determinístico Python. A LLM externa continua desativada nesta etapa.</p>
+          <p>O frontend não decide respostas. Toda pergunta é resolvida no backend usando exclusivamente o SQLite/RAG sincronizado com documentos, regras Python e dados atuais do DPP.</p>
         </div>
         <div className="agent-orion-context" aria-label="Contexto atual do agente">
           <strong>{formatMonth(month)}</strong>
@@ -846,11 +273,11 @@ function AgentOrion({ apiUrl }) {
         </div>
       </header>
 
-      <div className="agent-orion-statusline" aria-label="Estado das fontes compartilhadas com o DPP">
+      <div className="agent-orion-statusline" aria-label="Estado das fontes do Agente ORION">
         <span><i data-state={packageState === 'ready' ? 'ready' : 'pending'} aria-hidden="true" />{packageStatusText(packageState)}</span>
         <span><i data-state={scenarioState === 'current' ? 'ready' : 'pending'} aria-hidden="true" />{scenarioStatusText(scenarioState)}</span>
         <span><i data-state={finalState === 'current' ? 'ready' : 'pending'} aria-hidden="true" />{finalStatusText(finalState)}</span>
-        <span><i data-state={knowledgeStatus.state === 'ready' ? 'ready' : 'pending'} aria-hidden="true" />{knowledgeStatusText}</span>
+        <span><i data-state={databaseStatus.state === 'ready' ? 'ready' : 'pending'} aria-hidden="true" />{databaseStatusText(databaseStatus)}</span>
       </div>
 
       <div className="agent-orion-layout">
@@ -858,30 +285,28 @@ function AgentOrion({ apiUrl }) {
           <div className="agent-conversation-head">
             <div>
               <strong>Conversa</strong>
-              <span>Dados mensais vêm do workspace DPP; regras e fórmulas vêm da base local validada.</span>
+              <span>Pergunta livre → SQLite/FTS5/BM25 → evidências recuperadas → resposta.</span>
             </div>
-            <small>{contextSummary.materials} materiais · {contextSummary.models} modelos</small>
+            <small>{materials} materiais · {models} modelos</small>
           </div>
 
           <div className="agent-message-list" aria-live="polite" ref={messageListRef}>
             {messages.map((message) => {
               const latestOrionAnswer = message.role === 'orion' && message.id === currentAnswer.id
-              const hasTable = Boolean(message.table?.rows?.length)
               return (
                 <article
                   className="agent-message"
                   data-role={message.role}
-                  data-has-table={hasTable ? 'true' : 'false'}
                   key={message.id}
                   ref={latestOrionAnswer ? latestAnswerRef : null}
                 >
                   <div className="agent-message-author">{message.role === 'orion' ? 'ORION' : 'Você'}</div>
                   <p>{message.text}</p>
-                  {hasTable && <MessageDataTable table={message.table} />}
                   {message.role === 'orion' && message.confidence && (
                     <div className="agent-message-meta">
                       <span>Tipo de resposta: {message.confidence}</span>
-                      {message.tool && <span>Ferramenta: {message.tool}</span>}
+                      <span>Consulta: {message.tool || 'sqlite_fts5_bm25'}</span>
+                      {message.auditId && <span>Auditoria DB: #{message.auditId}</span>}
                     </div>
                   )}
                 </article>
@@ -890,21 +315,13 @@ function AgentOrion({ apiUrl }) {
             {asking && (
               <article className="agent-message" data-role="orion">
                 <div className="agent-message-author">ORION</div>
-                <p>Consultando os dados DPP e a base de conhecimento local...</p>
+                <p>Consultando o banco RAG sincronizado...</p>
               </article>
             )}
           </div>
 
-          <div className="agent-suggestions" aria-label="Perguntas para testar o agente">
-            {SUGGESTIONS.map((suggestion) => (
-              <button type="button" key={suggestion} onClick={() => submitQuestion(suggestion)} disabled={asking}>
-                {suggestion}
-              </button>
-            ))}
-          </div>
-
           <form className="agent-composer" onSubmit={handleSubmit}>
-            <label htmlFor="agent-orion-input">Pergunte sobre materiais, modelos, cálculos, divergências, regras ou funcionamento do ORION</label>
+            <label htmlFor="agent-orion-input">Pergunte livremente sobre qualquer conhecimento existente no ORION</label>
             <div>
               <textarea
                 id="agent-orion-input"
@@ -912,7 +329,7 @@ function AgentOrion({ apiUrl }) {
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ex.: Quais divergências existem em STK OP?"
+                placeholder="Digite uma pergunta. Não existem perguntas pré-cadastradas."
                 disabled={asking}
               />
               <button type="submit" disabled={!question.trim() || asking}>{asking ? 'Consultando' : 'Enviar'}</button>
@@ -924,13 +341,13 @@ function AgentOrion({ apiUrl }) {
         <aside className="agent-evidence" aria-label="Evidências e inspeção da resposta">
           <section>
             <div className="agent-section-heading">
-              <strong>Evidências</strong>
-              <span>{currentAnswer.evidence?.length || 0} utilizadas</span>
+              <strong>Evidências recuperadas</strong>
+              <span>{currentAnswer.evidence?.length || 0} utilizada(s)</span>
             </div>
             {currentAnswer.evidence?.length ? (
               <div className="agent-evidence-list">
                 {currentAnswer.evidence.map((item, index) => (
-                  <article key={`${item.label}-${index}`}>
+                  <article key={`${item.value}-${index}`}>
                     <span>{item.label}</span>
                     <strong>{item.value}</strong>
                     {item.detail && <small>{item.detail}</small>}
@@ -938,35 +355,39 @@ function AgentOrion({ apiUrl }) {
                 ))}
               </div>
             ) : (
-              <p className="agent-empty-evidence">Faça uma consulta para ver os dados ou documentos usados na resposta.</p>
+              <p className="agent-empty-evidence">A resposta só terá evidências quando o banco recuperar fontes suficientes para a pergunta.</p>
             )}
           </section>
 
           <section className="agent-inspector">
             <div className="agent-section-heading">
               <strong>Inspeção</strong>
-              <span>Validação técnica</span>
+              <span>Rastreabilidade</span>
             </div>
             <dl>
               <div>
+                <dt>Banco</dt>
+                <dd>{currentAnswer.database || databaseStatus.database || 'orion.db'}</dd>
+              </div>
+              <div>
                 <dt>Fontes utilizadas</dt>
-                <dd>{currentAnswer.sources?.length ? currentAnswer.sources.join(' · ') : '—'}</dd>
+                <dd>{currentAnswer.sources?.length ? currentAnswer.sources.join(' · ') : 'Nenhuma fonte suficiente'}</dd>
               </div>
               <div>
-                <dt>Entidades encontradas</dt>
-                <dd>{currentAnswer.entities?.length ? currentAnswer.entities.join(' · ') : 'Nenhuma'}</dd>
+                <dt>Motor de busca</dt>
+                <dd>SQLite FTS5 + BM25</dd>
               </div>
               <div>
-                <dt>Ferramenta consultada</dt>
-                <dd>{currentAnswer.tool || '—'}</dd>
+                <dt>Workspace indexado</dt>
+                <dd>{databaseStatus.runtimeDocuments || 0} documento(s) atual(is)</dd>
               </div>
               <div>
-                <dt>Confiança</dt>
-                <dd>{currentAnswer.confidence || '—'}</dd>
+                <dt>Auditoria</dt>
+                <dd>{currentAnswer.auditId ? `Registro #${currentAnswer.auditId}` : '—'}</dd>
               </div>
               <div>
                 <dt>Execução</dt>
-                <dd>Local · workspace DPP + RAG lexical · sem LLM externa</dd>
+                <dd>Frontend passivo · backend DB-first · sem respostas locais</dd>
               </div>
             </dl>
           </section>
