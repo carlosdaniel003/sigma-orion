@@ -166,6 +166,10 @@
   margin-left: auto;
 }
 
+.agent-message[data-has-table='true'] {
+  max-width: 100%;
+}
+
 .agent-message-author {
   margin-bottom: 6px;
   color: var(--orion-text-secondary);
@@ -193,6 +197,94 @@
   margin-top: 8px;
   color: var(--orion-text-secondary);
   font-size: 0.68rem;
+}
+
+.agent-data-table-block {
+  margin-top: 10px;
+  border: 1px solid var(--orion-border);
+  background: var(--orion-bg);
+}
+
+.agent-data-table-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--orion-border);
+  background: var(--orion-surface-elevated);
+}
+
+.agent-data-table-caption strong {
+  color: var(--orion-text);
+  font-size: 0.76rem;
+}
+
+.agent-data-table-caption span {
+  color: var(--orion-text-secondary);
+  font-size: 0.68rem;
+}
+
+.agent-data-table-wrap {
+  max-height: 320px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.agent-data-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--orion-text);
+  font-size: 0.72rem;
+}
+
+.agent-data-table th,
+.agent-data-table td {
+  padding: 7px 9px;
+  border-right: 1px solid var(--orion-border-soft);
+  border-bottom: 1px solid var(--orion-border-soft);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.agent-data-table th:last-child,
+.agent-data-table td:last-child {
+  border-right: 0;
+}
+
+.agent-data-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.agent-data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text-secondary);
+  font-weight: 700;
+}
+
+.agent-data-table th[data-align='right'],
+.agent-data-table td[data-align='right'] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-data-table th[data-align='center'],
+.agent-data-table td[data-align='center'] {
+  text-align: center;
+}
+
+.agent-data-table td[data-kind='code'] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.agent-data-table td[data-kind='description'] {
+  min-width: 260px;
+  white-space: normal;
 }
 
 .agent-suggestions {
@@ -400,6 +492,10 @@
   .agent-message {
     max-width: 90%;
   }
+
+  .agent-message[data-has-table='true'] {
+    max-width: 100%;
+  }
 }
 
 @media (max-height: 760px) and (min-width: 821px) {
@@ -563,6 +659,10 @@
 
   .agent-message {
     max-width: 96%;
+  }
+
+  .agent-message[data-has-table='true'] {
+    max-width: 100%;
   }
 
   .agent-composer > div {
