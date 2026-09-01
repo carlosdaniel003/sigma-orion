@@ -140,11 +140,15 @@ def _sanitize_python_sources(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswer
 def prepare_grounded_evidence(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswer) -> list[str]:
     """Completa e valida o contexto antes de qualquer chamada LLM.
 
-    Retorna os termos obrigatórios ainda ausentes. Quando a lista não é vazia, a
-    camada de síntese deve se recusar a chamar a LLM.
+    Consultas puramente determinísticas preservam o retrieval original. O enriquecimento
+    obrigatório só ocorre quando haverá síntese LLM, evitando alterar fontes de respostas
+    simples como fórmulas e definições já consolidadas.
     """
 
     _sanitize_python_sources(plan, knowledge)
+    if not plan.needs_synthesis:
+        return []
+
     supplemental = _supplemental_chunks(plan, knowledge.chunks)
     for chunk in supplemental:
         if not any(existing.source == chunk.source and existing.heading == chunk.heading for existing in knowledge.chunks):
@@ -196,12 +200,6 @@ def _unsupported_numbers(answer: str, evidence: str) -> list[str]:
 
 
 def _unsupported_acronym_expansions(answer: str, evidence: str, entities: list[str]) -> list[str]:
-    """Bloqueia expansões de sigla que não existem nas evidências.
-
-    É um guardrail genérico para erros como `OPC (Valor de ...)`: a LLM pode
-    parafrasear conceitos, mas não pode inventar o significado formal de uma sigla.
-    """
-
     unsupported: list[str] = []
     evidence_normalized = _normalize(evidence)
     for entity in entities:
