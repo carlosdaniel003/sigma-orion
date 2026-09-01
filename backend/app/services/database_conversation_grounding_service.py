@@ -6,6 +6,7 @@ import re
 from app.services.database_answer_service import DatabaseKnowledgeAnswer
 from app.services.database_query_planner_service import QueryPlan
 from app.services.dpp_projection_service import CRITICAL_BALANCE_TOLERANCE
+from app.services.dpp_rule_registry import known_rule_codes
 from app.services.dpp_status_registry import get_status_definition, known_status_codes, status_evidence_text
 from app.services.knowledge_service import KnowledgeChunk
 from app.services.rag_runtime_service import load_runtime_entities
@@ -161,6 +162,7 @@ def semantic_coverage_missing(answer: str, context: dict) -> list[str]:
 
 def build_persisted_context(knowledge: DatabaseKnowledgeAnswer, response_entities: list[str]) -> dict:
     known_statuses = set(known_status_codes())
+    known_rules = set(known_rule_codes())
     subject_type = str(knowledge.context.get("subject_type") or "")
     subject_key = str(knowledge.context.get("subject_key") or "")
     typed: list[dict[str, str]] = []
@@ -172,6 +174,9 @@ def build_persisted_context(knowledge: DatabaseKnowledgeAnswer, response_entitie
         upper = value.upper()
         if upper in known_statuses:
             entity_type = "status"
+            value = upper
+        elif upper in known_rules:
+            entity_type = "rule"
             value = upper
         elif value == subject_key and subject_type:
             entity_type = subject_type

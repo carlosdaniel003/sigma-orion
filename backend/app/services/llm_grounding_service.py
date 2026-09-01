@@ -138,15 +138,16 @@ def _sanitize_python_sources(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswer
 
 
 def prepare_grounded_evidence(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswer) -> list[str]:
-    """Completa e valida o contexto antes de qualquer chamada LLM.
-
-    Consultas puramente determinísticas preservam o retrieval original. O enriquecimento
-    obrigatório só ocorre quando haverá síntese LLM, evitando alterar fontes de respostas
-    simples como fórmulas e definições já consolidadas.
-    """
+    """Completa e valida o contexto antes de qualquer chamada LLM."""
 
     _sanitize_python_sources(plan, knowledge)
     if not plan.needs_synthesis:
+        return []
+
+    # Ferramentas estruturadas já fizeram resolução e validação diretamente nos
+    # campos do SQLite. Não rebaixamos essa evidência para um teste lexical de aliases
+    # e não adicionamos BM25 por cima de um resultado estruturado fechado.
+    if knowledge.context.get("structured_evidence_complete"):
         return []
 
     supplemental = _supplemental_chunks(plan, knowledge.chunks)
@@ -219,6 +220,16 @@ def _unsupported_acronym_expansions(answer: str, evidence: str, entities: list[s
     return unsupported
 
 
+def _acknowledges_unproven_cause(answer: str) -> bool:
+    normalized = _normalize(answer)
+    return (
+        ("causa" in normalized and ("nao" in normalized or "investig" in normalized or "evidencia" in normalized))
+        or "ainda precisa ser investig" in normalized
+        or "nao foi demonstr" in normalized
+        or "nao esta demonstr" in normalized
+    )
+
+
 def _grounded_fallback(knowledge: DatabaseKnowledgeAnswer) -> str:
     base = str(knowledge.answer or "").strip()
     if base:
@@ -236,6 +247,9 @@ def enhance_grounded_answer(
     knowledge: DatabaseKnowledgeAnswer,
 ) -> LlmEnhancement:
     del context
+
+    if knowledge.context.get("skip_llm"):
+        return LlmEnhancement(answer=knowledge.answer, used=False, fallback=False)
 
     missing = prepare_grounded_evidence(plan, knowledge)
     if missing:
@@ -261,10 +275,15 @@ def enhance_grounded_answer(
             model=provider.model if provider else "",
         )
 
+    compact = bool(knowledge.context.get("compact_llm"))
+    chunk_limit = 2 if compact else 5
+    chunk_chars = 520 if compact else 900
+    output_tokens = 180 if compact else 320
+
     evidence_parts: list[str] = []
-    for chunk in knowledge.chunks[:5]:
+    for chunk in knowledge.chunks[:chunk_limit]:
         evidence_parts.append(
-            f"FONTE: {chunk.source}\nSEÇÃO: {chunk.heading}\n{chunk.content[:900]}"
+            f"FONTE: {chunk.source}\nSEÇÃO: {chunk.heading}\n{chunk.content[:chunk_chars]}"
         )
     evidence_text = "\n\n---\n\n".join(evidence_parts) or "Nenhum chunk textual adicional."
     factual_context = (
@@ -273,7 +292,14 @@ def enhance_grounded_answer(
         f"EVIDÊNCIAS RECUPERADAS E VALIDADAS:\n{evidence_text}"
     )
 
-    system_prompt = """/no_think
+    cause_instruction = ""
+    if knowledge.context.get("operational_cause_demonstrated") is False:
+        cause_instruction = (
+            "\n- Neste caso a causa operacional NÃO foi demonstrada. Explique somente onde a diferença matemática ocorreu "
+            "e declare explicitamente que a causa operacional ainda precisa ser investigada."
+        )
+
+    system_prompt = f"""/no_think
 Você é somente a camada de interpretação do SIGMA-S ORION.
 SQL, Python e RAG já executaram antes de você e são a única fonte de verdade.
 Regras obrigatórias:
@@ -287,7 +313,7 @@ Regras obrigatórias:
 - Se a causa não estiver demonstrada, diga que ainda precisa ser investigada.
 - Diferencie Cenário ORION de DPP Final quando ambos existirem.
 - Para tabelas grandes, resuma; a tabela estruturada continua sendo a evidência determinística.
-- Retorne somente a resposta final, sem raciocínio interno e sem tags <think>.
+- Retorne somente a resposta final, sem raciocínio interno e sem tags <think>.{cause_instruction}
 """
     user_prompt = (
         f"Pergunta original:\n{question}\n\n"
@@ -297,7 +323,7 @@ Regras obrigatórias:
     )
 
     try:
-        generated = provider.complete(system_prompt, user_prompt, max_tokens=320, temperature=0.1)
+        generated = provider.complete(system_prompt, user_prompt, max_tokens=output_tokens, temperature=0.1)
         generated = _strip_thinking(generated)
     except Exception:
         return LlmEnhancement(
@@ -327,6 +353,15 @@ Regras obrigatórias:
         )
 
     if _unsupported_acronym_expansions(generated, factual_context, plan.concept_entities):
+        return LlmEnhancement(
+            answer=_grounded_fallback(knowledge),
+            used=False,
+            fallback=True,
+            provider=provider.name,
+            model=provider.model,
+        )
+
+    if knowledge.context.get("operational_cause_demonstrated") is False and not _acknowledges_unproven_cause(generated):
         return LlmEnhancement(
             answer=_grounded_fallback(knowledge),
             used=False,

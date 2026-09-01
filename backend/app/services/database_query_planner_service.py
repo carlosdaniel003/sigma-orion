@@ -5,6 +5,7 @@ import re
 import unicodedata
 
 from app.core.config import KNOWLEDGE_DIR
+from app.services.dpp_rule_registry import known_rule_codes
 from app.services.dpp_status_registry import known_status_codes
 
 
@@ -35,6 +36,7 @@ class QueryPlan:
     entities: list[str] = field(default_factory=list)
     concept_entities: list[str] = field(default_factory=list)
     status_entities: list[str] = field(default_factory=list)
+    rule_entities: list[str] = field(default_factory=list)
     required_queries: list[str] = field(default_factory=list)
     required_terms: list[str] = field(default_factory=list)
     needs_synthesis: bool = False
@@ -100,6 +102,16 @@ def _status_entities(question: str) -> list[str]:
     return matches
 
 
+def _rule_entities(question: str) -> list[str]:
+    known = set(known_rule_codes())
+    found: list[str] = []
+    for match in re.finditer(r"\bREGRA\s*[-_]?\s*(\d{3})\b", str(question or ""), flags=re.IGNORECASE):
+        code = f"REGRA-{match.group(1)}"
+        if code in known and code not in found:
+            found.append(code)
+    return found
+
+
 def _definition_focus(question: str, concepts: list[str]) -> str | None:
     if not concepts:
         return None
@@ -146,6 +158,10 @@ def _context_reference(question: str, context: dict) -> tuple[str, str] | None:
         status = _last_entity(context, "status")
         if status:
             return status
+    if "regra" in words:
+        rule = _last_entity(context, "rule")
+        if rule:
+            return rule
     if "material" in words:
         material = _last_entity(context, "material")
         if material:
@@ -182,6 +198,8 @@ def _intent(question: str) -> str:
         or normalized.startswith("o que sao ")
         or normalized.startswith("o que sabemos sobre ")
         or normalized.startswith("fale sobre ")
+        or normalized.startswith("o que diz ")
+        or normalized.startswith("e o que diz ")
     ):
         return "definition"
     return "fact"
@@ -232,8 +250,9 @@ def _rule_requirements(question: str, context: dict, concepts: list[str], status
 def plan_database_question(question: str, context: dict | None = None) -> QueryPlan:
     """Planeja a consulta sem chamar LLM.
 
-    O plano usa somente a pergunta, o glossário/status registry versionados e o contexto persistido.
-    A LLM só pode ser usada depois que SQL/Python/RAG produzirem evidências.
+    O plano usa somente a pergunta, catálogos versionados e o contexto persistido.
+    Depois de definida a intenção, os executores não devem reinterpretar a pergunta
+    para escolher outra rota. A LLM só entra após SQL/Python/RAG produzirem evidências.
     """
 
     context = context or {}
@@ -249,15 +268,16 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
 
     concepts = _concept_entities(stripped)
     statuses = _status_entities(stripped)
+    rules = _rule_entities(stripped)
     normalized_question = _normalize(stripped)
     focus = _definition_focus(stripped, concepts)
     has_definition_focus = any(marker in normalized_question for marker in ("significado", "significa", "definicao", "quer dizer"))
     if focus and has_definition_focus:
         concepts = [focus]
 
-    context_ref = None if statuses else _context_reference(stripped, context)
+    context_ref = None if statuses or rules else _context_reference(stripped, context)
     resolved = stripped
-    entities = [*concepts, *statuses]
+    entities = [*concepts, *statuses, *rules]
     if context_ref:
         subject_type, subject_key = context_ref
         if _normalize(subject_key) not in _normalize(resolved):
@@ -266,11 +286,15 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
             entities.insert(0, subject_key)
         if subject_type == "status" and subject_key.upper() in known_status_codes() and subject_key.upper() not in statuses:
             statuses.append(subject_key.upper())
+        if subject_type == "rule" and subject_key.upper() in known_rule_codes() and subject_key.upper() not in rules:
+            rules.append(subject_key.upper())
 
     intent = _intent(stripped)
     retrieval_question = resolved
 
-    if statuses and intent == "definition":
+    if rules:
+        retrieval_question = rules[0]
+    elif statuses and intent == "definition":
         retrieval_question = f"Status {statuses[0]}"
     elif len(concepts) == 1 and (
         intent == "definition"
@@ -282,6 +306,8 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
     required_queries, required_terms = _rule_requirements(stripped, context, concepts, statuses, intent)
 
     needs_synthesis = intent in {"explanation", "comparison", "code"}
+    if rules:
+        needs_synthesis = False
     if statuses and intent == "definition":
         needs_synthesis = False
     if intent == "definition" and normalized_question.startswith(("explique ", "fale sobre ")):
@@ -297,6 +323,7 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         entities=entities,
         concept_entities=concepts,
         status_entities=statuses,
+        rule_entities=rules,
         required_queries=required_queries,
         required_terms=required_terms,
         needs_synthesis=needs_synthesis,

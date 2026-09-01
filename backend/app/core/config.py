@@ -26,7 +26,7 @@ DATABASE_URL = os.getenv(
 # mesmo quando o servidor local não estiver iniciado. Para usar o Qwen local,
 # configure LLM_PROVIDER=llama-cpp no .env ou na sessão que inicia o backend.
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")
-LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "120"))
+LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "180"))
 
 LOCAL_LLM_BASE_URL = os.getenv("LOCAL_LLM_BASE_URL", "http://127.0.0.1:8080/v1")
 LOCAL_LLM_HEALTH_URL = os.getenv("LOCAL_LLM_HEALTH_URL", "http://127.0.0.1:8080/health")
