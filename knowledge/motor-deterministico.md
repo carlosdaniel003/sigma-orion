@@ -57,6 +57,8 @@ Implementação canônica: `calculate_stock_total(material)` em `backend/app/ser
 
 ## SALDO — fórmula
 
+SALDO representa o estoque total disponível depois de descontar a necessidade calculada do material.
+
 Fórmula:
 
 `SALDO = STK TTL - NEC`
@@ -66,6 +68,8 @@ O SALDO mede o estoque total calculado depois de descontar a necessidade calcula
 Implementação canônica: `calculate_balance(stock_total, nec)` em `backend/app/services/dpp_projection_service.py`.
 
 ## Amount — fórmula
+
+Amount representa o valor monetário derivado do saldo do material pelo preço informado.
 
 Fórmula:
 
