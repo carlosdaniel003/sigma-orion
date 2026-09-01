@@ -96,6 +96,9 @@ class ChatResponse(BaseModel):
     workspace_fingerprint: str = ""
     audit_id: int | None = None
     resolved_question: str = ""
+    llm_used: bool = False
+    llm_fallback: bool = False
+    llm_provider: str = ""
 
 
 class FeedbackCreate(BaseModel):
