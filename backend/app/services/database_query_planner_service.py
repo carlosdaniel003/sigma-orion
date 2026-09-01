@@ -148,17 +148,39 @@ def _last_entity(context: dict, entity_type: str | None = None) -> tuple[str, st
     return None
 
 
+def _context_entity(context: dict, entity_type: str) -> tuple[str, str] | None:
+    """Lê entidade recente e preserva compatibilidade com contextos legados.
+
+    Registros antigos podem conter apenas subject_type/subject_key, sem last_entities.
+    Esse fallback mantém os follow-ups já suportados sem misturar tipos diferentes.
+    """
+
+    recent = _last_entity(context, entity_type)
+    if recent:
+        return recent
+    subject_type = str(context.get("subject_type") or "").strip()
+    subject_key = str(context.get("subject_key") or "").strip()
+    if subject_key and subject_type == entity_type:
+        return subject_type, subject_key
+    return None
+
+
+def _current_subject(context: dict) -> tuple[str, str] | None:
+    recent = _last_entity(context)
+    if recent:
+        return recent
+    subject_key = str(context.get("subject_key") or "").strip()
+    if not subject_key:
+        return None
+    return str(context.get("subject_type") or "assunto"), subject_key
+
+
 def _typed_deictic(normalized: str, noun: str) -> bool:
     return bool(re.search(rf"\b(?:esse|essa|este|esta|nesse|nessa|neste|nesta)\s+{re.escape(noun)}\b", normalized))
 
 
 def _context_reference(question: str, context: dict, intent: str) -> tuple[str, str] | None:
-    """Resolve referências ao contexto sem deixar o passado sequestrar a pergunta atual.
-
-    A regra principal é: informação explícita e substantivos da pergunta atual têm
-    precedência sobre o último assunto da conversa. Referências como "essa diferença"
-    pertencem à comparação em curso; não significam "a última entidade mencionada".
-    """
+    """Resolve referências sem deixar o assunto anterior sequestrar a pergunta atual."""
 
     words = _words(question)
     normalized = _normalize(question)
@@ -169,46 +191,50 @@ def _context_reference(question: str, context: dict, intent: str) -> tuple[str, 
     if not (has_deictic or elliptical):
         return None
 
-    # Referências tipadas ganham de qualquer fallback genérico.
-    if "status" in words and any(_typed_deictic(normalized, noun) for noun in ("status",)):
-        return _last_entity(context, "status")
-    if "regra" in words and any(_typed_deictic(normalized, noun) for noun in ("regra",)):
-        return _last_entity(context, "rule")
-    if "material" in words and any(_typed_deictic(normalized, noun) for noun in ("material",)):
-        return _last_entity(context, "material")
-    if "modelo" in words and any(_typed_deictic(normalized, noun) for noun in ("modelo",)):
-        return _last_entity(context, "model")
+    if "status" in words and _typed_deictic(normalized, "status"):
+        return _context_entity(context, "status")
 
-    # "essa diferença/divergência/comparação" aponta para o assunto comparativo.
-    # Se já existe um modelo recente, ele pode ser reutilizado em um follow-up curto;
-    # jamais herdamos uma regra/status apenas por causa do pronome demonstrativo.
+    if "regra" in words and _typed_deictic(normalized, "regra"):
+        rule = _context_entity(context, "rule")
+        if rule:
+            return rule
+        # Compatibilidade intencional: em perguntas de código, "nesta regra" pode
+        # significar o conceito anterior (ex.: WIU), mesmo que ele não seja uma
+        # entidade do tipo rule. Isso serve para localizar sua implementação Python.
+        if intent == "code":
+            return _current_subject(context)
+        return None
+
+    if "material" in words and _typed_deictic(normalized, "material"):
+        return _context_entity(context, "material")
+
+    if "modelo" in words and _typed_deictic(normalized, "modelo"):
+        return _context_entity(context, "model")
+
+    # "essa diferença/divergência/comparação" pertence à comparação atual. Em um
+    # follow-up curto, reutilizamos somente um modelo anterior; nunca regra/status.
     comparison_reference = any(
         _typed_deictic(normalized, noun)
         for noun in ("diferenca", "divergencia", "comparacao")
     )
     if comparison_reference:
-        return _last_entity(context, "model") if len(words) <= 10 else None
+        return _context_entity(context, "model") if len(words) <= 10 else None
 
-    # Perguntas comparativas longas com números/modelos explícitos são autossuficientes.
-    # Contexto anterior fica apenas como memória, não como entidade ativa do plano.
+    # Comparações longas, com valores explícitos ou com modelo informado são
+    # autossuficientes e não herdam o assunto anterior.
     if intent == "comparison":
         number_count = len(re.findall(r"[-+]?\d[\d.,]*", question))
         if len(words) > 10 or number_count >= 2 or "modelo" in words:
             return None
-        return _last_entity(context, "model")
+        return _context_entity(context, "model")
 
-    # "isso" só herda a entidade anterior quando a frase é realmente elíptica.
     if "isso" in words:
-        return _last_entity(context) if len(words) <= 8 else None
+        return _current_subject(context) if len(words) <= 8 else None
 
-    # Perguntas completas não recebem subject_key antigo por padrão.
     if len(words) > 8:
         return None
 
-    subject_key = str(context.get("subject_key") or "").strip()
-    if subject_key:
-        return str(context.get("subject_type") or "assunto"), subject_key
-    return _last_entity(context)
+    return _current_subject(context)
 
 
 def _intent(question: str) -> str:
