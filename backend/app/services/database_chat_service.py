@@ -175,7 +175,14 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         }
         for chunk in knowledge.chunks
     ]
-    response_entities = _merge_entities(plan.entities, _traceable_knowledge_entities(plan, knowledge))
+    # Nunca expomos plan.entities bruto: ele pode carregar uma referência lexical antiga
+    # vinda de contexto legado. A lista pública é composta apenas por entidades cuja origem
+    # está demonstrada no planejador ou na resposta estruturada atual.
+    response_entities = _merge_entities(
+        plan.concept_entities,
+        plan.status_entities,
+        _traceable_knowledge_entities(plan, knowledge),
+    )
     persisted_context = knowledge.context if plan.smalltalk else build_persisted_context(knowledge, response_entities)
 
     if plan.smalltalk:
