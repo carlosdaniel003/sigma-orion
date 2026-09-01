@@ -4,6 +4,7 @@ import './agent-orion.css'
 
 const NUMBER_FORMAT = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 })
 const CONTEXTUAL_COLUMN_NAMES = new Set(['coments', 'comments', 'comentario', 'comentarios'])
+const CRITICAL_TOLERANCE = 1e-4
 
 function normalize(value) {
   return String(value || '')
@@ -61,20 +62,18 @@ function changedRealModels(scenario, finalDppAnalysis) {
     if (!finalModel) return []
     const orionReal = number(model.real)
     const finalReal = number(finalModel.real)
-    if (Math.abs(orionReal - finalReal) <= 1e-4) return []
+    if (Math.abs(orionReal - finalReal) <= CRITICAL_TOLERANCE) return []
     return [{ name: model.name, orion: orionReal, final: finalReal, delta: finalReal - orionReal }]
   })
 }
 
 function materialEvidence(material) {
   if (!material) return []
-  const evidence = [
-    {
-      label: 'Material',
-      value: material.material || material.material_key || '—',
-      detail: material.description || '',
-    },
-  ]
+  const evidence = [{
+    label: 'Material',
+    value: material.material || material.material_key || '—',
+    detail: material.description || '',
+  }]
 
   if (material.nec !== undefined && material.nec !== null) {
     evidence.push({ label: 'NEC ORION', value: formatNumber(material.nec), detail: 'Motor determinístico' })
@@ -106,7 +105,7 @@ function comparisonColumns(finalDppAnalysis) {
 function isDivergentColumn(column) {
   return column?.mode === 'compare'
     && Boolean(column?.supported)
-    && (Math.abs(number(column?.delta)) > 1e-4 || number(column?.difference_count) > 0)
+    && (Math.abs(number(column?.delta)) > CRITICAL_TOLERANCE || number(column?.difference_count) > 0)
 }
 
 function findComparisonColumn(question, finalDppAnalysis) {
@@ -131,8 +130,12 @@ function isDivergenceDataRequest(question) {
 
 function isCriticalDataQuestion(question) {
   const q = normalize(question)
-  if (!(q.includes('material') && (q.includes('critic') || q.includes('investigar')))) return false
-  return q.includes('quant') || q.includes('quais') || q.includes('lista') || q.includes('mostr') || q.includes('estao')
+  if (!(q.includes('materia') && (q.includes('critic') || q.includes('investigar')))) return false
+  return q.includes('quant')
+    || q.includes('quais')
+    || q.includes('lista')
+    || q.includes('mostr')
+    || q.includes('estao')
 }
 
 function isWorkspaceDataQuestion(question, scenario, finalDppAnalysis) {
@@ -140,7 +143,7 @@ function isWorkspaceDataQuestion(question, scenario, finalDppAnalysis) {
   if (findMaterial(question, scenario?.materials || [])) return true
   if (findModel(question, scenario?.models || [])) return true
   if (isCriticalDataQuestion(question)) return true
-  if (q.includes('quant') && q.includes('material')) return true
+  if (q.includes('quant') && q.includes('materia')) return true
   if (q.includes('real') && (q.includes('diverg') || q.includes('difer') || q.includes('mud'))) return true
   if (q.includes('cenario atual')) return true
   if (isDivergenceDataRequest(question)) {
@@ -155,13 +158,11 @@ function workspaceUnavailableAnswer(dppState) {
   const bundle = dppState?.bundle
   return {
     text: 'O cenário ORION ainda não está disponível para o pacote atual do DPP. Para responder sobre valores do mês, materiais ou modelos, complete ou reprocesse o pacote na aba DPP.',
-    evidence: [
-      {
-        label: 'Pacote atual',
-        value: formatMonth(dppState?.currentMonth),
-        detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
-      },
-    ],
+    evidence: [{
+      label: 'Pacote atual',
+      value: formatMonth(dppState?.currentMonth),
+      detail: `${bundle?.recognized || 0} arquivo(s) reconhecido(s) de ${bundle?.total || 0}`,
+    }],
     sources: ['Workspace compartilhado do DPP'],
     entities: [],
     tool: 'workspace_status',
@@ -207,8 +208,6 @@ function comparisonSummaryAnswer(finalDppAnalysis, month) {
   const columns = comparisonColumns(finalDppAnalysis)
   const divergent = columns.filter(isDivergentColumn)
   const comparable = columns.filter((column) => column.mode === 'compare' && column.supported)
-  const reference = columns.filter((column) => column.mode === 'reference_final')
-  const contextual = columns.filter((column) => column.mode === 'contextual')
   const totalDifferences = divergent.reduce((total, column) => total + number(column.difference_count), 0)
 
   return {
@@ -222,11 +221,79 @@ function comparisonSummaryAnswer(finalDppAnalysis, month) {
     entities: ['Comparativo completo das colunas do DPP', ...divergent.map((column) => column.name)],
     tool: 'get_column_comparison_summary',
     confidence: 'Determinística',
-    extra: { reference: reference.length, contextual: contextual.length },
   }
 }
 
-async function columnDivergenceAnswer(apiUrl, finalDppAnalysis, column, month) {
+function directColumnFields(column) {
+  const name = normalize(column?.name)
+  if (name === 'nec') return { finalField: 'nec', orionField: 'nec' }
+  if (name === 'stk op') return { finalField: 'stock_op', orionField: 'stock_op' }
+  if (name === 'stk ttl') return { finalField: 'stock_total', orionField: 'stock_total' }
+  if (name === 'saldo') return { finalField: 'balance', orionField: 'balance' }
+  if (name.startsWith('explosao')) return { finalField: 'explosion', orionField: 'explosion' }
+  if (name.startsWith('stk ') && name !== 'stk op' && name !== 'stk ttl') {
+    return { finalField: 'stock', orionField: 'stock_sap_effective' }
+  }
+  return null
+}
+
+function localColumnDivergences(finalDppAnalysis, scenario, column) {
+  const fields = directColumnFields(column)
+  if (!fields) return null
+
+  const orionByMaterial = new Map(
+    (scenario?.materials || []).map((item) => [normalize(item.material || item.material_key), item]),
+  )
+  const items = []
+
+  for (const finalItem of finalDppAnalysis?.material_details || []) {
+    const key = normalize(finalItem.material)
+    const orionItem = orionByMaterial.get(key)
+    if (!key || !orionItem) continue
+
+    const finalValue = number(finalItem[fields.finalField])
+    const orionValue = number(orionItem[fields.orionField])
+    const delta = finalValue - orionValue
+    if (Math.abs(delta) <= CRITICAL_TOLERANCE) continue
+
+    items.push({
+      material: finalItem.material,
+      description: finalItem.description || orionItem.description || '',
+      orion_value: orionValue,
+      final_value: finalValue,
+      delta,
+      reason: `${column.name} difere entre o Cenário ORION e o DPP Final em ${formatNumber(delta)}.`,
+    })
+  }
+
+  return items
+}
+
+function divergenceItemsAnswer(column, items, count, source, tool) {
+  const renderedItems = items.slice(0, 20)
+  const rendered = renderedItems.map((item) => (
+    `${item.material}: ORION ${formatNumber(item.orion_value)} → Final ${formatNumber(item.final_value)} (Δ ${item.delta > 0 ? '+' : ''}${formatNumber(item.delta)})`
+  ))
+  const total = count || items.length
+  const suffix = total > renderedItems.length
+    ? ` Mostrando ${renderedItems.length} de ${formatNumber(total)}; os demais permanecem disponíveis no comparativo.`
+    : ''
+
+  return {
+    text: `A coluna ${column.name} possui ${formatNumber(total)} divergência(s). ${rendered.join('; ')}.${suffix}`,
+    evidence: renderedItems.slice(0, 16).map((item) => ({
+      label: item.material || column.name,
+      value: `${formatNumber(item.orion_value)} → ${formatNumber(item.final_value)}`,
+      detail: `Δ ${item.delta > 0 ? '+' : ''}${formatNumber(item.delta)}${item.reason ? ` · ${item.reason}` : ''}`,
+    })),
+    sources: [source],
+    entities: [column.name, ...renderedItems.map((item) => item.material).filter(Boolean)],
+    tool,
+    confidence: 'Determinística',
+  }
+}
+
+async function columnDivergenceAnswer(apiUrl, finalDppAnalysis, scenario, column, month) {
   const count = number(column?.difference_count)
   const source = `Comparativo DPP Final × Cenário ORION · ${formatMonth(month)}`
 
@@ -242,69 +309,48 @@ async function columnDivergenceAnswer(apiUrl, finalDppAnalysis, column, month) {
   }
 
   const analysisId = finalDppAnalysis?.analysis_id || finalDppAnalysis?.column_comparison?.analysis_id
-  if (!analysisId || !apiUrl) {
-    return {
-      text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s), mas o identificador de drill-down não está disponível para listar os materiais desta análise.`,
-      evidence: [{ label: column.name, value: `${formatNumber(count)} divergência(s)`, detail: 'Resumo persistido do comparativo' }],
-      sources: [source],
-      entities: [column.name],
-      tool: 'get_column_divergences',
-      confidence: 'Determinística',
+  if (analysisId && apiUrl) {
+    try {
+      const limit = Math.max(1, Math.min(100, Math.ceil(count)))
+      const response = await fetch(
+        `${apiUrl}/api/dpp/dashboard/final/${analysisId}/columns/${column.column}/divergences?offset=0&limit=${limit}`,
+        { cache: 'no-store' },
+      )
+      const payload = await response.json().catch(() => null)
+      if (response.ok) {
+        return divergenceItemsAnswer(column, payload?.items || [], payload?.total || count, source, 'get_column_divergences')
+      }
+      if (response.status !== 404) {
+        throw new Error(payload?.detail || 'Não foi possível carregar o drill-down desta coluna.')
+      }
+    } catch (error) {
+      const fallbackItems = localColumnDivergences(finalDppAnalysis, scenario, column)
+      if (fallbackItems) {
+        return divergenceItemsAnswer(column, fallbackItems, count, source, 'get_column_divergences_local_fallback')
+      }
+      return {
+        text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s), mas não foi possível carregar os detalhes agora: ${error.message || 'falha desconhecida'}`,
+        evidence: [{ label: column.name, value: `${formatNumber(count)} divergência(s)`, detail: 'Contagem do comparativo sincronizado' }],
+        sources: [source],
+        entities: [column.name],
+        tool: 'get_column_divergences',
+        confidence: 'Determinística',
+      }
     }
   }
 
-  try {
-    const limit = Math.max(1, Math.min(100, Math.ceil(count)))
-    const response = await fetch(
-      `${apiUrl}/api/dpp/dashboard/final/${analysisId}/columns/${column.column}/divergences?offset=0&limit=${limit}`,
-      { cache: 'no-store' },
-    )
-    const payload = await response.json().catch(() => null)
-    if (!response.ok) {
-      if (response.status === 404) {
-        return {
-          text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s), mas os detalhes desta análise expiraram da memória do backend. Execute novamente a análise do DPP Final para recriar o mesmo drill-down usado pelo componente Comparativo completo das colunas do DPP.`,
-          evidence: [{ label: column.name, value: `${formatNumber(count)} divergência(s)`, detail: 'Contagem preservada; drill-down expirado' }],
-          sources: [source],
-          entities: [column.name],
-          tool: 'get_column_divergences',
-          confidence: 'Determinística',
-        }
-      }
-      throw new Error(payload?.detail || 'Não foi possível carregar o drill-down desta coluna.')
-    }
+  const fallbackItems = localColumnDivergences(finalDppAnalysis, scenario, column)
+  if (fallbackItems) {
+    return divergenceItemsAnswer(column, fallbackItems, count, source, 'get_column_divergences_local_fallback')
+  }
 
-    const items = payload?.items || []
-    const materialLabels = items.map((item) => item.material).filter(Boolean)
-    const rendered = items.map((item) => {
-      const delta = item.delta === null || item.delta === undefined ? '—' : formatNumber(item.delta)
-      return `${item.material}: ORION ${item.orion_value ?? '—'} → Final ${item.final_value ?? '—'} (Δ ${delta})`
-    })
-    const suffix = count > items.length
-      ? ` Foram retornadas as primeiras ${items.length} de ${formatNumber(count)} divergências.`
-      : ''
-
-    return {
-      text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s). ${rendered.join('; ')}.${suffix}`,
-      evidence: items.slice(0, 16).map((item) => ({
-        label: item.material || column.name,
-        value: `${item.orion_value ?? '—'} → ${item.final_value ?? '—'}`,
-        detail: `Δ ${item.delta === null || item.delta === undefined ? '—' : formatNumber(item.delta)}${item.reason ? ` · ${item.reason}` : ''}`,
-      })),
-      sources: [source],
-      entities: [column.name, ...materialLabels],
-      tool: 'get_column_divergences',
-      confidence: 'Determinística',
-    }
-  } catch (error) {
-    return {
-      text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s), mas não foi possível carregar os detalhes agora: ${error.message || 'falha desconhecida'}`,
-      evidence: [{ label: column.name, value: `${formatNumber(count)} divergência(s)`, detail: 'Contagem do comparativo sincronizado' }],
-      sources: [source],
-      entities: [column.name],
-      tool: 'get_column_divergences',
-      confidence: 'Determinística',
-    }
+  return {
+    text: `A coluna ${column.name} possui ${formatNumber(count)} divergência(s), mas os detalhes não estão disponíveis no estado persistido desta análise.`,
+    evidence: [{ label: column.name, value: `${formatNumber(count)} divergência(s)`, detail: 'Resumo persistido do comparativo' }],
+    sources: [source],
+    entities: [column.name],
+    tool: 'get_column_divergences',
+    confidence: 'Determinística',
   }
 }
 
@@ -325,7 +371,7 @@ async function workspaceAnswer(question, { scenario, finalDppAnalysis, reference
 
   if (isDivergenceDataRequest(question)) {
     const column = findComparisonColumn(question, finalDppAnalysis)
-    if (column) return columnDivergenceAnswer(apiUrl, finalDppAnalysis, column, month)
+    if (column) return columnDivergenceAnswer(apiUrl, finalDppAnalysis, scenario, column, month)
 
     if (q.includes('comparativo') || q.includes('comparacao') || q.includes('coluna') || q.includes('dpp final')) {
       return comparisonSummaryAnswer(finalDppAnalysis, month)
@@ -409,30 +455,36 @@ async function workspaceAnswer(question, { scenario, finalDppAnalysis, reference
   }
 
   if (isCriticalDataQuestion(question)) {
-    const critical = materials.filter((item) => normalize(item.um) === 'un' && number(item.balance) < -1e-4)
+    const critical = materials.filter((item) => normalize(item.um) === 'un' && number(item.balance) < -CRITICAL_TOLERANCE)
     const finalCritical = finalDppAnalysis?.summary?.critical_materials
     const codes = critical.map((item) => item.material || item.material_key).filter(Boolean)
     const asksWhich = q.includes('quais') || q.includes('lista') || q.includes('mostr') || q.includes('estao')
-    const listText = asksWhich && codes.length ? ` Materiais: ${codes.join(', ')}.` : ''
+    const shownCodes = codes.slice(0, 20)
+    const listText = asksWhich && shownCodes.length
+      ? ` ${codes.length > shownCodes.length ? `Primeiros ${shownCodes.length} materiais` : 'Materiais'}: ${shownCodes.join(', ')}.`
+      : ''
+    const remainingText = asksWhich && codes.length > shownCodes.length
+      ? ` Há mais ${codes.length - shownCodes.length}; o painel de evidências mantém a consulta ligada ao cenário atual.`
+      : ''
     const finalText = finalCritical === undefined
       ? ''
       : ` No DPP Final sincronizado, o resumo registra ${formatNumber(finalCritical)} material(is) críticos.`
 
     return {
-      text: `O Cenário ORION atual possui ${critical.length} material(is) críticos pela regra UM = UN e SALDO < -0,0001.${finalText}${listText}`,
+      text: `O Cenário ORION atual possui ${critical.length} material(is) críticos pela regra UM = UN e SALDO < -0,0001.${finalText}${listText}${remainingText}`,
       evidence: critical.slice(0, 16).map((item) => ({
         label: item.material || item.material_key || 'Material',
         value: `SALDO ${formatNumber(item.balance)}`,
         detail: item.description || 'UM = UN',
       })),
       sources,
-      entities: ['Materiais críticos', ...codes],
+      entities: ['Materiais críticos', ...shownCodes],
       tool: 'get_critical_materials',
       confidence: 'Determinística',
     }
   }
 
-  if (q.includes('quant') && q.includes('material')) {
+  if (q.includes('quant') && q.includes('materia')) {
     const finalTotal = finalDppAnalysis?.summary?.total_materials
     return {
       text: finalTotal === undefined
