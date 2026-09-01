@@ -1,15 +1,48 @@
 from __future__ import annotations
 
+import re
+import unicodedata
+
 from app.schemas.agent import ChatResponse
 from app.services.database_answer_service import answer_database_knowledge
 from app.services.rag_runtime_service import load_chat_context, record_chat_audit
 from app.services.rag_runtime_status_service import runtime_workspace_status
 
 
+def _normalize(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", str(text or "").lower())
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9_.-]+", " ", normalized).strip()
+
+
+def _only_incidental_python(question: str, sources: list[str]) -> bool:
+    if not sources or not all(source.startswith("python://") for source in sources):
+        return False
+    normalized = _normalize(question)
+    explicitly_code = (
+        "python" in normalized
+        or "codigo" in normalized
+        or ".py" in normalized
+        or bool(re.search(r"\b[a-z][a-z0-9]*_[a-z0-9_]+\b", normalized))
+    )
+    return not explicitly_code
+
+
 def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
     runtime = runtime_workspace_status()
     previous_context = load_chat_context(session_id)
     knowledge = answer_database_knowledge(question, context=previous_context)
+
+    if _only_incidental_python(question, knowledge.sources):
+        knowledge.answer = (
+            "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
+            "Nenhuma resposta externa ou pré-definida foi usada."
+        )
+        knowledge.sources = []
+        knowledge.chunks = []
+        knowledge.entities = []
+        knowledge.table = None
+
     sources = knowledge.sources
     retrieval = [
         {
