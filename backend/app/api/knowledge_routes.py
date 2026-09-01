@@ -46,7 +46,7 @@ def database_rag_chat(payload: ChatRequest) -> ChatResponse:
     try:
         if payload.workspace is not None:
             sync_runtime_workspace(payload.workspace)
-        return answer_database_question(payload.question)
+        return answer_database_question(payload.question, session_id=payload.session_id)
     except Exception as exc:
         raise HTTPException(
             status_code=502,
