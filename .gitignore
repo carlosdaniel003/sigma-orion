@@ -17,6 +17,10 @@ venv/
 *.xlsm
 *.csv
 
+# Local LLM artifacts - keep large model/runtime files outside the repository
+*.gguf
+/local-llm/
+
 # Local data
 /data/*.db
 /data/*.sqlite
