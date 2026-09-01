@@ -29,9 +29,9 @@ Coloque o arquivo Qwen3-4B-Q4_K_M.gguf nessa pasta ou informe -ModelPath.
 "@
 }
 
-Write-Host "=" * 68
+Write-Host ("=" * 68)
 Write-Host "ORION - LLM LOCAL"
-Write-Host "=" * 68
+Write-Host ("=" * 68)
 Write-Host "Runtime : llama.cpp"
 Write-Host "Servidor: $ServerExe"
 Write-Host "Modelo  : $ModelPath"
@@ -40,7 +40,7 @@ Write-Host "Health  : http://127.0.0.1:$Port/health"
 Write-Host "Contexto: $Context"
 Write-Host "GPU     : $GpuLayers camada(s)"
 Write-Host "Ctrl+C encerra somente a LLM."
-Write-Host "=" * 68
+Write-Host ("=" * 68)
 
 & $ServerExe `
     -m $ModelPath `
