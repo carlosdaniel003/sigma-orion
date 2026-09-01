@@ -3,6 +3,7 @@ import re
 import unicodedata
 
 from app.core.config import KNOWLEDGE_DIR, RAG_TOP_K
+from app.services.knowledge_catalog_service import bm25_retrieve, knowledge_index_status, sync_knowledge_index
 
 
 STOP_WORDS = {
@@ -26,7 +27,7 @@ ENGINE_KNOWLEDGE_SOURCES = {
     "regras-globais.md",
 }
 
-MIN_GENERIC_SCORE = 6.0
+MIN_GENERIC_SCORE = 0.000001
 
 
 @dataclass(slots=True)
@@ -44,7 +45,7 @@ class KnowledgeAnswer:
 
 
 def _normalize(text: str) -> str:
-    normalized = unicodedata.normalize("NFKD", text.lower())
+    normalized = unicodedata.normalize("NFKD", str(text or "").lower())
     normalized = "".join(char for char in normalized if not unicodedata.combining(char))
     return re.sub(r"[^a-z0-9_-]+", " ", normalized).strip()
 
@@ -72,12 +73,10 @@ def _split_markdown_sections(content: str) -> list[str]:
 
 def _chunk_markdown(source: str, content: str, max_chars: int = 1800) -> list[KnowledgeChunk]:
     chunks: list[KnowledgeChunk] = []
-
     for section in _split_markdown_sections(content):
         if len(section) <= max_chars:
             chunks.append(KnowledgeChunk(source=source, content=section))
             continue
-
         blocks = [block.strip() for block in re.split(r"\n\s*\n", section) if block.strip()]
         current: list[str] = []
         current_size = 0
@@ -90,19 +89,16 @@ def _chunk_markdown(source: str, content: str, max_chars: int = 1800) -> list[Kn
             current_size += len(block)
         if current:
             chunks.append(KnowledgeChunk(source=source, content="\n\n".join(current)))
-
     return chunks
 
 
 def load_knowledge_chunks() -> list[KnowledgeChunk]:
     chunks: list[KnowledgeChunk] = []
-
     for path in sorted(KNOWLEDGE_DIR.rglob("*.md")):
         relative = path.relative_to(KNOWLEDGE_DIR).as_posix()
         content = path.read_text(encoding="utf-8").strip()
         if content:
             chunks.extend(_chunk_markdown(relative, content))
-
     return chunks
 
 
@@ -135,57 +131,36 @@ def _is_definition_query(query: str) -> bool:
     )
 
 
-def _table_density(content: str) -> float:
-    lines = [line.strip() for line in content.splitlines() if line.strip()]
-    if not lines:
-        return 0.0
-    table_lines = sum(1 for line in lines if line.startswith("|") and line.endswith("|"))
-    return table_lines / len(lines)
-
-
-def retrieve_context(query: str, top_k: int | None = None) -> list[KnowledgeChunk]:
+def _lexical_fallback(query: str, limit: int) -> list[KnowledgeChunk]:
     query_tokens = _tokens(query)
     if not query_tokens:
         return []
-
-    limit = top_k or RAG_TOP_K
     ranked: list[KnowledgeChunk] = []
-    formula_query = _is_formula_query(query)
-
     for chunk in load_knowledge_chunks():
         chunk_tokens = _tokens(chunk.content)
         heading_tokens = _tokens(_heading(chunk))
         overlap = query_tokens & chunk_tokens
         heading_overlap = query_tokens & heading_tokens
-        source_overlap = query_tokens & _tokens(chunk.source)
-
-        if not overlap and not heading_overlap and not source_overlap:
+        if not overlap and not heading_overlap:
             continue
-
-        score = float(
-            len(overlap) * 3
-            + len(heading_overlap) * 9
-            + len(source_overlap) * 2
-        )
-
-        if formula_query:
-            if chunk.source in ENGINE_KNOWLEDGE_SOURCES:
-                score += 6
-            if "formula" in _raw_tokens(chunk.content):
-                score += 5
-            if "=" in chunk.content:
-                score += 3
-            if _table_density(chunk.content) >= 0.45:
-                score -= 12
-
-        if "guardrails" in chunk.source:
-            score += 0.25
-
-        if score > 0:
-            ranked.append(KnowledgeChunk(source=chunk.source, content=chunk.content, score=score))
-
+        score = float(len(overlap) * 3 + len(heading_overlap) * 9)
+        ranked.append(KnowledgeChunk(source=chunk.source, content=chunk.content, score=score))
     ranked.sort(key=lambda item: item.score, reverse=True)
     return ranked[:limit]
+
+
+def retrieve_context(query: str, top_k: int | None = None) -> list[KnowledgeChunk]:
+    limit = top_k or RAG_TOP_K
+    try:
+        indexed = bm25_retrieve(query, limit=limit)
+        if indexed:
+            return [
+                KnowledgeChunk(source=item.source, content=item.content, score=item.score)
+                for item in indexed
+            ]
+    except Exception:
+        pass
+    return _lexical_fallback(query, limit)
 
 
 def _clean_inline_markdown(text: str) -> str:
@@ -217,7 +192,6 @@ def _formula_from_chunk(chunk: KnowledgeChunk) -> str | None:
     candidates = re.findall(r"`([^`]*=[^`]*)`", chunk.content)
     if candidates:
         return _clean_inline_markdown(candidates[0])
-
     lines = chunk.content.splitlines()
     for index, raw_line in enumerate(lines):
         if _normalize(raw_line) != "formula":
@@ -229,25 +203,17 @@ def _formula_from_chunk(chunk: KnowledgeChunk) -> str | None:
     return None
 
 
-def _subject_tokens(query: str) -> set[str]:
-    return _tokens(query)
-
-
 def _best_formula_chunk(query: str, chunks: list[KnowledgeChunk]) -> KnowledgeChunk | None:
-    subject_tokens = _subject_tokens(query)
-    if not subject_tokens:
-        return None
-
+    subject_tokens = _tokens(query)
     candidates: list[KnowledgeChunk] = []
     for chunk in chunks:
         if chunk.source not in ENGINE_KNOWLEDGE_SOURCES:
             continue
         if not _formula_from_chunk(chunk):
             continue
-        if not (subject_tokens & _tokens(_heading(chunk))):
+        if subject_tokens and not (subject_tokens & _tokens(_heading(chunk))):
             continue
         candidates.append(chunk)
-
     return candidates[0] if candidates else None
 
 
@@ -255,7 +221,6 @@ def _formula_answer(chunk: KnowledgeChunk) -> str:
     blocks = [block.strip() for block in re.split(r"\n\s*\n", chunk.content) if block.strip()]
     heading = _heading(chunk)
     formula = _formula_from_chunk(chunk)
-
     definition = ""
     explanation = ""
     implementation = ""
@@ -266,11 +231,9 @@ def _formula_answer(chunk: KnowledgeChunk) -> str:
         normalized = _normalize(clean)
         if not clean:
             continue
-
         if normalized == "formula":
             formula_seen = True
             continue
-
         if formula and formula in clean:
             formula_seen = True
             remainder = clean.replace(formula, "").strip(" .:-")
@@ -278,19 +241,15 @@ def _formula_answer(chunk: KnowledgeChunk) -> str:
                 continue
             clean = remainder
             normalized = _normalize(clean)
-
         if normalized.startswith("implementacao") or normalized.startswith("fonte tecnica"):
             implementation = clean
             continue
-
         if not formula_seen and not definition:
             definition = clean
             continue
-
         if formula_seen and not explanation:
             explanation = clean
             continue
-
         if not definition:
             definition = clean
         elif not explanation:
@@ -301,16 +260,12 @@ def _formula_answer(chunk: KnowledgeChunk) -> str:
         parts.append(definition.rstrip("."))
     elif heading:
         parts.append(heading)
-
     if formula:
         parts.append(f"Fórmula: {formula}")
-
     if explanation:
         parts.append(explanation.rstrip("."))
-
     if implementation:
         parts.append(implementation.rstrip("."))
-
     answer = ". ".join(part for part in parts if part).strip()
     answer = re.sub(r"\bFórmula\s*:\s*\.", "", answer, flags=re.IGNORECASE)
     answer = re.sub(r"\s{2,}", " ", answer).strip()
@@ -322,16 +277,12 @@ def _formula_answer(chunk: KnowledgeChunk) -> str:
 def _glossary_answer(query: str) -> KnowledgeAnswer | None:
     if not _is_definition_query(query):
         return None
-
     path = KNOWLEDGE_DIR / "glossario.md"
     if not path.exists():
         return None
-
     normalized_query = _normalize(query)
-    rows = path.read_text(encoding="utf-8").splitlines()
     matches: list[tuple[str, str, str]] = []
-
-    for raw_line in rows:
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not (line.startswith("|") and line.endswith("|")):
             continue
@@ -342,14 +293,10 @@ def _glossary_answer(query: str) -> KnowledgeAnswer | None:
         if term.lower() == "termo" or set(term) <= {"-", ":"}:
             continue
         normalized_term = _normalize(term)
-        if not normalized_term:
-            continue
-        if re.search(rf"(?:^|\s){re.escape(normalized_term)}(?:\s|$)", normalized_query):
+        if normalized_term and re.search(rf"(?:^|\s){re.escape(normalized_term)}(?:\s|$)", normalized_query):
             matches.append((term, meaning, validation))
-
     if not matches:
         return None
-
     matches.sort(key=lambda item: len(_normalize(item[0])), reverse=True)
     term, meaning, validation = matches[0]
     answer = f"{term}: {meaning}"
@@ -357,7 +304,6 @@ def _glossary_answer(query: str) -> KnowledgeAnswer | None:
         answer += f" Fonte/validação: {validation}."
     elif not answer.endswith("."):
         answer += "."
-
     chunk = KnowledgeChunk(
         source="glossario.md",
         content=f"{term}: {meaning}\nFonte/Validação: {validation}",
@@ -391,11 +337,7 @@ def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnsw
         if formula_chunk is not None:
             answer = _formula_answer(formula_chunk)
             if answer:
-                return KnowledgeAnswer(
-                    answer=answer,
-                    sources=[formula_chunk.source],
-                    chunks=[formula_chunk],
-                )
+                return KnowledgeAnswer(answer=answer, sources=[formula_chunk.source], chunks=[formula_chunk])
         return _insufficient_answer()
 
     if chunks[0].score < MIN_GENERIC_SCORE:
@@ -406,35 +348,39 @@ def answer_from_knowledge(query: str, top_k: int | None = None) -> KnowledgeAnsw
     for chunk in chunks[1:]:
         if len(selected) >= 2:
             break
-        if chunk.score >= max(best_score * 0.86, best_score - 3):
+        threshold = best_score * 0.72 if best_score > 0 else 0
+        if chunk.score >= threshold:
             selected.append(chunk)
 
     answer_parts = [_clean_markdown_for_chat(chunk.content) for chunk in selected]
     answer_parts = [part for part in answer_parts if part]
     sources = list(dict.fromkeys(chunk.source for chunk in selected))
-
     if not answer_parts:
         return _insufficient_answer()
-
-    return KnowledgeAnswer(
-        answer="\n\n".join(answer_parts),
-        sources=sources,
-        chunks=selected,
-    )
+    return KnowledgeAnswer(answer="\n\n".join(answer_parts), sources=sources, chunks=selected)
 
 
 def knowledge_status() -> dict:
-    files = sorted(path.relative_to(KNOWLEDGE_DIR).as_posix() for path in KNOWLEDGE_DIR.rglob("*.md"))
-    chunks = load_knowledge_chunks()
-    return {
-        "mode": "lexical-local",
-        "embedding_enabled": False,
-        "files": files,
-        "document_count": len(files),
-        "chunk_count": len(chunks),
-        "message": (
-            "RAG local ativo com recuperação lexical por seções, respostas determinísticas por intenção "
-            "e abstinência quando a base não sustenta a pergunta. Definições do glossário e fórmulas do "
-            "motor recebem tratamento específico para evitar respostas irrelevantes."
-        ),
-    }
+    try:
+        status = sync_knowledge_index()
+        status.update(
+            {
+                "files": sorted(path.relative_to(KNOWLEDGE_DIR).as_posix() for path in KNOWLEDGE_DIR.rglob("*.md")),
+                "message": (
+                    "RAG local ativo com índice persistido em SQLite, recuperação FTS5/BM25, "
+                    "tratamento determinístico para definições e fórmulas e fallback lexical quando necessário."
+                ),
+            }
+        )
+        return status
+    except Exception:
+        chunks = load_knowledge_chunks()
+        return {
+            "mode": "lexical-local",
+            "embedding_enabled": False,
+            "fts5_enabled": False,
+            "files": sorted(path.relative_to(KNOWLEDGE_DIR).as_posix() for path in KNOWLEDGE_DIR.rglob("*.md")),
+            "document_count": len({chunk.source for chunk in chunks}),
+            "chunk_count": len(chunks),
+            "message": "Índice SQLite indisponível; RAG operando em fallback lexical local.",
+        }
