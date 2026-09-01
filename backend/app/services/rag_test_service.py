@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.services.database_answer_service import answer_database_knowledge
+from app.services.database_chat_service import answer_database_question
 from app.services.knowledge_catalog_service import bm25_retrieve, sync_knowledge_index
 from app.services.knowledge_inventory_service import DETERMINISTIC_DOCUMENTS, build_knowledge_inventory
 
@@ -95,8 +96,8 @@ def _run_inventory_item(item: dict) -> dict:
 
 
 def _run_abstention_test() -> dict:
-    answer = answer_database_knowledge(ABSTENTION_CASE["question"])
-    failures = [] if not answer.sources else ["A consulta deveria se abster, mas recuperou fonte."]
+    answer = answer_database_question(ABSTENTION_CASE["question"], session_id="rag-battery-abstention")
+    failures = [] if not answer.knowledge_sources else ["A consulta deveria se abster, mas recuperou fonte."]
     return {
         "id": ABSTENTION_CASE["id"],
         "kind": ABSTENTION_CASE["kind"],
@@ -107,7 +108,7 @@ def _run_abstention_test() -> dict:
         "expected_source": None,
         "expected_terms": [],
         "answer": answer.answer,
-        "sources": answer.sources,
+        "sources": answer.knowledge_sources,
         "matched_source": None,
         "rank": None,
         "failures": failures,
