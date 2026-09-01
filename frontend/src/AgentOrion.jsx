@@ -35,7 +35,7 @@ function packageStatusText(state) {
 
 function databaseStatusText(status) {
   if (status.state === 'ready') {
-    return `SQLite/RAG sincronizado · ${status.runtimeDocuments || 0} dado(s) atuais`
+    return `SQLite/RAG sincronizado · ${status.runtimeEntities || status.runtimeDocuments || 0} entidade(s) atual(is)`
   }
   if (status.state === 'syncing') return 'Sincronizando SQLite/RAG'
   if (status.state === 'error') return 'SQLite/RAG indisponível'
@@ -58,6 +58,49 @@ function buildWorkspaceVersion({ month, scenario, finalDpp, packageState, scenar
   ].join('::')
 }
 
+function createSessionId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
+  return `orion-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function MessageDataTable({ table }) {
+  const rows = table?.rows || []
+  const columns = table?.columns || []
+  if (!rows.length || !columns.length) return null
+  const totalRows = Number(table.total_rows) || rows.length
+
+  return (
+    <div className="agent-data-table-block">
+      <div className="agent-data-table-caption">
+        <strong>{table.title || 'Dados da consulta'}</strong>
+        <span>{rows.length === totalRows ? `${totalRows} linha(s)` : `${rows.length} de ${totalRows} linha(s)`}</span>
+      </div>
+      <div className="agent-data-table-wrap" role="region" aria-label={table.title || 'Tabela da resposta'} tabIndex="0">
+        <table className="agent-data-table">
+          <thead>
+            <tr>
+              {columns.map((column) => (
+                <th key={column.key} scope="col" data-align={column.align || 'left'}>{column.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={`${row.material || row.source || row.column || 'row'}-${rowIndex}`}>
+                {columns.map((column) => (
+                  <td key={column.key} data-align={column.align || 'left'} data-kind={column.kind || 'text'}>
+                    {row[column.key] ?? '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function AgentOrion({ apiUrl }) {
   const {
     generatedScenario,
@@ -69,15 +112,16 @@ function AgentOrion({ apiUrl }) {
 
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
-  const [databaseStatus, setDatabaseStatus] = useState({ state: 'checking', runtimeDocuments: 0, database: 'orion.db' })
+  const [databaseStatus, setDatabaseStatus] = useState({ state: 'checking', runtimeDocuments: 0, runtimeEntities: 0, database: 'orion.db' })
   const [messages, setMessages] = useState(() => [
     {
       id: 'initial',
       role: 'orion',
-      text: 'O chat não possui respostas ou perguntas pré-definidas no frontend. Toda consulta é enviada ao backend e respondida somente a partir do banco SQLite/RAG atualmente sincronizado com o DPP.',
+      text: 'Toda consulta é resolvida pelo backend sobre o SQLite sincronizado. Dados estruturados usam SQL; conhecimento textual usa FTS5/BM25; o contexto da conversa também fica registrado no banco.',
       evidence: [],
       sources: [],
-      tool: 'sqlite_fts5_bm25',
+      entities: [],
+      tool: 'sqlite_sql + fts5_bm25',
       confidence: 'Banco RAG',
       auditId: null,
     },
@@ -86,6 +130,7 @@ function AgentOrion({ apiUrl }) {
   const messageListRef = useRef(null)
   const latestAnswerRef = useRef(null)
   const syncedVersionRef = useRef('')
+  const sessionIdRef = useRef(createSessionId())
 
   const month = dppState?.currentMonth
     || referenceMonth
@@ -142,6 +187,7 @@ function AgentOrion({ apiUrl }) {
     setDatabaseStatus({
       state: 'ready',
       runtimeDocuments: Number(result.runtime_document_count) || 0,
+      runtimeEntities: Number(result.runtime_entity_count) || 0,
       documents: Number(result.document_count) || 0,
       chunks: Number(result.chunk_count) || 0,
       database: result.database || 'orion.db',
@@ -168,17 +214,14 @@ function AgentOrion({ apiUrl }) {
     const listRect = messageList.getBoundingClientRect()
     const answerRect = latestAnswer.getBoundingClientRect()
     const targetTop = messageList.scrollTop + (answerRect.top - listRect.top) - 8
-    messageList.scrollTo({
-      top: Math.max(targetTop, 0),
-      behavior: 'smooth',
-    })
+    messageList.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' })
   }, [messages])
 
   async function askDatabase(questionText) {
     const response = await fetch(`${apiUrl}/api/knowledge/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: questionText }),
+      body: JSON.stringify({ question: questionText, session_id: sessionIdRef.current }),
       cache: 'no-store',
     })
     const payload = await response.json().catch(() => null)
@@ -189,17 +232,20 @@ function AgentOrion({ apiUrl }) {
     const retrieval = payload.retrieval || []
     return {
       text: payload.answer,
+      table: payload.table || null,
       evidence: retrieval.map((item) => ({
         label: item.heading || 'Trecho recuperado',
         value: item.source,
         detail: `${item.category || 'knowledge'} · score ${Number(item.score || 0).toFixed(4)}`,
       })),
       sources: payload.knowledge_sources || [],
-      tool: 'sqlite_fts5_bm25',
-      confidence: payload.knowledge_sources?.length ? 'Fundamentada no banco RAG' : 'Sem evidência suficiente',
+      entities: payload.entities || [],
+      tool: payload.model || 'sqlite-fts5-bm25+sql',
+      confidence: payload.knowledge_sources?.length ? 'Fundamentada no SQLite' : 'Sem evidência suficiente',
       auditId: payload.audit_id || null,
       database: payload.database || 'orion.db',
       fingerprint: payload.workspace_fingerprint || '',
+      resolvedQuestion: payload.resolved_question || questionText,
     }
   }
 
@@ -216,10 +262,7 @@ function AgentOrion({ apiUrl }) {
         await synchronizeWorkspace(workspacePayload, workspaceVersion)
       }
       const answer = await askDatabase(trimmed)
-      setMessages((current) => [
-        ...current,
-        { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer },
-      ])
+      setMessages((current) => [...current, { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer }])
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -229,7 +272,8 @@ function AgentOrion({ apiUrl }) {
           text: `Não foi possível consultar o banco RAG sincronizado: ${error.message || 'falha desconhecida'}`,
           evidence: [],
           sources: [],
-          tool: 'sqlite_fts5_bm25',
+          entities: [],
+          tool: 'sqlite-fts5-bm25+sql',
           confidence: 'Indisponível',
           auditId: null,
         },
@@ -265,7 +309,7 @@ function AgentOrion({ apiUrl }) {
         <div>
           <span className="agent-orion-kicker">CONSULTA AO BANCO RAG</span>
           <h2 id="agent-orion-title">Agente ORION</h2>
-          <p>O frontend não decide respostas. Toda pergunta é resolvida no backend usando exclusivamente o SQLite/RAG sincronizado com documentos, regras Python e dados atuais do DPP.</p>
+          <p>Dados atuais são consultados como entidades estruturadas no SQLite; conhecimento e código são recuperados por FTS5/BM25. O frontend apenas envia perguntas e apresenta a resposta.</p>
         </div>
         <div className="agent-orion-context" aria-label="Contexto atual do agente">
           <strong>{formatMonth(month)}</strong>
@@ -285,7 +329,7 @@ function AgentOrion({ apiUrl }) {
           <div className="agent-conversation-head">
             <div>
               <strong>Conversa</strong>
-              <span>Pergunta livre → SQLite/FTS5/BM25 → evidências recuperadas → resposta.</span>
+              <span>Pergunta livre → SQL para fatos + FTS5/BM25 para conhecimento → resposta auditada.</span>
             </div>
             <small>{materials} materiais · {models} modelos</small>
           </div>
@@ -293,19 +337,22 @@ function AgentOrion({ apiUrl }) {
           <div className="agent-message-list" aria-live="polite" ref={messageListRef}>
             {messages.map((message) => {
               const latestOrionAnswer = message.role === 'orion' && message.id === currentAnswer.id
+              const hasTable = Boolean(message.table?.rows?.length)
               return (
                 <article
                   className="agent-message"
                   data-role={message.role}
+                  data-has-table={hasTable ? 'true' : 'false'}
                   key={message.id}
                   ref={latestOrionAnswer ? latestAnswerRef : null}
                 >
                   <div className="agent-message-author">{message.role === 'orion' ? 'ORION' : 'Você'}</div>
                   <p>{message.text}</p>
+                  {hasTable && <MessageDataTable table={message.table} />}
                   {message.role === 'orion' && message.confidence && (
                     <div className="agent-message-meta">
                       <span>Tipo de resposta: {message.confidence}</span>
-                      <span>Consulta: {message.tool || 'sqlite_fts5_bm25'}</span>
+                      <span>Consulta: {message.tool || 'sqlite-fts5-bm25+sql'}</span>
                       {message.auditId && <span>Auditoria DB: #{message.auditId}</span>}
                     </div>
                   )}
@@ -315,7 +362,7 @@ function AgentOrion({ apiUrl }) {
             {asking && (
               <article className="agent-message" data-role="orion">
                 <div className="agent-message-author">ORION</div>
-                <p>Consultando o banco RAG sincronizado...</p>
+                <p>Consultando entidades e conhecimento no SQLite...</p>
               </article>
             )}
           </div>
@@ -329,7 +376,7 @@ function AgentOrion({ apiUrl }) {
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Digite uma pergunta. Não existem perguntas pré-cadastradas."
+                placeholder="Digite uma pergunta. O contexto das mensagens anteriores é mantido no banco."
                 disabled={asking}
               />
               <button type="submit" disabled={!question.trim() || asking}>{asking ? 'Consultando' : 'Enviar'}</button>
@@ -355,7 +402,7 @@ function AgentOrion({ apiUrl }) {
                 ))}
               </div>
             ) : (
-              <p className="agent-empty-evidence">A resposta só terá evidências quando o banco recuperar fontes suficientes para a pergunta.</p>
+              <p className="agent-empty-evidence">Consultas estruturadas podem usar diretamente as entidades do SQLite sem recuperar chunks textuais.</p>
             )}
           </section>
 
@@ -374,12 +421,16 @@ function AgentOrion({ apiUrl }) {
                 <dd>{currentAnswer.sources?.length ? currentAnswer.sources.join(' · ') : 'Nenhuma fonte suficiente'}</dd>
               </div>
               <div>
-                <dt>Motor de busca</dt>
-                <dd>SQLite FTS5 + BM25</dd>
+                <dt>Entidades</dt>
+                <dd>{currentAnswer.entities?.length ? currentAnswer.entities.slice(0, 20).join(' · ') : '—'}</dd>
+              </div>
+              <div>
+                <dt>Motor de consulta</dt>
+                <dd>SQLite SQL + FTS5 + BM25</dd>
               </div>
               <div>
                 <dt>Workspace indexado</dt>
-                <dd>{databaseStatus.runtimeDocuments || 0} documento(s) atual(is)</dd>
+                <dd>{databaseStatus.runtimeEntities || databaseStatus.runtimeDocuments || 0} entidade(s) atual(is)</dd>
               </div>
               <div>
                 <dt>Auditoria</dt>
@@ -387,7 +438,7 @@ function AgentOrion({ apiUrl }) {
               </div>
               <div>
                 <dt>Execução</dt>
-                <dd>Frontend passivo · backend DB-first · sem respostas locais</dd>
+                <dd>Frontend passivo · backend DB-first · contexto persistido no SQLite</dd>
               </div>
             </dl>
           </section>
