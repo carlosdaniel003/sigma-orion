@@ -20,6 +20,7 @@ CODE_MARKERS = ("python", "codigo", "implementacao", "implementar", "funcao", "m
 SMALLTALK_PREFIXES = (
     "oi", "ola", "bom dia", "boa tarde", "boa noite", "obrigado", "obrigada", "valeu",
 )
+DEFINITION_FOCUS_MARKERS = ("significado", "significa", "definicao", "o que e", "o que sao", "sobre")
 
 
 @dataclass(slots=True)
@@ -45,12 +46,6 @@ def _normalize(text: str) -> str:
 
 def _words(text: str) -> set[str]:
     return set(_normalize(text).split())
-
-
-def _contains_phrase(text: str, phrase: str) -> bool:
-    normalized_text = _normalize(text)
-    normalized_phrase = _normalize(phrase)
-    return bool(normalized_phrase) and f" {normalized_phrase} " in f" {normalized_text} "
 
 
 def _glossary_terms() -> list[str]:
@@ -92,6 +87,27 @@ def _concept_entities(question: str) -> list[str]:
     return matches
 
 
+def _definition_focus(question: str, concepts: list[str]) -> str | None:
+    if not concepts:
+        return None
+    normalized = _normalize(question)
+    anchors = [normalized.find(marker) for marker in DEFINITION_FOCUS_MARKERS if normalized.find(marker) >= 0]
+    if not anchors:
+        return None
+    anchor = min(anchors)
+    ranked: list[tuple[int, int, str]] = []
+    for concept in concepts:
+        position = normalized.find(_normalize(concept))
+        if position < 0:
+            continue
+        after_penalty = 0 if position >= anchor else 10000
+        ranked.append((after_penalty + abs(position - anchor), position, concept))
+    if not ranked:
+        return None
+    ranked.sort(key=lambda row: (row[0], row[1]))
+    return ranked[0][2]
+
+
 def _context_reference(question: str, context: dict) -> tuple[str, str] | None:
     subject_key = str(context.get("subject_key") or "").strip()
     if not subject_key:
@@ -125,8 +141,6 @@ def _intent(question: str) -> str:
         or normalized.startswith("fale sobre ")
     ):
         return "definition"
-    if normalized.startswith("explique "):
-        return "explanation"
     return "fact"
 
 
@@ -188,6 +202,12 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         )
 
     concepts = _concept_entities(stripped)
+    normalized_question = _normalize(stripped)
+    focus = _definition_focus(stripped, concepts)
+    has_definition_focus = any(marker in normalized_question for marker in ("significado", "significa", "definicao"))
+    if focus and has_definition_focus:
+        concepts = [focus]
+
     context_ref = _context_reference(stripped, context)
     resolved = stripped
     entities = list(concepts)
@@ -201,12 +221,9 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
     intent = _intent(stripped)
     retrieval_question = resolved
 
-    # Perguntas longas de definição devem recuperar pelo conceito conhecido, não pela
-    # palavra lexicalmente mais forte da frase. Isso preserva WIU/OPC/etc. como assunto.
-    definition_markers = _normalize(stripped)
     if len(concepts) == 1 and (
         intent == "definition"
-        or (intent == "explanation" and ("significado" in definition_markers or "significa" in definition_markers))
+        or (intent == "explanation" and ("significado" in normalized_question or "significa" in normalized_question))
     ):
         retrieval_question = f"O que significa {concepts[0]}?"
 
@@ -214,9 +231,9 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
     required_queries, required_terms = _rule_requirements(stripped, context, concepts, intent)
 
     needs_synthesis = intent in {"explanation", "comparison", "code"}
-    if intent == "definition" and _normalize(stripped).startswith(("explique ", "fale sobre ")):
+    if intent == "definition" and normalized_question.startswith(("explique ", "fale sobre ")):
         needs_synthesis = True
-    if _normalize(stripped).startswith("explique "):
+    if normalized_question.startswith("explique "):
         needs_synthesis = True
 
     return QueryPlan(
@@ -230,6 +247,7 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         required_terms=required_terms,
         needs_synthesis=needs_synthesis,
         allow_python=allow_python,
+        smalltalk=False,
     )
 
 
