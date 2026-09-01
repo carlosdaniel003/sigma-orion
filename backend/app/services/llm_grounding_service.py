@@ -104,7 +104,11 @@ def _should_plan(question: str, context: dict) -> bool:
     if not subject_key:
         return False
     words = _words(question)
-    return bool(words & DEICTIC_WORDS) or len(words) <= 8 or _has_analytic_marker(question)
+    if words & DEICTIC_WORDS:
+        return True
+    # Follow-ups elípticos como "por quê?" precisam do assunto anterior; uma
+    # pergunta curta mas autônoma (ex.: "Quais materiais estão críticos?") não.
+    return len(words) <= 5 and _has_analytic_marker(question)
 
 
 def _heuristic_needs_synthesis(question: str, answer: DatabaseKnowledgeAnswer) -> bool:
