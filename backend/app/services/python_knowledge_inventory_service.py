@@ -9,6 +9,7 @@ from app.core.config import BASE_DIR
 
 
 PYTHON_APP_DIR = BASE_DIR / "backend" / "app"
+_NON_KNOWLEDGE_CONSTANT_MARKERS = {"TEST", "CASE", "EXAMPLE", "SAMPLE", "MOCK", "DEMO", "FIXTURE"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +149,11 @@ class _RuleVisitor(ast.NodeVisitor):
         self.scope.pop()
 
 
+def _is_knowledge_constant(name: str) -> bool:
+    tokens = set(name.upper().split("_"))
+    return not bool(tokens & _NON_KNOWLEDGE_CONSTANT_MARKERS)
+
+
 def _module_constants(tree: ast.Module, relative_path: str, source: str) -> list[PythonKnowledgeRule]:
     lines = source.splitlines()
     rules: list[PythonKnowledgeRule] = []
@@ -162,7 +168,11 @@ def _module_constants(tree: ast.Module, relative_path: str, source: str) -> list
         else:
             targets = [node.target]
             value = node.value
-        names = [target.id for target in targets if isinstance(target, ast.Name) and target.id.isupper()]
+        names = [
+            target.id
+            for target in targets
+            if isinstance(target, ast.Name) and target.id.isupper() and _is_knowledge_constant(target.id)
+        ]
         if not names or value is None:
             continue
         line_start = int(node.lineno)
