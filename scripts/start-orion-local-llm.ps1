@@ -87,15 +87,15 @@ $env:LOCAL_LLM_MAX_TOKENS = "800"
 $env:LOCAL_LLM_TEMPERATURE = "0.1"
 $env:LLM_TIMEOUT_SECONDS = "120"
 
-Write-Host "=" * 68
+Write-Host ("=" * 68)
 Write-Host "ORION - AMBIENTE LOCAL COM LLM"
-Write-Host "=" * 68
+Write-Host ("=" * 68)
 Write-Host "LLM     : llama.cpp / $Alias"
 Write-Host "API LLM : $BaseUrl"
 Write-Host "RAG     : SQLite FTS5 + BM25"
 Write-Host "Backend : http://localhost:8000"
 Write-Host "Frontend: http://localhost:5173"
-Write-Host "=" * 68
+Write-Host ("=" * 68)
 
 try {
     & $StartDev -NodeHome $NodeHome
