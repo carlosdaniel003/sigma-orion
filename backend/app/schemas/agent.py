@@ -58,6 +58,14 @@ class AgentAnalysisRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str = Field(min_length=2, max_length=2000)
+    workspace: dict[str, Any] | None = None
+
+
+class ChatRetrievedSource(BaseModel):
+    source: str
+    heading: str = ""
+    category: str = ""
+    score: float = 0.0
 
 
 class ChatResponse(BaseModel):
@@ -66,6 +74,10 @@ class ChatResponse(BaseModel):
     is_demo: bool
     answer: str
     knowledge_sources: list[str] = Field(default_factory=list)
+    retrieval: list[ChatRetrievedSource] = Field(default_factory=list)
+    database: str = "orion.db"
+    workspace_fingerprint: str = ""
+    audit_id: int | None = None
 
 
 class FeedbackCreate(BaseModel):
