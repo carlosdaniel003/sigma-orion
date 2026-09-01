@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from app.schemas.agent import ChatResponse
-from app.services.knowledge_service import answer_from_knowledge
+from app.services.database_answer_service import answer_database_knowledge
 from app.services.rag_runtime_service import record_chat_audit
 from app.services.rag_runtime_status_service import runtime_workspace_status
 
 
 def answer_database_question(question: str) -> ChatResponse:
     runtime = runtime_workspace_status()
-    knowledge = answer_from_knowledge(question)
+    knowledge = answer_database_knowledge(question)
     sources = knowledge.sources
     audit_id = record_chat_audit(
         question=question,
