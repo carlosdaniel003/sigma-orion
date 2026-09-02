@@ -1,0 +1,223 @@
+/*
+ * Final Dashboard compliance layer.
+ * Keep this file loaded after product-language.css so legacy theme/runtime rules cannot
+ * reintroduce pills, accent rails or decorative card treatments in the Dashboard.
+ */
+
+/* ORION × DPP Final already compares PGD, REAL and GAP. */
+.dpp-dashboard-view .dashboard-planning-panel {
+  display: none !important;
+}
+
+/* Main surfaces use the compact geometry defined by DESIGN_SYSTEM.md. */
+.dpp-dashboard-view .panel,
+.dpp-dashboard-view .bulk-file-picker,
+.dpp-dashboard-view .final-model-plan {
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+}
+
+/* Informational labels and statuses are text, not pills. */
+.dpp-dashboard-view .eyebrow,
+.dpp-dashboard-view .status {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-dashboard-view .eyebrow {
+  color: var(--orion-text-secondary) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.06em !important;
+}
+
+.dpp-dashboard-view .status {
+  color: var(--orion-text-secondary) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* Comparison summary: semantic color lives only in the marker. */
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--orion-neutral);
+}
+
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status.comparison-ok,
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status.comparison-warning {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status.comparison-ok::before {
+  background: var(--orion-success);
+}
+
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status.comparison-warning::before {
+  background: var(--orion-warning);
+}
+
+/* Evolution delta: one marker + neutral text, never a semantic capsule. */
+.dpp-dashboard-view .dpp-evolution-row small,
+.dpp-dashboard-view .dpp-evolution-row small.attention,
+.dpp-dashboard-view .dpp-evolution-row small.neutral {
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  font-weight: 500 !important;
+}
+
+/* ORION × Final divergence cells stay neutral; the point carries state. */
+.dpp-dashboard-view .scenario-comparison-divergence,
+.dpp-dashboard-view .scenario-comparison-divergence.ok,
+.dpp-dashboard-view .scenario-comparison-divergence.warning {
+  background: var(--orion-surface-elevated) !important;
+}
+
+.dpp-dashboard-view .scenario-comparison-divergence strong,
+.dpp-dashboard-view .scenario-comparison-divergence.ok strong,
+.dpp-dashboard-view .scenario-comparison-divergence.warning strong {
+  color: var(--orion-text) !important;
+  font-weight: 500 !important;
+}
+
+/* The delta/result columns already communicate divergence; no lateral accent rail. */
+.dpp-dashboard-view .final-model-plan-table tbody tr.divergent td:first-child {
+  box-shadow: none !important;
+}
+
+/* Model result is an informational status: simple point + neutral text. */
+.dpp-dashboard-view .final-model-comparison-status,
+.dpp-dashboard-view .final-model-comparison-status.stable,
+.dpp-dashboard-view .final-model-comparison-status.attention,
+.dpp-dashboard-view .final-model-comparison-status.missing {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  font-weight: 500 !important;
+}
+
+/* Shared package is a divided operational list, not a grid of semantic cards. */
+.dpp-dashboard-view .bulk-package-status,
+.dpp-dashboard-view .bulk-package-status.ready,
+.dpp-dashboard-view .bulk-package-status.missing,
+.dpp-dashboard-view .bulk-package-status.processing {
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .bulk-file-checks {
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+}
+
+.dpp-dashboard-view .bulk-file-check,
+.dpp-dashboard-view .bulk-file-check.found,
+.dpp-dashboard-view .bulk-file-check.missing {
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-dashboard-view .bulk-file-check:last-child {
+  border-bottom: 0 !important;
+}
+
+.dpp-dashboard-view .bulk-check-icon,
+.dpp-dashboard-view .bulk-file-check.found .bulk-check-icon,
+.dpp-dashboard-view .bulk-file-check.missing .bulk-check-icon {
+  width: 7px !important;
+  height: 7px !important;
+  display: block !important;
+  border-radius: 50% !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  box-shadow: none !important;
+}
+
+.dpp-dashboard-view .bulk-check-icon {
+  background: var(--orion-neutral) !important;
+}
+
+.dpp-dashboard-view .bulk-file-check.found .bulk-check-icon {
+  background: var(--orion-success) !important;
+}
+
+.dpp-dashboard-view .bulk-file-check.missing .bulk-check-icon {
+  background: var(--orion-warning) !important;
+}
+
+/* Quality state already has a semantic dot; remove its decorative halo. */
+.dpp-dashboard-view .quality-dot {
+  box-shadow: none !important;
+}
+
+/* Decision guide is one divided section, not three decorative cards. */
+.dpp-dashboard-view .decision-guide {
+  gap: 0;
+  border-top: 1px solid var(--orion-border);
+  border-bottom: 1px solid var(--orion-border);
+}
+
+.dpp-dashboard-view .decision-guide > div {
+  min-height: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 0 !important;
+  border-right: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.dpp-dashboard-view .decision-guide > div:last-child {
+  border-right: 0 !important;
+}
+
+/* Explanatory notes use hierarchy and a divider instead of an inset pastel box. */
+.dpp-dashboard-view .dashboard-method-note,
+.dpp-dashboard-view .dashboard-method-note.strong-note {
+  padding: var(--space-3) 0 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+@media (max-width: 760px) {
+  .dpp-dashboard-view .decision-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .dpp-dashboard-view .decision-guide > div {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+
+  .dpp-dashboard-view .decision-guide > div:last-child {
+    border-bottom: 0 !important;
+  }
+}

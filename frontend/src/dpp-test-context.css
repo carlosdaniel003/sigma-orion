@@ -1,0 +1,134 @@
+/*
+ * Testes do DPP — ajuda contextual e uso integral da largura.
+ * Complementa dpp-test.css sem criar novos tokens fora de DESIGN_SYSTEM.md.
+ */
+
+.dpp-test-view .test-heading-with-info,
+.dpp-test-view .bulk-file-title-with-info,
+.dpp-test-view .test-control-label-row {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dpp-test-view .test-heading-main {
+  align-items: center;
+}
+
+.dpp-test-view .test-heading-with-info > h2,
+.dpp-test-view .test-heading-with-info > h3,
+.dpp-test-view .bulk-file-title-with-info > h3 {
+  min-width: 0;
+}
+
+.dpp-test-view .test-inline-heading > strong {
+  min-width: 0;
+  color: var(--orion-text);
+}
+
+.dpp-test-view .test-month-control {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.dpp-test-view .test-control-label-row > label {
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.dpp-test-view .test-month-control > input {
+  width: 100%;
+}
+
+.dpp-test-view .bulk-file-title-with-info {
+  margin-top: var(--space-1);
+}
+
+.dpp-test-view .bulk-file-title-with-info > h3 {
+  margin: 0 !important;
+}
+
+.dpp-test-view .test-verdict .test-heading-with-info > h3 {
+  margin-top: var(--space-1);
+}
+
+.dpp-test-view .test-verdict-note .test-heading-with-info {
+  width: 100%;
+  justify-content: space-between;
+}
+
+/*
+ * A faixa de métricas continua sendo um único agrupamento. O título serve apenas para
+ * explicar o conjunto, sem transformar cada métrica em um card ou adicionar decoração.
+ */
+.dpp-test-view .test-summary-heading {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--space-4);
+}
+
+.dpp-test-view .test-summary-heading h3 {
+  margin: 0;
+  color: var(--orion-text);
+  font-size: var(--text-lg);
+}
+
+.dpp-test-view .test-summary-heading p {
+  margin: 0 !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .test-summary-heading + .monthly-metrics {
+  margin-top: var(--space-2) !important;
+}
+
+/*
+ * A comparação é a tabela principal desta tela. Em desktop ela deve ocupar toda a
+ * largura disponível; em telas menores preserva uma largura mínima e usa scroll.
+ */
+.dpp-test-view .test-field-comparison,
+.dpp-test-view .test-field-comparison .table-scroll {
+  width: 100%;
+  min-width: 0;
+}
+
+.dpp-test-view .test-field-comparison .dpp-table {
+  width: 100% !important;
+  min-width: 980px !important;
+  table-layout: fixed !important;
+}
+
+.dpp-test-view .test-field-comparison .test-col-validation { width: 22%; }
+.dpp-test-view .test-field-comparison .test-col-compared { width: 11%; }
+.dpp-test-view .test-field-comparison .test-col-matches { width: 11%; }
+.dpp-test-view .test-field-comparison .test-col-human { width: 17%; }
+.dpp-test-view .test-field-comparison .test-col-legacy { width: 15%; }
+.dpp-test-view .test-field-comparison .test-col-orion { width: 15%; }
+.dpp-test-view .test-field-comparison .test-col-result { width: 9%; }
+
+.dpp-test-view .test-field-comparison th:not(:first-child),
+.dpp-test-view .test-field-comparison td.number-cell {
+  text-align: right;
+}
+
+.dpp-test-view .test-field-comparison th:last-child,
+.dpp-test-view .test-field-comparison td:last-child {
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .dpp-test-view .test-heading-with-info,
+  .dpp-test-view .bulk-file-title-with-info,
+  .dpp-test-view .test-control-label-row {
+    gap: var(--space-1);
+  }
+
+  .dpp-test-view .test-verdict-note .test-heading-with-info {
+    justify-content: flex-start;
+  }
+}

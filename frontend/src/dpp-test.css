@@ -1,0 +1,544 @@
+/*
+ * Testes do DPP — linguagem visual específica.
+ * Segue /DESIGN_SYSTEM.md: densidade média-alta, menos cards, tabelas como primeira classe,
+ * cor semântica e hierarquia por divisores/superfícies em vez de sombra.
+ */
+
+.dpp-test-view {
+  display: grid;
+  gap: 0;
+  color: var(--orion-text);
+}
+
+/* Cabeçalho: contexto primeiro, sem aparência de landing page. */
+.dpp-test-view .consolidation-header {
+  align-items: flex-end;
+  margin-bottom: 0 !important;
+  padding: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--orion-border);
+}
+
+.dpp-test-view .consolidation-header .eyebrow {
+  min-height: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  letter-spacing: 0.08em;
+}
+
+.dpp-test-view .consolidation-header h2 {
+  margin: var(--space-1) 0 0 !important;
+}
+
+.dpp-test-view .consolidation-header p {
+  max-width: 860px;
+  margin: var(--space-1) 0 0 !important;
+}
+
+.dpp-test-view .consolidation-header > .status {
+  flex: 0 0 auto;
+  margin-bottom: 1px;
+}
+
+/* Configuração do teste: uma faixa operacional, não um card. */
+.dpp-test-view .monthly-controls {
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: end;
+  margin: 0 !important;
+  padding: var(--space-4) 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .monthly-controls label {
+  gap: var(--space-1);
+}
+
+.dpp-test-view .monthly-controls label span {
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  letter-spacing: 0.05em;
+}
+
+.dpp-test-view .monthly-controls input {
+  min-height: 34px;
+  padding: 7px 9px !important;
+  border-radius: var(--radius-sm) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-test-view .monthly-controls > div {
+  min-width: 0;
+  padding-bottom: 1px;
+}
+
+.dpp-test-view .monthly-controls > div > strong {
+  display: block;
+  font-size: var(--text-sm);
+}
+
+.dpp-test-view .monthly-controls p {
+  max-width: 780px;
+  margin-top: var(--space-1) !important;
+  font-size: var(--text-xs) !important;
+}
+
+/* Pacote: mantém uma única borda externa e transforma os arquivos em lista técnica. */
+.dpp-test-view .bulk-file-picker {
+  margin: var(--space-4) 0 0 !important;
+  padding: var(--space-4) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .bulk-file-picker-head h3 {
+  margin: var(--space-1) 0 0 !important;
+}
+
+.dpp-test-view .bulk-file-picker-head p {
+  margin-top: var(--space-1) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .bulk-file-picker-head .eyebrow {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-test-view .bulk-package-status {
+  margin-top: var(--space-3);
+  padding: 9px 11px;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .bulk-file-checks {
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-md);
+}
+
+.dpp-test-view .bulk-file-check,
+.dpp-test-view .bulk-file-check.found,
+.dpp-test-view .bulk-file-check.missing,
+.dpp-test-view .bulk-file-check.optional {
+  min-height: 42px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: 8px 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  opacity: 1;
+}
+
+.dpp-test-view .bulk-file-check:last-child {
+  border-bottom: 0 !important;
+}
+
+.dpp-test-view .bulk-check-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 9px;
+}
+
+.dpp-test-view .bulk-file-check strong {
+  font-size: var(--text-sm) !important;
+}
+
+.dpp-test-view .bulk-file-check small {
+  font-size: var(--text-xs) !important;
+}
+
+/* Execução: faixa de ação compacta. */
+.dpp-test-view .consolidation-action-panel {
+  margin: var(--space-3) 0 0;
+  padding: 11px 0 12px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .consolidation-action-panel strong {
+  font-size: var(--text-sm);
+}
+
+.dpp-test-view .consolidation-action-panel p {
+  max-width: 900px;
+  margin-top: 3px !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .consolidation-action-panel .consolidation-button {
+  min-height: 32px;
+}
+
+/* Veredito: é a primeira resposta que o analista precisa ver após o teste. */
+.dpp-test-view .test-verdict {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  gap: var(--space-5);
+  align-items: start;
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4) !important;
+  border: 1px solid var(--orion-border) !important;
+  border-left-width: 3px !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--orion-surface) !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .test-verdict.test-pass {
+  border-left-color: var(--orion-success) !important;
+}
+
+.dpp-test-view .test-verdict.test-fail {
+  border-left-color: var(--orion-danger) !important;
+}
+
+.dpp-test-view .test-verdict .eyebrow {
+  display: block;
+  width: fit-content;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-test-view .test-verdict h3 {
+  margin: var(--space-1) 0 0;
+  font-size: var(--title) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-test-view .test-pass h3 {
+  color: var(--orion-success) !important;
+}
+
+.dpp-test-view .test-fail h3 {
+  color: var(--orion-danger) !important;
+}
+
+.dpp-test-view .test-verdict p {
+  margin: var(--space-1) 0 0 !important;
+  font-size: var(--text-sm) !important;
+}
+
+.dpp-test-view .test-verdict-note {
+  min-width: 0;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--orion-border);
+}
+
+.dpp-test-view .test-verdict-note strong {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dpp-test-view .test-verdict-note p {
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+/* Resumo: sete leituras em uma faixa única, sem sete cards flutuantes. */
+.dpp-test-view .monthly-metrics {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0 !important;
+  margin: var(--space-3) 0 var(--space-5) !important;
+  overflow: hidden;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-md);
+  background: var(--orion-surface);
+}
+
+.dpp-test-view .monthly-metrics .metric-card {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  align-content: center;
+  min-height: 76px;
+  padding: 10px 12px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-card:last-child {
+  border-right: 0 !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-card > span {
+  overflow: hidden;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dpp-test-view .monthly-metrics .metric-card > strong {
+  overflow: hidden;
+  color: var(--orion-text) !important;
+  font-size: var(--text-lg) !important;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dpp-test-view .monthly-metrics .metric-card > small {
+  overflow: hidden;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dpp-test-view .monthly-metrics .metric-ok > small {
+  color: var(--orion-success) !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-attention > small {
+  color: var(--orion-danger) !important;
+}
+
+/* Relatório: cada tópico é uma seção, não um card. */
+.dpp-test-view .monthly-metrics ~ .panel {
+  margin: 0 !important;
+  padding: var(--space-5) 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .monthly-metrics + .panel {
+  border-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header {
+  align-items: flex-end;
+  margin-bottom: var(--space-3) !important;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header > div {
+  max-width: 920px;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header h3 {
+  margin: 0;
+  font-size: var(--text-lg) !important;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header p {
+  margin: 3px 0 0 !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header > .status,
+.dpp-test-view .monthly-metrics ~ .panel .panel-header > .source-state {
+  flex: 0 0 auto;
+  font-size: var(--text-xs) !important;
+}
+
+/* Tabelas: principal superfície de análise. */
+.dpp-test-view .table-scroll {
+  overflow: auto;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-md) !important;
+  background: var(--orion-surface);
+  box-shadow: none !important;
+}
+
+.dpp-test-view .dpp-table {
+  min-width: 860px;
+  table-layout: auto;
+}
+
+.dpp-test-view .dpp-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 34px;
+  padding: 7px 9px !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dpp-test-view .dpp-table td {
+  height: 40px;
+  padding: 7px 9px !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  font-size: var(--text-sm) !important;
+  vertical-align: middle;
+}
+
+.dpp-test-view .dpp-table tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+.dpp-test-view .dpp-table tbody tr:hover td {
+  background: var(--orion-blue-soft) !important;
+}
+
+.dpp-test-view .dpp-table .number-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-test-view .material-code {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: var(--text-xs) !important;
+}
+
+/* Resultados vazios: nota técnica, não card dentro de card. */
+.dpp-test-view .rule-box,
+.dpp-test-view .unit-warning {
+  margin: var(--space-3) 0 0 !important;
+  padding: 9px 12px !important;
+  border: 0 !important;
+  border-left: 2px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+}
+
+.dpp-test-view .rule-box.warning-box,
+.dpp-test-view .unit-warning {
+  border-left-color: var(--orion-warning) !important;
+}
+
+.dpp-test-view .rule-box strong {
+  font-size: var(--text-sm);
+}
+
+.dpp-test-view .rule-box p {
+  margin-top: 2px !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+/* Status é semântico; mantém geometria compacta de chip. */
+.dpp-test-view .unit-badge,
+.dpp-test-view .source-state,
+.dpp-test-view .status {
+  min-height: 0;
+  padding: 4px 7px !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .unit-badge.warning {
+  border: 1px solid color-mix(in srgb, var(--orion-danger) 32%, transparent) !important;
+  background: var(--orion-danger-soft) !important;
+  color: var(--orion-danger) !important;
+}
+
+/* Light mode uses the same structure; only the theme tokens change. */
+:root[data-theme='light'] .dpp-test-view .test-pass h3,
+:root[data-theme='light'] .dpp-test-view .monthly-metrics .metric-ok > small {
+  color: var(--orion-success) !important;
+}
+
+@media (max-width: 1180px) {
+  .dpp-test-view .monthly-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(4) {
+    border-right: 0 !important;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(-n + 4) {
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .dpp-test-view .monthly-controls,
+  .dpp-test-view .test-verdict {
+    grid-template-columns: 1fr;
+  }
+
+  .dpp-test-view .test-verdict-note {
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--orion-border);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .dpp-test-view .consolidation-header,
+  .dpp-test-view .consolidation-action-panel,
+  .dpp-test-view .bulk-file-picker-head,
+  .dpp-test-view .bulk-file-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dpp-test-view .consolidation-header {
+    gap: var(--space-2);
+  }
+
+  .dpp-test-view .monthly-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card,
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(4) {
+    border-right: 1px solid var(--orion-border-soft) !important;
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(even) {
+    border-right: 0 !important;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .dpp-test-view .monthly-metrics ~ .panel .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dpp-test-view .monthly-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card,
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(even) {
+    border-right: 0 !important;
+  }
+}
