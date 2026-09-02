@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -35,14 +36,22 @@ def main() -> int:
         print("Execute uma vez: . .\\scripts\\dev-env.ps1; cd frontend; npm install")
         return 1
 
+    lan_ip = _get_lan_ipv4()
+    access_url = f"http://{lan_ip}:5173" if lan_ip else "http://localhost:5173"
+
     print("=" * 64)
     print("ORION - AMBIENTE DE DESENVOLVIMENTO")
     print("=" * 64)
     print(f"Python : {python_exe}")
     print(f"Node   : {node_exe}")
-    print("Backend: http://localhost:8000")
-    print("Docs   : http://localhost:8000/docs")
-    print("Frontend: http://localhost:5173")
+    print("Backend: interno em 127.0.0.1:8000 via proxy do frontend")
+    print("LLM    : interna; o backend acessa a instancia local configurada")
+    print("-")
+    print(f"LINK ORION NA REDE: {access_url}")
+    if not lan_ip:
+        print("[AVISO] Nao foi possivel detectar um IPv4 de rede. O link acima funciona apenas neste computador.")
+    print("-")
+    print("Abra este mesmo link neste computador ou envie-o a outro computador da mesma rede.")
     print("Pressione Ctrl+C para encerrar tudo.")
     print("=" * 64)
 
@@ -82,6 +91,41 @@ def main() -> int:
     finally:
         for process in processes:
             _stop_process_tree(process)
+
+
+def _get_lan_ipv4() -> str | None:
+    override = os.getenv("ORION_LAN_IP", "").strip()
+    if override:
+        return override
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("8.8.8.8", 80))
+            candidate = probe.getsockname()[0]
+            if _is_shareable_ipv4(candidate):
+                return candidate
+    except OSError:
+        pass
+
+    try:
+        addresses = socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)
+        for address in addresses:
+            candidate = address[4][0]
+            if _is_shareable_ipv4(candidate):
+                return candidate
+    except OSError:
+        pass
+
+    return None
+
+
+def _is_shareable_ipv4(address: str) -> bool:
+    return bool(
+        address
+        and address != "127.0.0.1"
+        and not address.startswith("169.254.")
+        and not address.startswith("0.")
+    )
 
 
 def _ensure_backend_dependencies(python_exe: Path) -> bool:
