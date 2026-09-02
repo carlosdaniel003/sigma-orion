@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
+import KnowledgeGlobalSearch from './KnowledgeGlobalSearch'
 import './knowledge-base.css'
 
 const NUMBER_FORMAT = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 })
@@ -73,6 +74,11 @@ const VIEW_META = {
     title: 'Testes do RAG',
     description: 'Cobertura automática de cada regra, conceito, fórmula, documento, sinônimo e caso inventariado pelo ORION.',
   },
+}
+
+const GLOBAL_SEARCH_META = {
+  title: 'Pesquisa global',
+  description: 'Busca simultânea em Conhecimento Operacional, Regras Determinísticas, Dados Atuais e Testes do RAG.',
 }
 
 function InventoryStrip({ inventory, report }) {
@@ -341,8 +347,9 @@ function KnowledgeBase({ apiUrl, view, query = '' }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ragReport, setRagReport] = useState(null)
+  const hasGlobalQuery = Boolean(normalize(query))
 
-  const meta = VIEW_META[view] || VIEW_META.operational
+  const meta = hasGlobalQuery ? GLOBAL_SEARCH_META : (VIEW_META[view] || VIEW_META.operational)
 
   useEffect(() => {
     setSelectedId(null)
@@ -365,13 +372,13 @@ function KnowledgeBase({ apiUrl, view, query = '' }) {
   }, [apiUrl])
 
   useEffect(() => {
-    if (!['operational', 'deterministic'].includes(view)) return undefined
+    if (hasGlobalQuery || !['operational', 'deterministic'].includes(view)) return undefined
     const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       setLoading(true)
       setError('')
       try {
-        const params = new URLSearchParams({ category: view, q: query, limit: '2000' })
+        const params = new URLSearchParams({ category: view, q: '', limit: '2000' })
         const response = await fetch(`${apiUrl}/api/knowledge/catalog?${params}`, { signal: controller.signal, cache: 'no-store' })
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.detail || 'Não foi possível consultar o índice de conhecimento.')
@@ -387,7 +394,7 @@ function KnowledgeBase({ apiUrl, view, query = '' }) {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [apiUrl, query, view])
+  }, [apiUrl, hasGlobalQuery, view])
 
   useEffect(() => {
     if (view !== 'tests') return undefined
@@ -421,13 +428,23 @@ function KnowledgeBase({ apiUrl, view, query = '' }) {
           <p>{meta.description}</p>
         </div>
         <div className="knowledge-index-status">
-          <strong>{view === 'current' ? 'Workspace DPP' : view === 'tests' ? 'Auditoria do retrieval' : (indexStatus?.mode || 'SQLite')}</strong>
+          <strong>
+            {hasGlobalQuery
+              ? 'Pesquisa em 4 áreas'
+              : view === 'current'
+                ? 'Workspace DPP'
+                : view === 'tests'
+                  ? 'Auditoria do retrieval'
+                  : (indexStatus?.mode || 'SQLite')}
+          </strong>
           <span>
-            {view === 'current'
-              ? 'Fonte de verdade mensal'
-              : view === 'tests'
-                ? `${ragReport?.tested_inventory || 0} item(ns) inventariado(s) testado(s)`
-                : `${indexStatus?.markdown_document_count || 0} documento(s) · ${indexStatus?.python_rule_count || 0} regra(s) Python`}
+            {hasGlobalQuery
+              ? 'Operacional · Determinístico · Dados atuais · Testes do RAG'
+              : view === 'current'
+                ? 'Fonte de verdade mensal'
+                : view === 'tests'
+                  ? `${ragReport?.tested_inventory || 0} item(ns) inventariado(s) testado(s)`
+                  : `${indexStatus?.markdown_document_count || 0} documento(s) · ${indexStatus?.python_rule_count || 0} regra(s) Python`}
           </span>
         </div>
       </header>
@@ -435,15 +452,28 @@ function KnowledgeBase({ apiUrl, view, query = '' }) {
       <InventoryStrip inventory={inventory} report={ragReport} />
 
       <div className="knowledge-body">
-        {error && <p className="knowledge-error">{error}</p>}
-        {!error && ['operational', 'deterministic'].includes(view) && (
-          <CatalogView catalog={catalog} selectedId={selectedId} onSelect={setSelectedId} />
-        )}
-        {!error && view === 'current' && (
-          <CurrentDataView scenario={generatedScenario} finalDppAnalysis={finalDppAnalysis} query={query} dppState={dppState} />
-        )}
-        {!error && view === 'tests' && (
-          <RagTestsView report={ragReport} loading={loading} error={error} query={query} />
+        {hasGlobalQuery ? (
+          <KnowledgeGlobalSearch
+            apiUrl={apiUrl}
+            query={query}
+            inventory={inventory}
+            scenario={generatedScenario}
+            finalDppAnalysis={finalDppAnalysis}
+            ragReport={ragReport}
+          />
+        ) : (
+          <>
+            {error && <p className="knowledge-error">{error}</p>}
+            {!error && ['operational', 'deterministic'].includes(view) && (
+              <CatalogView catalog={catalog} selectedId={selectedId} onSelect={setSelectedId} />
+            )}
+            {!error && view === 'current' && (
+              <CurrentDataView scenario={generatedScenario} finalDppAnalysis={finalDppAnalysis} query="" dppState={dppState} />
+            )}
+            {!error && view === 'tests' && (
+              <RagTestsView report={ragReport} loading={loading} error={error} query="" />
+            )}
+          </>
         )}
       </div>
     </section>
