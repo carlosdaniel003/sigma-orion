@@ -29,6 +29,34 @@ function compactText(value, query, maxLength = 360) {
   return `${start > 0 ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`
 }
 
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function HighlightedText({ value, query }) {
+  const text = String(value ?? '—')
+  const search = String(query || '').trim()
+  if (!search) return text
+
+  const terms = search
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .sort((left, right) => right.length - left.length)
+
+  if (!terms.length) return text
+
+  const matcher = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi')
+  const parts = text.split(matcher)
+  const normalizedTerms = new Set(terms.map((term) => term.toLowerCase()))
+
+  return parts.map((part, index) => (
+    normalizedTerms.has(part.toLowerCase())
+      ? <mark className="knowledge-search-highlight" key={`${part}-${index}`}>{part}</mark>
+      : part
+  ))
+}
+
 function stringifyRecord(row) {
   try {
     return JSON.stringify(row)
@@ -268,15 +296,18 @@ function KnowledgeGlobalSearch({ apiUrl, query, inventory, scenario, finalDppAna
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="knowledge-global-area-cell">{AREA_META.find((item) => item.key === row.area)?.label || row.area}</td>
-                  <td className="knowledge-global-title-cell">{row.title}</td>
-                  <td>{row.kind}</td>
-                  <td className="knowledge-source-cell">{row.source}</td>
-                  <td className="knowledge-global-match-cell">{row.detail}</td>
-                </tr>
-              ))}
+              {rows.map((row) => {
+                const areaLabel = AREA_META.find((item) => item.key === row.area)?.label || row.area
+                return (
+                  <tr key={row.id}>
+                    <td className="knowledge-global-area-cell"><HighlightedText value={areaLabel} query={query} /></td>
+                    <td className="knowledge-global-title-cell"><HighlightedText value={row.title} query={query} /></td>
+                    <td><HighlightedText value={row.kind} query={query} /></td>
+                    <td className="knowledge-source-cell"><HighlightedText value={row.source} query={query} /></td>
+                    <td className="knowledge-global-match-cell"><HighlightedText value={row.detail} query={query} /></td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
