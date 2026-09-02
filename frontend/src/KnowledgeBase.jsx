@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './knowledge-base.css'
 
@@ -73,15 +73,6 @@ const VIEW_META = {
     title: 'Testes do RAG',
     description: 'Cobertura automática de cada regra, conceito, fórmula, documento, sinônimo e caso inventariado pelo ORION.',
   },
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="10.8" cy="10.8" r="6.2" />
-      <path d="m15.5 15.5 4 4" />
-    </svg>
-  )
 }
 
 function InventoryStrip({ inventory, report }) {
@@ -342,9 +333,8 @@ function RagTestsView({ report, loading, error, query }) {
   )
 }
 
-function KnowledgeBase({ apiUrl, view }) {
+function KnowledgeBase({ apiUrl, view, query = '' }) {
   const { generatedScenario, finalDppAnalysis, dppState } = useDppWorkspace()
-  const [query, setQuery] = useState('')
   const [catalog, setCatalog] = useState(null)
   const [inventory, setInventory] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
@@ -355,7 +345,6 @@ function KnowledgeBase({ apiUrl, view }) {
   const meta = VIEW_META[view] || VIEW_META.operational
 
   useEffect(() => {
-    setQuery('')
     setSelectedId(null)
     setError('')
   }, [view])
@@ -421,12 +410,6 @@ function KnowledgeBase({ apiUrl, view }) {
     return () => controller.abort()
   }, [apiUrl, view])
 
-  const resultCount = useMemo(() => {
-    if (view === 'current') return (generatedScenario?.materials?.length || 0) + (finalDppAnalysis?.material_details?.length || 0)
-    if (view === 'tests') return ragReport?.total || 0
-    return catalog?.items?.length || 0
-  }, [catalog, finalDppAnalysis, generatedScenario, ragReport, view])
-
   const indexStatus = catalog?.index
 
   return (
@@ -450,19 +433,6 @@ function KnowledgeBase({ apiUrl, view }) {
       </header>
 
       <InventoryStrip inventory={inventory} report={ragReport} />
-
-      <div className="knowledge-search-row">
-        <label className="knowledge-search">
-          <SearchIcon />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={view === 'current' ? 'Pesquisar em todos os dados atuais...' : view === 'tests' ? 'Pesquisar nos testes e itens inventariados...' : 'Pesquisar conhecimento indexado...'}
-          />
-        </label>
-        <span>{loading ? 'Consultando...' : `${resultCount} registro(s)`}</span>
-      </div>
 
       <div className="knowledge-body">
         {error && <p className="knowledge-error">{error}</p>}
