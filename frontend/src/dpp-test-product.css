@@ -1,0 +1,547 @@
+/*
+ * Testes do DPP — acabamento de produto alinhado ao DESIGN_SYSTEM.md.
+ * Esta camada remove padrões visuais legados (pills, accent bars e cards excessivos)
+ * sem alterar comportamento, dados ou fluxo de execução do teste.
+ */
+
+.dpp-test-view {
+  min-width: 0;
+  padding-bottom: var(--space-6);
+}
+
+/* Cabeçalho e contexto */
+.dpp-test-view .consolidation-header {
+  align-items: flex-end;
+  gap: var(--space-5);
+  padding: 0 0 var(--space-4) !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+}
+
+.dpp-test-view .consolidation-header > div {
+  min-width: 0;
+}
+
+.dpp-test-view .consolidation-header h2 {
+  font-size: var(--title) !important;
+  line-height: 1.2;
+}
+
+.dpp-test-view .consolidation-header p {
+  max-width: 900px;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-sm) !important;
+  line-height: 1.45;
+}
+
+.dpp-test-view .consolidation-header > .status {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Configuração */
+.dpp-test-view .monthly-controls {
+  margin: 0 !important;
+  padding: var(--space-4) 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .test-control-label-row > label {
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.dpp-test-view .test-month-control > input {
+  min-height: 34px;
+  padding: 7px 9px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--text-sm);
+}
+
+.dpp-test-view .monthly-controls .test-inline-heading > strong {
+  font-size: var(--text-sm) !important;
+  font-weight: 600;
+}
+
+.dpp-test-view .monthly-controls p {
+  max-width: 820px;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  line-height: 1.45;
+}
+
+/* Pacote de arquivos: seção técnica, sem card flutuante. */
+.dpp-test-view .bulk-file-picker,
+.dpp-test-view .bulk-file-picker.compact,
+.dpp-test-view .bulk-file-picker.is-processing {
+  margin: 0 !important;
+  padding: var(--space-4) 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .bulk-file-picker-head {
+  align-items: flex-end;
+}
+
+.dpp-test-view .bulk-file-picker-head h3 {
+  font-size: var(--text-lg) !important;
+}
+
+.dpp-test-view .bulk-file-picker-head p {
+  max-width: 820px;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .bulk-file-button,
+.dpp-test-view .bulk-file-clear {
+  min-height: 32px;
+  padding: 6px 10px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+}
+
+.dpp-test-view .bulk-file-button {
+  min-width: 170px;
+}
+
+.dpp-test-view .bulk-package-status,
+.dpp-test-view .bulk-package-status.ready,
+.dpp-test-view .bulk-package-status.missing,
+.dpp-test-view .bulk-package-status.processing {
+  margin-top: var(--space-3) !important;
+  padding: 9px 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border-soft) !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+}
+
+.dpp-test-view .bulk-package-status strong {
+  color: var(--orion-text) !important;
+  font-size: var(--text-sm) !important;
+  font-weight: 500 !important;
+}
+
+.dpp-test-view .bulk-package-status span {
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .bulk-file-checks {
+  margin-top: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.dpp-test-view .bulk-file-check,
+.dpp-test-view .bulk-file-check.found,
+.dpp-test-view .bulk-file-check.missing,
+.dpp-test-view .bulk-file-check.optional {
+  min-height: 38px;
+  grid-template-columns: 14px minmax(0, 1fr) !important;
+  gap: var(--space-2) !important;
+  padding: 8px 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .bulk-file-check:last-child {
+  border-bottom: 0 !important;
+}
+
+.dpp-test-view .bulk-check-icon {
+  width: 7px !important;
+  height: 7px !important;
+  display: block !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--orion-neutral) !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .bulk-file-check.found .bulk-check-icon {
+  background: var(--orion-success) !important;
+}
+
+.dpp-test-view .bulk-file-check.missing .bulk-check-icon {
+  background: var(--orion-warning) !important;
+}
+
+.dpp-test-view .bulk-file-check strong {
+  font-size: var(--text-sm) !important;
+  font-weight: 600 !important;
+}
+
+.dpp-test-view .bulk-file-check small {
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+/* Execução */
+.dpp-test-view .consolidation-action-panel {
+  margin: 0 !important;
+  padding: var(--space-3) 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .consolidation-action-panel strong {
+  font-size: var(--text-sm) !important;
+  font-weight: 600;
+}
+
+.dpp-test-view .consolidation-action-panel p {
+  margin-top: 2px !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .consolidation-action-panel .secondary-button {
+  min-height: 32px;
+  padding: 6px 10px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600;
+}
+
+/* Veredito: sem accent bar; o estado usa somente um marcador semântico. */
+.dpp-test-view .test-verdict,
+.dpp-test-view .test-verdict.test-pass,
+.dpp-test-view .test-verdict.test-fail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  gap: var(--space-5);
+  margin: var(--space-5) 0 0 !important;
+  padding: var(--space-4) 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border) !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .test-verdict h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--orion-text) !important;
+  font-size: var(--title) !important;
+  font-weight: 650;
+}
+
+.dpp-test-view .test-verdict h3::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--orion-neutral);
+}
+
+.dpp-test-view .test-verdict.test-pass h3::before {
+  background: var(--orion-success);
+}
+
+.dpp-test-view .test-verdict.test-fail h3::before {
+  background: var(--orion-danger);
+}
+
+.dpp-test-view .test-verdict p {
+  max-width: 850px;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-sm) !important;
+  line-height: 1.45;
+}
+
+.dpp-test-view .test-verdict-note {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--orion-border) !important;
+}
+
+.dpp-test-view .test-verdict-note strong {
+  color: var(--orion-text) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Resumo: uma faixa contínua, sem cards individuais. */
+.dpp-test-view .test-summary-heading {
+  margin-top: var(--space-5);
+}
+
+.dpp-test-view .monthly-metrics {
+  margin: var(--space-2) 0 var(--space-5) !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border) !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-card {
+  min-height: 70px;
+  padding: 9px 11px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-card > span {
+  color: var(--orion-text-secondary) !important;
+  font-weight: 600 !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-card > strong {
+  color: var(--orion-text) !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 650 !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-card > small {
+  color: var(--orion-text-secondary) !important;
+  font-weight: 500;
+}
+
+.dpp-test-view .monthly-metrics .metric-ok > small {
+  color: var(--orion-success) !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-attention > small {
+  color: var(--orion-danger) !important;
+}
+
+/* Seções do relatório */
+.dpp-test-view .monthly-metrics ~ .panel {
+  margin: 0 !important;
+  padding: var(--space-5) 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .monthly-metrics + .panel {
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header {
+  align-items: flex-end;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3) !important;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header h3 {
+  color: var(--orion-text) !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 650;
+}
+
+.dpp-test-view .monthly-metrics ~ .panel .panel-header p {
+  max-width: 900px;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  line-height: 1.45;
+}
+
+/* Metadados laterais e estados deixam de parecer botões/badges. */
+.dpp-test-view .monthly-metrics ~ .panel .panel-header > .status,
+.dpp-test-view .source-state,
+.dpp-test-view .unit-badge,
+.dpp-test-view .status {
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+  line-height: 1.35;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.dpp-test-view .unit-badge,
+.dpp-test-view .source-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dpp-test-view .unit-badge::before,
+.dpp-test-view .source-state::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--orion-neutral);
+}
+
+.dpp-test-view .unit-badge.ok::before,
+.dpp-test-view .source-state.ready::before {
+  background: var(--orion-success);
+}
+
+.dpp-test-view .unit-badge.warning::before,
+.dpp-test-view .source-state.required::before {
+  background: var(--orion-danger);
+}
+
+.dpp-test-view .unit-badge.neutral::before {
+  background: var(--orion-neutral);
+}
+
+/* Tabelas */
+.dpp-test-view .table-scroll {
+  border: 1px solid var(--orion-border) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--orion-surface) !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .dpp-table th {
+  height: 32px;
+  padding: 6px 8px !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+}
+
+.dpp-test-view .dpp-table td {
+  height: 36px;
+  padding: 6px 8px !important;
+  color: var(--orion-text) !important;
+  font-size: var(--text-sm) !important;
+}
+
+.dpp-test-view .dpp-table tbody tr:hover td {
+  background: var(--orion-blue-soft) !important;
+}
+
+/* Estados vazios e avisos: texto + divisor, sem barra lateral decorativa. */
+.dpp-test-view .rule-box,
+.dpp-test-view .rule-box.warning-box,
+.dpp-test-view .unit-warning {
+  margin: var(--space-3) 0 0 !important;
+  padding: 10px 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-view .rule-box strong,
+.dpp-test-view .unit-warning strong {
+  color: var(--orion-text) !important;
+  font-size: var(--text-sm) !important;
+  font-weight: 600;
+}
+
+.dpp-test-view .rule-box.warning-box strong,
+.dpp-test-view .unit-warning strong {
+  color: var(--orion-warning) !important;
+}
+
+.dpp-test-view .rule-box p,
+.dpp-test-view .unit-warning p {
+  margin-top: 2px !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-view .alert.error {
+  margin: var(--space-3) 0 0;
+  padding: 9px 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-danger) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 1180px) {
+  .dpp-test-view .monthly-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .dpp-test-view .test-verdict {
+    grid-template-columns: 1fr;
+  }
+
+  .dpp-test-view .test-verdict-note {
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--orion-border) !important;
+    border-left: 0 !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .dpp-test-view .consolidation-header,
+  .dpp-test-view .bulk-file-picker-head,
+  .dpp-test-view .bulk-file-actions,
+  .dpp-test-view .consolidation-action-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dpp-test-view .consolidation-header > .status {
+    white-space: normal;
+  }
+
+  .dpp-test-view .monthly-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .dpp-test-view .monthly-metrics {
+    grid-template-columns: 1fr;
+  }
+}
