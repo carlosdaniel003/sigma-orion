@@ -20,6 +20,7 @@ import './product-language.css'
 import './dashboard-operational-scope.css'
 import './dpp-test-context.css'
 import './knowledge-audit.css'
+import './knowledge-navigation.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
