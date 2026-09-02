@@ -135,7 +135,7 @@ function AgentOrion({ apiUrl }) {
   ])
 
   const messageListRef = useRef(null)
-  const latestAnswerRef = useRef(null)
+  const latestMessageRef = useRef(null)
   const syncedVersionRef = useRef('')
   const sessionIdRef = useRef(createSessionId())
 
@@ -215,12 +215,12 @@ function AgentOrion({ apiUrl }) {
   useEffect(() => {
     if (messages.length <= 1) return
     const messageList = messageListRef.current
-    const latestAnswer = latestAnswerRef.current
-    if (!messageList || !latestAnswer) return
+    const latestMessage = latestMessageRef.current
+    if (!messageList || !latestMessage) return
 
     const listRect = messageList.getBoundingClientRect()
-    const answerRect = latestAnswer.getBoundingClientRect()
-    const targetTop = messageList.scrollTop + (answerRect.top - listRect.top) - 8
+    const messageRect = latestMessage.getBoundingClientRect()
+    const targetTop = messageList.scrollTop + (messageRect.top - listRect.top) - 8
     messageList.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' })
   }, [messages])
 
@@ -342,8 +342,8 @@ function AgentOrion({ apiUrl }) {
           </div>
 
           <div className="agent-message-list" aria-live="polite" ref={messageListRef}>
-            {messages.map((message) => {
-              const latestOrionAnswer = message.role === 'orion' && message.id === currentAnswer.id
+            {messages.map((message, index) => {
+              const latestMessage = index === messages.length - 1
               const hasTable = Boolean(message.table?.rows?.length)
               return (
                 <article
@@ -351,7 +351,7 @@ function AgentOrion({ apiUrl }) {
                   data-role={message.role}
                   data-has-table={hasTable ? 'true' : 'false'}
                   key={message.id}
-                  ref={latestOrionAnswer ? latestAnswerRef : null}
+                  ref={latestMessage ? latestMessageRef : null}
                 >
                   <div className="agent-message-author">{message.role === 'orion' ? 'ORION' : 'Você'}</div>
                   <p>{message.text}</p>
