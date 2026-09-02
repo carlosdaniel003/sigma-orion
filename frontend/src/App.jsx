@@ -26,6 +26,7 @@ function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('dpp')
   const [activeView, setActiveView] = useState('dashboard')
   const [activeKnowledgeView, setActiveKnowledgeView] = useState('operational')
+  const [knowledgeQuery, setKnowledgeQuery] = useState('')
   const { finalDppAnalysis, setFinalDppAnalysis } = useDppWorkspace()
   const [theme, setTheme] = useState(getInitialTheme)
 
@@ -132,40 +133,56 @@ function App() {
         )}
 
         {activeWorkspace === 'knowledge' && (
-          <nav className="knowledge-topbar-nav" aria-label="Navegação da Base de conhecimento">
-            <button
-              className="knowledge-topbar-button"
-              data-active={activeKnowledgeView === 'operational' ? 'true' : 'false'}
-              type="button"
-              onClick={() => openKnowledge('operational')}
-            >
-              Conhecimento Operacional
-            </button>
-            <button
-              className="knowledge-topbar-button"
-              data-active={activeKnowledgeView === 'deterministic' ? 'true' : 'false'}
-              type="button"
-              onClick={() => openKnowledge('deterministic')}
-            >
-              Regras Determinísticas
-            </button>
-            <button
-              className="knowledge-topbar-button"
-              data-active={activeKnowledgeView === 'current' ? 'true' : 'false'}
-              type="button"
-              onClick={() => openKnowledge('current')}
-            >
-              Dados Atuais
-            </button>
-            <button
-              className="knowledge-topbar-button"
-              data-active={activeKnowledgeView === 'tests' ? 'true' : 'false'}
-              type="button"
-              onClick={() => openKnowledge('tests')}
-            >
-              Testes do RAG
-            </button>
-          </nav>
+          <>
+            <nav className="topbar-nav knowledge-topbar-nav" aria-label="Navegação da Base de conhecimento">
+              <button
+                className={`nav-icon-button ${activeKnowledgeView === 'operational' ? 'nav-active' : ''}`}
+                type="button"
+                aria-label="Conhecimento Operacional"
+                data-tooltip="Conhecimento Operacional"
+                onClick={() => openKnowledge('operational')}
+              >
+                <OperationalKnowledgeIcon />
+              </button>
+              <button
+                className={`nav-icon-button ${activeKnowledgeView === 'deterministic' ? 'nav-active' : ''}`}
+                type="button"
+                aria-label="Regras Determinísticas"
+                data-tooltip="Regras Determinísticas"
+                onClick={() => openKnowledge('deterministic')}
+              >
+                <DeterministicRulesIcon />
+              </button>
+              <button
+                className={`nav-icon-button ${activeKnowledgeView === 'current' ? 'nav-active' : ''}`}
+                type="button"
+                aria-label="Dados Atuais"
+                data-tooltip="Dados Atuais"
+                onClick={() => openKnowledge('current')}
+              >
+                <CurrentDataIcon />
+              </button>
+              <button
+                className={`nav-icon-button ${activeKnowledgeView === 'tests' ? 'nav-active' : ''}`}
+                type="button"
+                aria-label="Testes do RAG"
+                data-tooltip="Testes do RAG"
+                onClick={() => openKnowledge('tests')}
+              >
+                <RagTestsIcon />
+              </button>
+            </nav>
+
+            <label className="knowledge-topbar-search" aria-label="Pesquisar em toda a Base de conhecimento">
+              <SearchIcon />
+              <input
+                type="search"
+                value={knowledgeQuery}
+                onChange={(event) => setKnowledgeQuery(event.target.value)}
+                placeholder="Pesquisar em toda a Base de conhecimento..."
+              />
+            </label>
+          </>
         )}
       </header>
 
@@ -191,7 +208,9 @@ function App() {
           </section>
         )}
         {activeWorkspace === 'agent' && <AgentOrion apiUrl={API_URL} />}
-        {activeWorkspace === 'knowledge' && <KnowledgeBase apiUrl={API_URL} view={activeKnowledgeView} />}
+        {activeWorkspace === 'knowledge' && (
+          <KnowledgeBase apiUrl={API_URL} view={activeKnowledgeView} query={knowledgeQuery} />
+        )}
       </main>
     </div>
   )
@@ -243,6 +262,53 @@ function TestIcon() {
       <path d="M9 3.5h6M10 3.5v5l-5 9A2 2 0 0 0 6.8 20.5h10.4A2 2 0 0 0 19 17.5l-5-9v-5" />
       <path d="M8 14h8" />
       <path d="m9.5 17 1.5 1.5 3.5-3.5" />
+    </svg>
+  )
+}
+
+function OperationalKnowledgeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5.5 4.5h10.8a2.2 2.2 0 0 1 2.2 2.2v12.8H7.7a2.2 2.2 0 0 1-2.2-2.2Z" />
+      <path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4.5" />
+    </svg>
+  )
+}
+
+function DeterministicRulesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m9 6-4 6 4 6M15 6l4 6-4 6" />
+      <path d="m13.5 4-3 16" />
+    </svg>
+  )
+}
+
+function CurrentDataIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <ellipse cx="12" cy="5.8" rx="6.5" ry="2.8" />
+      <path d="M5.5 5.8v6c0 1.55 2.9 2.8 6.5 2.8s6.5-1.25 6.5-2.8v-6" />
+      <path d="M5.5 11.8v6.4C5.5 19.75 8.4 21 12 21s6.5-1.25 6.5-2.8v-6.4" />
+    </svg>
+  )
+}
+
+function RagTestsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 3.5h6M10 3.5v5l-5 9A2 2 0 0 0 6.8 20.5h10.4A2 2 0 0 0 19 17.5l-5-9v-5" />
+      <path d="M8 14h8" />
+      <path d="m9.5 17 1.5 1.5 3.5-3.5" />
+    </svg>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="10.8" cy="10.8" r="6.2" />
+      <path d="m15.5 15.5 4 4" />
     </svg>
   )
 }
