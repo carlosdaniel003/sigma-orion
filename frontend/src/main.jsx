@@ -27,6 +27,6 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <DppWorkspaceProvider>
       <App />
-    </StrictMode>,
-  ),
+    </DppWorkspaceProvider>
+  </StrictMode>,
 )
