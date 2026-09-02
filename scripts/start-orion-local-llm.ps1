@@ -75,7 +75,7 @@ Coloque Qwen3-4B-Q4_K_M.gguf nessa pasta ou informe -ModelPath.
     }
 }
 else {
-    Write-Host "LLM local ja esta ativa em $BaseUrl"
+    Write-Host "LLM local ja esta ativa."
 }
 
 # Variaveis herdadas pelo backend iniciado nesta mesma sessao/processo.
@@ -90,11 +90,10 @@ $env:LLM_TIMEOUT_SECONDS = "180"
 Write-Host ("=" * 68)
 Write-Host "ORION - AMBIENTE LOCAL COM LLM"
 Write-Host ("=" * 68)
-Write-Host "LLM     : llama.cpp / $Alias"
-Write-Host "API LLM : $BaseUrl"
+Write-Host "LLM     : llama.cpp / $Alias (interna)"
 Write-Host "RAG     : SQLite FTS5 + BM25"
-Write-Host "Backend : http://localhost:8000"
-Write-Host "Frontend: http://localhost:5173"
+Write-Host "Backend : interno; acessado pelo frontend"
+Write-Host "Acesso  : o link unico da rede sera exibido abaixo"
 Write-Host ("=" * 68)
 
 try {
