@@ -13,7 +13,7 @@ import DppTest from './DppTest'
 import KnowledgeBase from './KnowledgeBase'
 import { useDppWorkspace } from './DppWorkspaceContext'
 
-const API_URL = 'http://localhost:8000'
+const API_URL = ''
 const THEME_STORAGE_KEY = 'sigma-s-orion-theme'
 
 function getInitialTheme() {
