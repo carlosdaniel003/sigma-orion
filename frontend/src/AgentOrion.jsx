@@ -307,6 +307,49 @@ function AgentOrion({ apiUrl }) {
   }, [conversationReady, conversationExpiresAt])
 
   useEffect(() => {
+    if (!conversationReady) return undefined
+    let cancelled = false
+
+    async function refreshConversationFromStorage() {
+      try {
+        const stored = await readAgentConversation()
+        if (cancelled) return
+        if (!stored) {
+          if (conversationExpiresAt && Date.now() >= conversationExpiresAt) {
+            resetExpiredConversation()
+          }
+          return
+        }
+
+        const storedUpdatedAt = Number(stored.updatedAt) || Number(stored.createdAt) || 0
+        const isDifferentSession = stored.sessionId !== sessionIdRef.current
+        if (
+          storedUpdatedAt > conversationUpdatedAtRef.current
+          || (isDifferentSession && storedUpdatedAt >= conversationUpdatedAtRef.current)
+        ) {
+          activateConversation(stored)
+        }
+      } catch (error) {
+        console.warn('Não foi possível atualizar a conversa persistida do Agente ORION:', error)
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        refreshConversationFromStorage()
+      }
+    }
+
+    window.addEventListener('focus', refreshConversationFromStorage)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', refreshConversationFromStorage)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [conversationReady, conversationExpiresAt])
+
+  useEffect(() => {
     const controller = new AbortController()
     synchronizeWorkspace(workspacePayload, workspaceVersion, controller.signal).catch((error) => {
       if (error.name === 'AbortError') return
@@ -327,11 +370,11 @@ function AgentOrion({ apiUrl }) {
     messageList.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' })
   }, [messages])
 
-  async function askDatabase(questionText) {
+  async function askDatabase(questionText, sessionId = sessionIdRef.current) {
     const response = await fetch(`${apiUrl}/api/knowledge/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: questionText, session_id: sessionIdRef.current }),
+      body: JSON.stringify({ question: questionText, session_id: sessionId }),
       cache: 'no-store',
     })
     const payload = await response.json().catch(() => null)
@@ -376,13 +419,24 @@ function AgentOrion({ apiUrl }) {
     setQuestion('')
     setAsking(true)
 
+    const requestSessionId = sessionIdRef.current
+    const requestExpiresAt = freshConversation?.expiresAt || conversationExpiresAt
+
     try {
       if (syncedVersionRef.current !== workspaceVersion) {
         await synchronizeWorkspace(workspacePayload, workspaceVersion)
       }
-      const answer = await askDatabase(trimmed)
+      const answer = await askDatabase(trimmed, requestSessionId)
+      if (sessionIdRef.current !== requestSessionId || Date.now() >= requestExpiresAt) {
+        if (sessionIdRef.current === requestSessionId) resetExpiredConversation()
+        return
+      }
       setMessages((current) => [...current, { id: `orion-${Date.now() + 1}`, role: 'orion', ...answer }])
     } catch (error) {
+      if (sessionIdRef.current !== requestSessionId || Date.now() >= requestExpiresAt) {
+        if (sessionIdRef.current === requestSessionId) resetExpiredConversation()
+        return
+      }
       setMessages((current) => [
         ...current,
         {
