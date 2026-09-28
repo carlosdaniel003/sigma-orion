@@ -110,3 +110,29 @@ def test_smalltalk_is_handled_by_deterministic_router() -> None:
     assert payload["provider"] == "local-router"
     assert payload["model"] == "deterministic-router"
     assert "Agente ORION está disponível" in payload["answer"]
+
+
+def test_critical_calculation_chat_does_not_collapse_to_material_definition() -> None:
+    payload = ask(
+        "Como é feito o cálculo para definir material crítico?",
+        "critical-calculation-natural-language",
+    )
+
+    assert "REGRA-001" in payload["answer"]
+    assert "REGRA-002" in payload["answer"]
+    assert "REGRA-003" in payload["answer"]
+    assert "REGRA-004" in payload["answer"]
+    assert "Código identificador do material" not in payload["answer"]
+    assert payload["table"] is None
+
+
+def test_what_defines_critical_material_chat_returns_criterion() -> None:
+    payload = ask(
+        "O que define material crítico?",
+        "critical-definition-natural-language",
+    )
+
+    assert "UM = UN" in payload["answer"]
+    assert "SALDO < -0,0001" in payload["answer"]
+    assert "REGRA-004" in payload["answer"]
+    assert payload["table"] is None
