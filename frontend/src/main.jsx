@@ -22,6 +22,7 @@ import './dpp-test-context.css'
 import './dpp-test-product.css'
 import './knowledge-audit.css'
 import './knowledge-navigation.css'
+import './industrial-neutral-language.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
