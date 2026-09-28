@@ -21,7 +21,7 @@ _SEARCH_STOP_WORDS = {
     "nos", "nas", "um", "uma", "para", "por", "com", "que", "se", "ao", "aos",
     "qual", "quais", "como", "quando", "onde", "porque",
     "me", "mim", "voce", "vc", "fale", "fala", "conte", "diga", "sobre",
-    "item", "itens", "material", "materiais",
+    "item", "itens",
 }
 
 
