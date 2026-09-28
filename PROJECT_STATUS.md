@@ -308,7 +308,7 @@ A tela de Testes foi alinhada ao `DESIGN_SYSTEM.md` e funciona como relatório t
 - Divergências ORION, Intervenções humanas e Correções do legado em seções separadas por divisores;
 - estados vazios apresentados como notas técnicas, sem card dentro de card;
 - tabelas densas, cabeçalho sticky, números tabulares e suporte aos temas claro/escuro;
-- verde reservado a validação concluída/OK e vermelho a divergência confirmada do motor.
+- estados de validação usam texto neutro e hierarquia; verde/amarelo/vermelho não são usados como letras ou bolinhas de status.
 
 ## Regras determinísticas principais
 
@@ -375,6 +375,8 @@ Resumo; a especificação completa está em `DESIGN_SYSTEM.md`:
 - percentual numérico somente quando existe telemetria real do processamento;
 - informação contextual `i` por bloco principal do Dashboard, com O que mostra / Origem / Finalidade;
 - não repetir métricas sem acrescentar leitura nova.
+- sem texto semântico colorido (azul/verde/amarelo/vermelho) para estados passivos;
+- sem bolinhas coloridas de OK, atenção, erro ou divergência; status são comunicados por texto, contexto e estrutura neutra;
 
 ## Segurança
 
