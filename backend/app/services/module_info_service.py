@@ -16,6 +16,33 @@ FIELD_KEYS = {
     "finalidade": "purpose",
 }
 
+REQUIRED_MODULE_KEYS = {
+    "dashboard.overview",
+    "dashboard.package",
+    "dashboard.export",
+    "dashboard.evolution",
+    "dashboard.agent_bridge",
+    "dashboard.scenario_comparison",
+    "dashboard.planning",
+    "dashboard.quality",
+    "dashboard.guide",
+    "dashboard.final_model_plan",
+    "dashboard.column_comparison",
+    "tests.overview",
+    "tests.preparation",
+    "tests.month",
+    "tests.shared_package",
+    "tests.package",
+    "tests.execution",
+    "tests.verdict",
+    "tests.controlled_real",
+    "tests.validation_summary",
+    "tests.field_comparison",
+    "tests.orion_differences",
+    "tests.human_interventions",
+    "tests.legacy_corrections",
+}
+
 
 @dataclass(slots=True)
 class ModuleInfo:
@@ -95,11 +122,28 @@ def load_module_info() -> dict[str, ModuleInfo]:
     return modules
 
 
+def module_info_diagnostics(modules: dict[str, ModuleInfo] | None = None) -> dict:
+    items = modules if modules is not None else load_module_info()
+    missing = sorted(REQUIRED_MODULE_KEYS - set(items))
+    incomplete = sorted(
+        key
+        for key, item in items.items()
+        if not item.title or not item.what or not item.source or not item.purpose
+    )
+    return {
+        "valid": not missing and not incomplete,
+        "required_count": len(REQUIRED_MODULE_KEYS),
+        "missing": missing,
+        "incomplete": incomplete,
+    }
+
+
 def module_info_payload() -> dict:
     modules = load_module_info()
     return {
         "source": MODULE_INFO_SOURCE,
         "count": len(modules),
+        "diagnostics": module_info_diagnostics(modules),
         "items": {key: item.as_dict() for key, item in modules.items()},
     }
 
