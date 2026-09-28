@@ -45,10 +45,38 @@ O Agente ORION é uma camada de assistência sobre dados rastreáveis. Ele não 
 - Persistência local: SQLite + SQLAlchemy
 - Persistência do pacote no navegador: IndexedDB
 - Conhecimento: Markdown versionado
-- RAG atual: recuperação lexical local
+- RAG atual: SQLite + FTS5/BM25, consultas estruturadas sobre entidades runtime e síntese opcional pela LLM local
 - LLM padrão: mock
 - Provider opcional: Groq/Qwen
 - Execução local: scripts PowerShell/Python
+
+## Estratégia atual de resposta do Agente ORION
+
+O chat operacional usa `POST /api/knowledge/chat` e segue esta prioridade:
+
+```text
+pergunta
+  ↓
+roteador determinístico
+  ↓
+consulta estruturada em entidades SQLite, quando aplicável
+  ↓
+RAG FTS5/BM25 para conhecimento documental complementar
+  ↓
+Qwen/LLM local somente para organizar e explicar evidências já recuperadas
+  ↓
+resposta + tabela + fontes + auditoria
+```
+
+Princípios:
+
+- perguntas sobre materiais/modelos/dados atuais devem preferir as entidades estruturadas do workspace;
+- consultas como "itens críticos" usam diretamente os materiais calculados pelo Cenário ORION;
+- buscas por categoria/descrição, como "itens de adesivo", consultam os materiais sincronizados antes do BM25 genérico;
+- perguntas de fórmula, como a criticidade, retornam a cadeia determinística correspondente;
+- perguntas livres sobre conhecimento indexado podem ser sintetizadas pela LLM local, sempre restritas às evidências recuperadas;
+- o chat não deve devolver JSON bruto ou trechos internos desconectados quando houver evidência suficiente para uma resposta legível;
+- perguntas fora do conhecimento/fatos disponíveis continuam sendo respondidas com abstinência explícita.
 
 ## Fluxo mensal do DPP
 
