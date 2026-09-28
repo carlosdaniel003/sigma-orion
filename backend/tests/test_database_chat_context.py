@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.rag_runtime_service import _connect, load_chat_context, record_chat_audit
 
 
 WORKSPACE = {
@@ -164,3 +165,32 @@ def test_opc_reranking_does_not_lead_with_readme_noise() -> None:
     assert "OPC" in payload["answer"]
     assert "README.md" not in payload["knowledge_sources"]
     assert "Planilhas representam os fatos atuais" not in payload["answer"]
+
+
+def test_chat_context_expires_after_24_hours() -> None:
+    session_id = "expired-chat-context-24h"
+    record_chat_audit(
+        question="Qual o saldo desse material?",
+        answer="Resposta de teste.",
+        provider="test",
+        sources=[],
+        workspace_fingerprint="test-fingerprint",
+        session_id=session_id,
+        context={"subject_type": "material", "subject_key": "MAT-EXPIRADO", "topic": "balance"},
+    )
+
+    assert load_chat_context(session_id).get("subject_key") == "MAT-EXPIRADO"
+
+    try:
+        with _connect() as connection:
+            connection.execute(
+                "UPDATE rag_chat_audit SET created_at = datetime('now', '-25 hours') WHERE session_id = ?",
+                (session_id,),
+            )
+            connection.commit()
+
+        assert load_chat_context(session_id) == {}
+    finally:
+        with _connect() as connection:
+            connection.execute("DELETE FROM rag_chat_audit WHERE session_id = ?", (session_id,))
+            connection.commit()
