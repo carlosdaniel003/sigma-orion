@@ -138,3 +138,36 @@ def test_glossary_material_definition_keeps_priority(monkeypatch) -> None:
     assert result.sources == ["glossario.md"]
     assert result.answer.startswith("Material:")
     assert "Código identificador do material" in result.answer
+
+
+def test_critical_calculation_question_does_not_fall_into_material_glossary(monkeypatch) -> None:
+    monkeypatch.setattr(answers, "load_runtime_entities", _fake_runtime_entities)
+
+    result = answers.answer_database_knowledge("Como é feito o cálculo para definir material crítico?")
+
+    assert "REGRA-001" in result.answer
+    assert "REGRA-002" in result.answer
+    assert "REGRA-003" in result.answer
+    assert "REGRA-004" in result.answer
+    assert "Código identificador do material" not in result.answer
+    assert result.table is None
+
+
+def test_what_defines_critical_material_returns_rule_not_full_list(monkeypatch) -> None:
+    monkeypatch.setattr(answers, "load_runtime_entities", _fake_runtime_entities)
+
+    result = answers.answer_database_knowledge("O que define material crítico?")
+
+    assert "UM = UN" in result.answer
+    assert "SALDO < -0,0001" in result.answer
+    assert "REGRA-004" in result.answer
+    assert result.table is None
+
+
+def test_planner_preserves_calculation_facet_in_comparison_question() -> None:
+    plan = plan_database_question("Como SALDO é calculado? Por que o SALDO do CM 200 N está dando divergência?")
+
+    assert plan.intent == "comparison"
+    assert plan.comparison_requested is True
+    assert plan.calculation_requested is True
+    assert "SALDO" in plan.concept_entities
