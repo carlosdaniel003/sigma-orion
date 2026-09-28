@@ -141,7 +141,7 @@ def prepare_grounded_evidence(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswe
     """Completa e valida o contexto antes de qualquer chamada LLM."""
 
     _sanitize_python_sources(plan, knowledge)
-    if not plan.needs_synthesis:
+    if not plan.needs_synthesis and not knowledge.context.get("force_synthesis"):
         return []
 
     # Ferramentas estruturadas já fizeram resolução e validação diretamente nos
@@ -262,7 +262,7 @@ def enhance_grounded_answer(
             fallback=True,
         )
 
-    if not plan.needs_synthesis:
+    if not plan.needs_synthesis and not knowledge.context.get("force_synthesis"):
         return LlmEnhancement(answer=knowledge.answer, used=False, fallback=False)
 
     provider = _provider()
