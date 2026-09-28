@@ -128,3 +128,13 @@ def test_broad_material_count_uses_runtime_entities(monkeypatch) -> None:
     assert "2 material(is) no Cenário ORION" in result.answer
     assert "1 material(is) no DPP Final" in result.answer
     assert result.context["structured_evidence_complete"] is True
+
+
+def test_glossary_material_definition_keeps_priority(monkeypatch) -> None:
+    monkeypatch.setattr(answers, "load_runtime_entities", _fake_runtime_entities)
+
+    result = answers.answer_database_knowledge("O que significa Material?")
+
+    assert result.sources == ["glossario.md"]
+    assert result.answer.startswith("Material:")
+    assert "Código identificador do material" in result.answer
