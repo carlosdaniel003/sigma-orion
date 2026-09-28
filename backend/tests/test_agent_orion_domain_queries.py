@@ -118,3 +118,13 @@ def test_calculou_is_recognized_as_formula_intent() -> None:
     plan = plan_database_question("Me fala como vc calculou os itens criticos")
 
     assert plan.intent == "formula"
+
+
+def test_broad_material_count_uses_runtime_entities(monkeypatch) -> None:
+    monkeypatch.setattr(answers, "load_runtime_entities", _fake_runtime_entities)
+
+    result = answers.answer_database_knowledge("Quantos materiais existem?")
+
+    assert "2 material(is) no Cenário ORION" in result.answer
+    assert "1 material(is) no DPP Final" in result.answer
+    assert result.context["structured_evidence_complete"] is True
