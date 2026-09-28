@@ -356,7 +356,7 @@ function ScenarioComparison({ data, finalDppAnalysis }) {
           <span role="columnheader">Indicador</span>
           <span role="columnheader">Cenário ORION</span>
           <span role="columnheader">DPP Final</span>
-          <span role="columnheader">Divergência</span>
+          <span role="columnheader">Análise</span>
         </div>
         {rows.map((row) => (
           <ComparisonMetricRow key={row.label} {...row} hasFinal={hasFinal} />
