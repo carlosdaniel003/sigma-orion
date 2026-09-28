@@ -349,3 +349,17 @@ def test_compound_saldo_question_resolves_spaced_model_alias(monkeypatch) -> Non
     assert "SALDO" in knowledge.answer
     assert "CM-200-N" in knowledge.answer
     assert "identificar de forma única" not in knowledge.answer
+
+
+def test_saldo_formula_uses_deterministic_calculation_registry() -> None:
+    plan = plan_database_question("Como SALDO é calculado?")
+    knowledge, route = structured.structured_knowledge_answer(plan, {})
+
+    assert route == "calculation-registry"
+    assert knowledge is not None
+    assert knowledge.context["skip_llm"] is True
+    assert "SALDO = STK TTL - NEC" in knowledge.answer
+    assert "REGRA-001" in knowledge.entities
+    assert "REGRA-002" in knowledge.entities
+    assert "REGRA-003" in knowledge.entities
+    assert knowledge.sources == ["regras-globais.md"]
