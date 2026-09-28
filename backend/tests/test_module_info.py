@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from app.core.config import BASE_DIR
 from app.services.dpp_rule_registry import known_rule_codes
 from app.services.knowledge_catalog_service import _connect, sync_knowledge_index
 from app.services.module_info_service import (
@@ -53,3 +54,14 @@ def test_module_help_is_indexed_for_agent_orion() -> None:
     assert str(row["category"]) == "operational"
     assert "O que mostra" in str(row["content"])
     assert "Agente ORION" in str(row["content"])
+
+
+def test_required_module_help_is_referenced_by_frontend() -> None:
+    frontend_dir = BASE_DIR / "frontend" / "src"
+    references: set[str] = set()
+
+    for path in frontend_dir.rglob("*.jsx"):
+        content = path.read_text(encoding="utf-8")
+        references.update(re.findall(r'(?:moduleKey|infoKey)="([^"]+)"', content))
+
+    assert REQUIRED_MODULE_KEYS <= references
