@@ -221,3 +221,123 @@
     border-bottom: 0 !important;
   }
 }
+
+
+/* Final neutral industrial review: passive status is text, never a colored marker. */
+
+/* Remove every passive colored point/dot that can still be produced by legacy dashboard CSS. */
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status::before,
+.dpp-dashboard-view .scenario-comparison-divergence strong::before,
+.dpp-dashboard-view .dashboard-kpi.good::after,
+.dpp-dashboard-view .dashboard-kpi.attention::after,
+.dpp-dashboard-view .dpp-evolution-row small::before,
+.dpp-dashboard-view .dashboard-health-panel .health-split > div::before,
+.dpp-dashboard-view .final-model-comparison-status::before,
+.dpp-dashboard-view .bulk-package-status strong::before {
+  content: none !important;
+  display: none !important;
+}
+
+.dpp-dashboard-view .quality-dot,
+.dpp-dashboard-view .readiness-marker,
+.dpp-dashboard-view .bulk-check-icon,
+.dpp-dashboard-view .bulk-file-check.found .bulk-check-icon,
+.dpp-dashboard-view .bulk-file-check.missing .bulk-check-icon,
+.dpp-dashboard-view .dpp-column-state-marker {
+  display: none !important;
+}
+
+/* Reclaim the layout space previously reserved for visual status markers. */
+.dpp-dashboard-view .bulk-file-check,
+.dpp-dashboard-view .bulk-file-check.found,
+.dpp-dashboard-view .bulk-file-check.missing {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.dpp-dashboard-view .readiness-row {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+.dpp-dashboard-view .dpp-column-difference-cell {
+  padding-left: 10px !important;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-split > div {
+  padding-left: 16px !important;
+}
+
+/* ORION and Final values share the same neutral numeric hierarchy. */
+.dpp-dashboard-view .scenario-comparison-value.orion strong,
+.dpp-dashboard-view .scenario-comparison-value.final strong,
+.dpp-dashboard-view .dashboard-comparison-values strong,
+.dpp-dashboard-view .evolution-value.after,
+.dpp-dashboard-view .dashboard-negative,
+.dpp-dashboard-view .final-model-plan-summary .attention strong,
+.dpp-dashboard-view .final-model-plan-summary .stable strong,
+.dpp-dashboard-view .final-model-plan-table .delta-value.changed,
+.dpp-dashboard-view .final-model-plan-table .delta-value.neutral {
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .final-model-plan-eyebrow,
+.dpp-dashboard-view .final-model-plan-source.orion-source span,
+.dpp-dashboard-view .final-model-plan-table .final-model-plan-group-head th.orion-group,
+.dpp-dashboard-view .evolution-value.orion::before {
+  color: var(--orion-text-secondary) !important;
+}
+
+/* Passive status text stays neutral regardless of the semantic class kept by logic. */
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status,
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status.comparison-ok,
+.dpp-dashboard-view .dashboard-scenario-comparison > .panel-header > .status.comparison-warning,
+.dpp-dashboard-view .scenario-comparison-divergence strong,
+.dpp-dashboard-view .scenario-comparison-divergence.ok strong,
+.dpp-dashboard-view .scenario-comparison-divergence.warning strong,
+.dpp-dashboard-view .dpp-evolution-row small,
+.dpp-dashboard-view .dpp-evolution-row small.good,
+.dpp-dashboard-view .dpp-evolution-row small.attention,
+.dpp-dashboard-view .dpp-evolution-row small.neutral,
+.dpp-dashboard-view .final-model-comparison-status,
+.dpp-dashboard-view .final-model-comparison-status.stable,
+.dpp-dashboard-view .final-model-comparison-status.attention,
+.dpp-dashboard-view .final-model-comparison-status.missing {
+  color: var(--orion-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* The comparison reads like a technical table, not a semantic traffic-light panel. */
+.dpp-dashboard-view .scenario-comparison-divergence,
+.dpp-dashboard-view .scenario-comparison-divergence.ok,
+.dpp-dashboard-view .scenario-comparison-divergence.warning,
+.dpp-dashboard-view .scenario-comparison-divergence.pending {
+  background: transparent !important;
+}
+
+/* Legacy state labels become plain metadata instead of colored badges. */
+.dpp-dashboard-view .dpp-state-heading > span,
+.dpp-dashboard-view .dpp-state-card.final .dpp-state-heading > span {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+}
+
+/* Package status remains fully readable from its own text. */
+.dpp-dashboard-view .bulk-package-status strong,
+.dpp-dashboard-view .bulk-package-status.ready strong,
+.dpp-dashboard-view .bulk-package-status.missing strong,
+.dpp-dashboard-view .bulk-package-status.processing strong {
+  color: var(--orion-text) !important;
+  font-weight: 500 !important;
+}
+
+/* Hover is neutral and structural; color is not required to show interactivity. */
+.dpp-dashboard-view table tbody tr:hover td,
+.dpp-dashboard-view .final-model-plan-table tbody tr:hover td {
+  background: var(--orion-surface-elevated) !important;
+}
