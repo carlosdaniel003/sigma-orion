@@ -1,73 +1,28 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import InfoHint from './InfoHint'
+import ModuleInfoHint from './ModuleInfoHint'
 
 const INFO_TARGETS = [
-  {
-    key: 'dashboard-overview',
-    selector: '.dashboard-header h2',
-    info: {
-      title: 'Visão Geral do cenário ORION',
-      what: 'Organiza a leitura operacional do cenário inicial calculado pelo ORION e identifica diretamente o mês que está sendo analisado.',
-      source: 'Cenário mensal gerado pelo motor Python e resumo do DPP Final carregado no pacote.',
-      purpose: 'Dar ao analista uma visão única do mês sem misturar dados automáticos com decisões humanas.',
-    },
-  },
-  {
-    key: 'monthly-package',
-    selector: '.bulk-file-picker-head h3',
-    info: {
-      title: 'Pacote compartilhado do DPP',
-      what: 'Mostra quais arquivos mensais foram reconhecidos, quais são obrigatórios e se o pacote está completo.',
-      source: 'Arquivos selecionados pelo usuário e mantidos no workspace local/IndexedDB; o frontend classifica DPP anterior, DPP Final, STK SAP, Explosão, OPEN, PGD e WIU.',
-      purpose: 'Garantir que Dashboard e Testes trabalhem sobre o mesmo conjunto de fontes e permitir identificar rapidamente qualquer arquivo ausente.',
-    },
-  },
-  {
-    key: 'orion-export',
-    selector: '.dashboard-scenario-export > div > strong',
-    info: {
-      title: 'Excel do cenário ORION',
-      what: 'Gera uma planilha com os valores calculados pelo Cenário ORION mantendo o formato conhecido do DPP.',
-      source: 'Dados do cenário registrados pelo motor Python. O DPP do mês anterior é usado somente como molde de layout, estilos, folhas e estrutura.',
-      purpose: 'Permitir revisar, compartilhar ou arquivar a versão automática do ORION sem incorporar valores do DPP Final consolidado.',
-    },
-  },
-  {
-    key: 'dpp-evolution',
-    selector: '.dpp-evolution-panel .panel-header h3',
-    info: {
-      title: 'Evolução do DPP',
-      what: 'Mostra materiais críticos, OPCs, REAL e modelos ativos em colunas separadas para Cenário ORION, DPP Final e diferença Final − ORION.',
-      source: 'A coluna Cenário ORION usa o resumo calculado pelo motor Python. A coluna DPP Final usa o resumo lido diretamente do arquivo final consolidado do pacote mensal.',
-      purpose: 'Permitir identificar rapidamente o que permaneceu igual e o que mudou entre a geração automática e a consolidação final.',
-    },
-  },
-  {
-    key: 'scenario-comparison',
-    selector: '.dashboard-scenario-comparison .panel-header h3',
-    info: {
-      title: 'ORION × DPP Final',
-      what: 'Compara os mesmos indicadores operacionais nas duas versões do cenário e destaca diferenças de valor e, quando possível, diferenças por modelo ou material.',
-      source: 'Cenário mensal calculado pelo motor Python comparado com o resumo e as identidades de modelos/materiais lidas diretamente da aba DPP do arquivo final consolidado.',
-      purpose: 'Responder se o ORION está reproduzindo o DPP Final e indicar em quais indicadores ainda existem divergências para investigação.',
-    },
-  },
-  {
-    key: 'final-model-plan',
-    selector: '.final-model-plan-heading > div:first-child h3',
-    info: {
-      title: 'Plano consolidado por modelo',
-      what: 'Compara, modelo a modelo, KIT disponível PGD e REAL do Cenário ORION contra KIT disponível PGD e REAL do DPP Final, mostrando também as diferenças Final − ORION.',
-      source: 'Cenário ORION: modelos e valores registrados pelo motor Python. DPP Final: linhas KIT Disponivel PGD e REAL lidas diretamente da aba DPP do arquivo consolidado.',
-      purpose: 'Localizar exatamente quais modelos o ORION ainda não reproduz igual ao DPP Final e qual campo precisa ser investigado.',
-    },
-  },
+  { key: 'dashboard-overview', selector: '.dashboard-header h2', moduleKey: 'dashboard.overview' },
+  { key: 'monthly-package', selector: '.bulk-file-picker-head h3', moduleKey: 'dashboard.package' },
+  { key: 'orion-export', selector: '.dashboard-scenario-export > div > strong', moduleKey: 'dashboard.export' },
+  { key: 'dpp-evolution', selector: '.dpp-evolution-panel .panel-header h3', moduleKey: 'dashboard.evolution' },
+  { key: 'agent-bridge', selector: '.dpp-ai-bridge .panel-header h3', moduleKey: 'dashboard.agent_bridge' },
+  { key: 'scenario-comparison', selector: '.dashboard-scenario-comparison .panel-header h3', moduleKey: 'dashboard.scenario_comparison' },
+  { key: 'planning', selector: '.dashboard-planning-panel .panel-header h3', moduleKey: 'dashboard.planning' },
+  { key: 'quality', selector: '.dashboard-quality-panel .panel-header h3', moduleKey: 'dashboard.quality' },
+  { key: 'guide', selector: '.dashboard-guide-panel .panel-header h3', moduleKey: 'dashboard.guide' },
+  { key: 'final-model-plan', selector: '.final-model-plan-heading > div:first-child h3', moduleKey: 'dashboard.final_model_plan' },
+  { key: 'column-comparison', selector: '.dpp-column-comparison-title-row h3', moduleKey: 'dashboard.column_comparison', align: 'right' },
 ]
 
 function sameHosts(current, next) {
   if (current.length !== next.length) return false
-  return current.every((item, index) => item.key === next[index].key && item.host === next[index].host)
+  return current.every((item, index) => (
+    item.key === next[index].key
+    && item.host === next[index].host
+    && item.moduleKey === next[index].moduleKey
+  ))
 }
 
 function DashboardInfoLayer() {
@@ -94,7 +49,12 @@ function DashboardInfoLayer() {
           anchor.appendChild(host)
         }
 
-        next.push({ key: target.key, host, info: target.info })
+        next.push({
+          key: target.key,
+          host,
+          moduleKey: target.moduleKey,
+          align: target.align || 'left',
+        })
       }
 
       setHosts((current) => (sameHosts(current, next) ? current : next))
@@ -116,8 +76,8 @@ function DashboardInfoLayer() {
     }
   }, [])
 
-  return hosts.map(({ key, host, info }) => createPortal(
-    <InfoHint {...info} align="left" />,
+  return hosts.map(({ key, host, moduleKey, align }) => createPortal(
+    <ModuleInfoHint moduleKey={moduleKey} align={align} />,
     host,
     key,
   ))
