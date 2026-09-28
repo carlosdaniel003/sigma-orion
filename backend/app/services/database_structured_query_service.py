@@ -26,6 +26,15 @@ MOTOR_CALCULATION_SECTIONS = {
     "opc": "OPC — semântica de comparação",
 }
 
+MOTOR_SECTION_RULE_CODES = {
+    "NEC — fórmula e origem": "REGRA-001",
+    "STK TTL — fórmula e componentes": "REGRA-002",
+    "SALDO — fórmula": "REGRA-003",
+    "OPC — semântica de comparação": "REGRA-005",
+    "Amount — fórmula": "REGRA-006",
+    "CHECK — como é comparado": "REGRA-007",
+}
+
 
 def _normalize(text: object) -> str:
     normalized = unicodedata.normalize("NFKD", str(text or "").lower())
@@ -178,7 +187,7 @@ def calculation_knowledge_answer(plan: QueryPlan) -> DatabaseKnowledgeAnswer | N
             source="motor-deterministico.md",
             content=content,
             score=1000.0,
-            heading=title,
+            heading=f"{MOTOR_SECTION_RULE_CODES.get(title, '')} — {title}".strip(" —"),
             category="deterministic",
         )
         for title, content in sections
