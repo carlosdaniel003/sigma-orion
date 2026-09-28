@@ -25,7 +25,8 @@ MATERIAL_SEARCH_STOP_WORDS = {
     "me", "mim", "voce", "vc", "fale", "fala", "conte", "diga", "sobre",
     "item", "itens", "material", "materiais", "componente", "componentes",
     "do", "da", "dos", "das", "de", "o", "a", "os", "as", "um", "uma",
-    "quais", "qual", "tem", "existem", "existe", "mostre", "mostrar", "lista", "listar",
+    "quais", "qual", "quantos", "quantas", "total", "todos", "todas",
+    "tem", "existem", "existe", "mostre", "mostrar", "lista", "listar",
 }
 
 GENERIC_QUERY_STOP_WORDS = MATERIAL_SEARCH_STOP_WORDS | {
@@ -419,11 +420,37 @@ def _material_collection_answer(question: str) -> DatabaseKnowledgeAnswer | None
         return None
 
     terms = _material_collection_terms(question)
-    if not terms:
-        return None
-
     scenario_records = load_runtime_entities(entity_type="material", scope="scenario")
     final_records = load_runtime_entities(entity_type="material", scope="final")
+
+    if not terms:
+        if not scenario_records and not final_records:
+            return DatabaseKnowledgeAnswer(
+                answer="O workspace sincronizado não possui materiais disponíveis para consulta.",
+                sources=[],
+                chunks=[],
+                resolved_question=question,
+                context={"subject_type": "collection", "subject_key": "materiais", "topic": "material_collection"},
+            )
+        scenario_count = len(scenario_records)
+        final_count = len(final_records)
+        parts = []
+        if scenario_count:
+            parts.append(f"{scenario_count} material(is) no Cenário ORION")
+        if final_count:
+            parts.append(f"{final_count} material(is) no DPP Final")
+        return DatabaseKnowledgeAnswer(
+            answer="O workspace sincronizado possui " + " e ".join(parts) + ".",
+            sources=["sqlite://rag_runtime_entities/material"],
+            chunks=[_runtime_chunk((scenario_records or final_records)[0], "Materiais · workspace atual")],
+            resolved_question=question,
+            context={
+                "subject_type": "collection",
+                "subject_key": "materiais",
+                "topic": "material_collection",
+                "structured_evidence_complete": True,
+            },
+        )
     final_by_key = {str(record.get("entity_key") or ""): record for record in final_records}
 
     def searchable(record: dict) -> str:
