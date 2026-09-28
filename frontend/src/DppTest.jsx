@@ -100,6 +100,21 @@ const TEST_INFO = {
   },
 }
 
+function formatTestStatus(value) {
+  const status = String(value || '').trim()
+  const known = {
+    APROVADO: 'Aprovado',
+    REPROVADO: 'Reprovado',
+    APROVADO_COM_INTERVENCOES: 'Aprovado com intervenções humanas',
+    APROVADO_COM_CORRECOES_LEGADO: 'Aprovado com correções de legado',
+    APROVADO_COM_INTERVENCOES_E_CORRECOES_LEGADO: 'Aprovado com intervenções e correções de legado',
+  }
+  if (known[status]) return known[status]
+
+  const normalized = status.replace(/_/g, ' ').toLocaleLowerCase('pt-BR')
+  return normalized ? normalized.charAt(0).toLocaleUpperCase('pt-BR') + normalized.slice(1) : 'Resultado disponível'
+}
+
 function DppTest({ apiUrl }) {
   const {
     testResult: cachedTestResult,
@@ -224,111 +239,138 @@ function DppTest({ apiUrl }) {
   }
 
   return (
-    <>
-      <header className="page-header consolidation-header">
-        <div>
-          <span className="eyebrow">VALIDAÇÃO DE RECONSTRUÇÃO</span>
-          <div className="test-heading-with-info test-heading-main">
+    <div className="dpp-test-page">
+      <header className="dpp-test-hero">
+        <div className="dpp-test-hero-copy">
+          <span className="dpp-test-kicker">Validação de reconstrução</span>
+          <div className="dpp-test-title-row">
             <h2>Testes do DPP</h2>
             <InfoHint {...TEST_INFO.overview} />
           </div>
-          <p>Esta tela reutiliza o pacote carregado no Dashboard. Quando o teste já foi preparado para o mesmo pacote, o resultado abre imediatamente sem novo processamento.</p>
+          <p>Reconstrói um mês conhecido com o motor do ORION e compara o resultado com o DPP consolidado usado como referência.</p>
         </div>
-        <span className="status">Reconstrução → Comparação</span>
+
+        <div className="dpp-test-flow" aria-label="Fluxo do teste">
+          <span>Reconstrução</span>
+          <span aria-hidden="true">→</span>
+          <span>Comparação</span>
+        </div>
       </header>
 
-      {error && <div className="alert error">{error}</div>}
+      {error && <div className="alert error dpp-test-error">{error}</div>}
 
-      <section className="monthly-controls panel">
-        <div className="test-month-control">
-          <div className="test-control-label-row">
-            <label htmlFor="dpp-test-reference-month">Mês que será reconstruído</label>
-            <InfoHint {...TEST_INFO.month} />
+      <section className="dpp-test-section dpp-test-preparation">
+        <div className="dpp-test-section-header">
+          <div>
+            <h3>Preparação do teste</h3>
+            <p>Confirme o mês e o pacote de arquivos antes de executar a reconstrução.</p>
           </div>
-          <input id="dpp-test-reference-month" type="month" value={referenceMonth} onChange={(event) => setReferenceMonth(event.target.value)} disabled={loading} />
         </div>
-        <div>
-          <div className="test-heading-with-info test-inline-heading">
-            <strong>Pacote compartilhado</strong>
-            <InfoHint {...TEST_INFO.sharedPackage} />
+
+        <div className="dpp-test-setup-grid">
+          <div className="dpp-test-month-field">
+            <div className="dpp-test-label-row">
+              <label htmlFor="dpp-test-reference-month">Mês que será reconstruído</label>
+              <InfoHint {...TEST_INFO.month} />
+            </div>
+            <input
+              id="dpp-test-reference-month"
+              type="month"
+              value={referenceMonth}
+              onChange={(event) => setReferenceMonth(event.target.value)}
+              disabled={loading}
+            />
           </div>
-          <p>Os arquivos selecionados no Dashboard continuam disponíveis aqui. Só há novo processamento se o pacote mudar ou se você solicitar uma nova execução.</p>
+
+          <div className="dpp-test-shared-context">
+            <div className="dpp-test-label-row">
+              <strong>Pacote compartilhado</strong>
+              <InfoHint {...TEST_INFO.sharedPackage} />
+            </div>
+            <p>Usa os mesmos arquivos carregados no Dashboard. Um novo processamento só ocorre quando o pacote muda ou quando você executa novamente.</p>
+          </div>
         </div>
+
+        <BulkDppFilePicker
+          mode="test"
+          referenceMonth={referenceMonth}
+          onBundle={applyFileBundle}
+          processing={loading}
+          title="Arquivos usados no teste"
+          info={TEST_INFO.package}
+        />
       </section>
-
-      <BulkDppFilePicker
-        mode="test"
-        referenceMonth={referenceMonth}
-        onBundle={applyFileBundle}
-        processing={loading}
-        title="Pacote atual do DPP"
-        info={TEST_INFO.package}
-      />
 
       <OrionWorking active={loading} mode="test" onCancel={cancelTest} />
 
-      <section className="panel consolidation-action-panel">
+      <section className="dpp-test-runbar">
         <div>
-          <div className="test-heading-with-info test-inline-heading">
-            <strong>{loading ? 'ORION reconstruindo e comparando' : result ? 'Resultado preparado' : requiredReady ? 'Pacote pronto para teste' : 'Aguardando arquivo necessário para o teste'}</strong>
+          <div className="dpp-test-label-row">
+            <strong>{loading ? 'ORION reconstruindo e comparando' : result ? 'Resultado preparado' : requiredReady ? 'Pacote pronto para teste' : 'Preparação incompleta'}</strong>
             <InfoHint {...TEST_INFO.execution} />
           </div>
-          <p>{loading ? 'O relatório aparece automaticamente ao terminar.' : result ? 'Este resultado pertence ao pacote já processado. Navegar entre Dashboard e Testes não executa novamente.' : requiredReady ? 'O teste será executado somente se ainda não existir resultado para este pacote.' : 'Se o DPP final não estiver no pacote, adicione apenas esse arquivo; os demais continuam preservados.'}</p>
+          <p>{loading ? 'O relatório será atualizado automaticamente ao concluir.' : result ? 'O resultado abaixo pertence ao pacote atual e não será recalculado ao alternar entre Dashboard e Testes.' : requiredReady ? 'Todas as entradas obrigatórias foram reconhecidas. O teste pode ser executado.' : 'Carregue os arquivos obrigatórios que ainda estiverem ausentes.'}</p>
         </div>
         <button className="secondary-button consolidation-button" type="button" onClick={rerunTest} disabled={!requiredReady || loading}>
-          {loading ? 'Processando...' : result ? 'Executar novamente' : 'Executar agora'}
+          {loading ? 'Processando...' : result ? 'Executar novamente' : 'Executar teste'}
         </button>
       </section>
 
       {result && (
-        <>
-          <section className={`panel test-verdict ${result.pass ? 'test-pass' : 'test-fail'}`}>
-            <div>
-              <span className="eyebrow">RESULTADO</span>
-              <div className="test-heading-with-info">
-                <h3>{result.status}</h3>
+        <div className="dpp-test-report">
+          <section className="dpp-test-verdict">
+            <div className="dpp-test-verdict-main">
+              <span className="dpp-test-kicker">Resultado</span>
+              <div className="dpp-test-title-row dpp-test-verdict-title">
+                <h3>{formatTestStatus(result.status)}</h3>
                 <InfoHint {...TEST_INFO.verdict} />
               </div>
               <p>{verdictText()}</p>
             </div>
-            <div className="test-verdict-note">
-              <div className="test-heading-with-info test-inline-heading">
+
+            <aside className="dpp-test-controlled-real">
+              <div className="dpp-test-label-row">
                 <strong>REAL controlado</strong>
                 <InfoHint {...TEST_INFO.controlledReal} align="right" />
               </div>
               <p>{result.note}</p>
-            </div>
+            </aside>
           </section>
 
-          <div className="test-summary-heading">
-            <div className="test-heading-with-info">
-              <h3>Resumo das validações</h3>
-              <InfoHint {...TEST_INFO.validationSummary} />
-            </div>
-            <p>Leitura rápida dos principais grupos antes do detalhamento completo.</p>
-          </div>
-
-          <section className="metrics-grid consolidation-metrics monthly-metrics">
-            <TestMetric label="Materiais" check={result.checks.materials} />
-            <TestMetric label="Matriz" check={result.checks.matrix} />
-            <TestMetric label="KIT PGD" check={result.checks.kit_pgd} />
-            <TestMetric label="STK SAP" check={result.checks.stock_sap} />
-            <TestMetric label="Explosão" check={result.checks.explosion} />
-            <TestMetric label="NEC" check={result.checks.nec} />
-            <TestMetric label="SALDO" check={result.checks.balance} />
-          </section>
-
-          <section className="panel test-field-comparison">
-            <div className="panel-header">
+          <section className="dpp-test-section dpp-test-summary-section">
+            <div className="dpp-test-section-header">
               <div>
-                <div className="test-heading-with-info">
+                <div className="dpp-test-title-row dpp-test-section-title-row">
+                  <h3>Resumo das validações</h3>
+                  <InfoHint {...TEST_INFO.validationSummary} />
+                </div>
+                <p>Leitura rápida dos principais grupos antes do detalhamento completo.</p>
+              </div>
+            </div>
+
+            <div className="metrics-grid consolidation-metrics monthly-metrics">
+              <TestMetric label="Materiais" check={result.checks.materials} />
+              <TestMetric label="Matriz" check={result.checks.matrix} />
+              <TestMetric label="KIT PGD" check={result.checks.kit_pgd} />
+              <TestMetric label="STK SAP" check={result.checks.stock_sap} />
+              <TestMetric label="Explosão" check={result.checks.explosion} />
+              <TestMetric label="NEC" check={result.checks.nec} />
+              <TestMetric label="SALDO" check={result.checks.balance} />
+            </div>
+          </section>
+
+          <section className="dpp-test-section dpp-test-field-comparison">
+            <div className="dpp-test-section-header dpp-test-section-header-with-meta">
+              <div>
+                <div className="dpp-test-title-row dpp-test-section-title-row">
                   <h3>Comparação campo a campo</h3>
                   <InfoHint {...TEST_INFO.fieldComparison} />
                 </div>
                 <p>{result.summary.generated_materials.toLocaleString('pt-BR')} materiais gerados × {result.summary.expected_materials.toLocaleString('pt-BR')} materiais no gabarito.</p>
               </div>
-              <span className="test-result-text">{result.status}</span>
+              <span className="dpp-test-section-meta">{formatTestStatus(result.status)}</span>
             </div>
+
             <div className="table-scroll">
               <table className="dpp-table">
                 <colgroup>
@@ -340,7 +382,17 @@ function DppTest({ apiUrl }) {
                   <col className="test-col-orion" />
                   <col className="test-col-result" />
                 </colgroup>
-                <thead><tr><th>Validação</th><th>Comparados</th><th>Iguais</th><th>Intervenções humanas</th><th>Correções legado</th><th>Divergências ORION</th><th>Resultado</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Validação</th>
+                    <th>Comparados</th>
+                    <th>Iguais</th>
+                    <th>Intervenções humanas</th>
+                    <th>Correções legado</th>
+                    <th>Divergências ORION</th>
+                    <th>Resultado</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {Object.entries(result.checks).map(([name, check]) => (
                     <tr key={name}>
@@ -358,65 +410,66 @@ function DppTest({ apiUrl }) {
             </div>
           </section>
 
-          <section className="panel">
-            <div className="panel-header">
+          <section className="dpp-test-section dpp-test-detail-section">
+            <div className="dpp-test-section-header dpp-test-section-header-with-meta">
               <div>
-                <div className="test-heading-with-info">
+                <div className="dpp-test-title-row dpp-test-section-title-row">
                   <h3>Divergências do ORION</h3>
                   <InfoHint {...TEST_INFO.orionDifferences} />
                 </div>
                 <p>Diferenças que continuam indicando regra ausente ou comportamento incorreto no motor determinístico.</p>
               </div>
-              <span className="status">{result.summary.orion_mismatches_total.toLocaleString('pt-BR')} total · {result.mismatches.length.toLocaleString('pt-BR')} exemplo(s)</span>
+              <span className="dpp-test-section-meta">{result.summary.orion_mismatches_total.toLocaleString('pt-BR')} total · {result.mismatches.length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.mismatches.length ? (
-              <div className="rule-box"><strong>Nenhuma divergência atribuída ao ORION.</strong><p>Intervenções humanas e correções do legado são apresentadas separadamente abaixo.</p></div>
+              <div className="dpp-test-empty"><strong>Nenhuma divergência atribuída ao ORION.</strong><span>Intervenções humanas e correções do legado são apresentadas separadamente.</span></div>
             ) : (
               <DifferenceTable items={result.mismatches} />
             )}
-            {result.mismatch_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais divergências do ORION.</strong><p>A tabela mostra apenas uma amostra. Os contadores acima representam o total encontrado.</p></div>}
+            {result.mismatch_samples_truncated && <div className="dpp-test-note"><strong>Existem mais divergências do ORION.</strong><span>A tabela mostra uma amostra; os contadores representam o total encontrado.</span></div>}
           </section>
 
-          <section className="panel">
-            <div className="panel-header">
+          <section className="dpp-test-section dpp-test-detail-section">
+            <div className="dpp-test-section-header dpp-test-section-header-with-meta">
               <div>
-                <div className="test-heading-with-info">
+                <div className="dpp-test-title-row dpp-test-section-title-row">
                   <h3>Intervenções humanas</h3>
                   <InfoHint {...TEST_INFO.humanInterventions} />
                 </div>
                 <p>OPCs criados, removidos ou reassociados durante a análise do mês e os efeitos diretamente derivados dessas decisões.</p>
               </div>
-              <span className="status">{(result.summary.human_interventions_total || 0).toLocaleString('pt-BR')} total · {(result.human_interventions || []).length.toLocaleString('pt-BR')} exemplo(s)</span>
+              <span className="dpp-test-section-meta">{(result.summary.human_interventions_total || 0).toLocaleString('pt-BR')} total · {(result.human_interventions || []).length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.human_interventions?.length ? (
-              <div className="rule-box"><strong>Nenhuma intervenção humana classificada.</strong><p>O OPC do DPP final coincide com a informação disponível na base histórica para os casos comparados.</p></div>
+              <div className="dpp-test-empty"><strong>Nenhuma intervenção humana classificada.</strong><span>O OPC do DPP final coincide com a informação disponível na base histórica para os casos comparados.</span></div>
             ) : (
               <DifferenceTable items={result.human_interventions} showReason />
             )}
-            {result.human_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais intervenções humanas.</strong><p>A tabela mostra apenas uma amostra. Os contadores representam o total classificado.</p></div>}
+            {result.human_samples_truncated && <div className="dpp-test-note"><strong>Existem mais intervenções humanas.</strong><span>A tabela mostra uma amostra; os contadores representam o total classificado.</span></div>}
           </section>
 
-          <section className="panel">
-            <div className="panel-header">
+          <section className="dpp-test-section dpp-test-detail-section">
+            <div className="dpp-test-section-header dpp-test-section-header-with-meta">
               <div>
-                <div className="test-heading-with-info">
+                <div className="dpp-test-title-row dpp-test-section-title-row">
                   <h3>Correções do legado</h3>
                   <InfoHint {...TEST_INFO.legacyCorrections} />
                 </div>
                 <p>Diferenças conhecidas em que o ORION mantém a fonte ou o cálculo correto em vez de reproduzir uma falha histórica do Excel.</p>
               </div>
-              <span className="status">{result.summary.legacy_corrections_total.toLocaleString('pt-BR')} total · {result.legacy_corrections.length.toLocaleString('pt-BR')} exemplo(s)</span>
+              <span className="dpp-test-section-meta">{result.summary.legacy_corrections_total.toLocaleString('pt-BR')} total · {result.legacy_corrections.length.toLocaleString('pt-BR')} exemplo(s)</span>
             </div>
             {!result.legacy_corrections.length ? (
-              <div className="rule-box"><strong>Nenhuma correção de legado classificada.</strong><p>Neste teste, não houve falha histórica reconhecida pelo classificador.</p></div>
+              <div className="dpp-test-empty"><strong>Nenhuma correção de legado classificada.</strong><span>Neste teste, não houve falha histórica reconhecida pelo classificador.</span></div>
             ) : (
               <DifferenceTable items={result.legacy_corrections} showReason />
             )}
-            {result.legacy_samples_truncated && <div className="rule-box warning-box"><strong>Existem mais correções do legado.</strong><p>A tabela mostra apenas uma amostra. Os contadores representam o total classificado.</p></div>}
+            {result.legacy_samples_truncated && <div className="dpp-test-note"><strong>Existem mais correções do legado.</strong><span>A tabela mostra uma amostra; os contadores representam o total classificado.</span></div>}
           </section>
-        </>
+        </div>
       )}
-    </>
+    </div>
+  )
   )
 }
 
