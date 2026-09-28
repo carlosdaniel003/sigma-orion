@@ -108,6 +108,7 @@ export async function readAgentConversation() {
   let value = null
   try {
     value = await readIndexedConversation()
+    if (!value) value = readFallbackConversation()
   } catch {
     value = readFallbackConversation()
   }
