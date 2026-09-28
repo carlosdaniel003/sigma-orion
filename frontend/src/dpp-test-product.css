@@ -1,18 +1,29 @@
 /*
- * Testes do DPP — acabamento de produto alinhado ao DESIGN_SYSTEM.md.
- * Esta camada remove padrões visuais legados (pills, accent bars e cards excessivos)
- * sem alterar comportamento, dados ou fluxo de execução do teste.
+ * Testes do DPP — revisão visual industrial.
+ *
+ * Esta é a camada final específica da tela. Ela preserva o modelo mental de
+ * Excel/Power BI (tabelas, colunas, totais e comparação) e remove marcadores
+ * semânticos coloridos, pills e desalinhamentos herdados.
  */
 
 .dpp-test-view {
+  width: min(100%, 1280px);
   min-width: 0;
-  padding-bottom: var(--space-6);
+  margin-inline: auto;
+  padding: 0 0 var(--space-6);
+  color: var(--orion-text);
 }
 
-/* Cabeçalho e contexto */
+/* -------------------------------------------------------------------------- */
+/* Cabeçalho: um único eixo visual, sem status decorativo                     */
+/* -------------------------------------------------------------------------- */
+
 .dpp-test-view .consolidation-header {
-  align-items: flex-end;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
   gap: var(--space-5);
+  margin: 0 !important;
   padding: 0 0 var(--space-4) !important;
   border-bottom: 1px solid var(--orion-border) !important;
 }
@@ -21,32 +32,58 @@
   min-width: 0;
 }
 
-.dpp-test-view .consolidation-header h2 {
-  font-size: var(--title) !important;
-  line-height: 1.2;
-}
-
-.dpp-test-view .consolidation-header p {
-  max-width: 900px;
-  color: var(--orion-text-secondary) !important;
-  font-size: var(--text-sm) !important;
-  line-height: 1.45;
-}
-
-.dpp-test-view .consolidation-header > .status {
+.dpp-test-view .consolidation-header .eyebrow,
+.dpp-test-view .test-verdict .eyebrow {
+  min-height: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.02em;
+  font-weight: 500 !important;
+  letter-spacing: 0.06em;
+}
+
+.dpp-test-view .consolidation-header h2 {
+  margin: var(--space-1) 0 0 !important;
+  color: var(--orion-text) !important;
+  font-size: var(--title) !important;
+  line-height: 1.2;
+}
+
+.dpp-test-view .consolidation-header p {
+  max-width: 880px;
+  margin: var(--space-2) 0 0 !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-sm) !important;
+  line-height: 1.5;
+}
+
+.dpp-test-view .consolidation-header > .status {
+  align-self: start;
+  width: auto !important;
+  min-height: 0 !important;
+  padding: var(--space-1) 0 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
   white-space: nowrap;
 }
 
-/* Configuração */
+/* -------------------------------------------------------------------------- */
+/* Configuração do teste                                                      */
+/* -------------------------------------------------------------------------- */
+
 .dpp-test-view .monthly-controls {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  align-items: center !important;
+  gap: var(--space-5);
   margin: 0 !important;
   padding: var(--space-4) 0 !important;
   border: 0 !important;
@@ -56,37 +93,49 @@
   box-shadow: none !important;
 }
 
+.dpp-test-view .monthly-controls > div {
+  min-width: 0;
+}
+
 .dpp-test-view .test-control-label-row > label {
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
-  font-weight: 600 !important;
-  text-transform: none;
-  letter-spacing: 0;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
 }
 
 .dpp-test-view .test-month-control > input {
+  width: 100%;
   min-height: 34px;
+  margin-top: var(--space-1);
   padding: 7px 9px !important;
   border-radius: var(--radius-sm) !important;
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .dpp-test-view .monthly-controls .test-inline-heading > strong {
+  color: var(--orion-text) !important;
   font-size: var(--text-sm) !important;
-  font-weight: 600;
+  font-weight: 600 !important;
 }
 
 .dpp-test-view .monthly-controls p {
-  max-width: 820px;
+  max-width: 780px;
+  margin: var(--space-1) 0 0 !important;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
   line-height: 1.45;
 }
 
-/* Pacote de arquivos: seção técnica, sem card flutuante. */
+/* -------------------------------------------------------------------------- */
+/* Pacote de arquivos: lista técnica contínua                                */
+/* -------------------------------------------------------------------------- */
+
 .dpp-test-view .bulk-file-picker,
 .dpp-test-view .bulk-file-picker.compact,
 .dpp-test-view .bulk-file-picker.is-processing {
+  width: 100%;
   margin: 0 !important;
   padding: var(--space-4) 0 !important;
   border: 0 !important;
@@ -97,16 +146,41 @@
 }
 
 .dpp-test-view .bulk-file-picker-head {
-  align-items: flex-end;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center !important;
+  gap: var(--space-5);
+}
+
+.dpp-test-view .bulk-file-picker-head > div:first-child {
+  min-width: 0;
 }
 
 .dpp-test-view .bulk-file-picker-head h3 {
+  margin: var(--space-1) 0 0 !important;
+  color: var(--orion-text) !important;
   font-size: var(--text-lg) !important;
 }
 
 .dpp-test-view .bulk-file-picker-head p {
   max-width: 820px;
+  margin: var(--space-1) 0 0 !important;
+  color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
+  line-height: 1.45;
+}
+
+.dpp-test-view .bulk-file-picker-head .eyebrow {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 500 !important;
+}
+
+.dpp-test-view .bulk-file-actions {
+  justify-self: end;
 }
 
 .dpp-test-view .bulk-file-button,
@@ -126,6 +200,10 @@
 .dpp-test-view .bulk-package-status.ready,
 .dpp-test-view .bulk-package-status.missing,
 .dpp-test-view .bulk-package-status.processing {
+  display: grid !important;
+  grid-template-columns: minmax(220px, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-4);
   margin-top: var(--space-3) !important;
   padding: 9px 0 !important;
   border: 0 !important;
@@ -134,21 +212,33 @@
   border-radius: 0 !important;
   background: transparent !important;
   color: var(--orion-text) !important;
+  box-shadow: none !important;
 }
 
 .dpp-test-view .bulk-package-status strong {
+  display: block !important;
   color: var(--orion-text) !important;
   font-size: var(--text-sm) !important;
   font-weight: 500 !important;
 }
 
+.dpp-test-view .bulk-package-status strong::before {
+  content: none !important;
+  display: none !important;
+}
+
 .dpp-test-view .bulk-package-status span {
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
+  line-height: 1.4;
+  text-align: right;
 }
 
 .dpp-test-view .bulk-file-checks {
-  margin-top: 0 !important;
+  display: grid;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+  margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   overflow: visible !important;
@@ -158,54 +248,50 @@
 .dpp-test-view .bulk-file-check.found,
 .dpp-test-view .bulk-file-check.missing,
 .dpp-test-view .bulk-file-check.optional {
-  min-height: 38px;
-  grid-template-columns: 14px minmax(0, 1fr) !important;
-  gap: var(--space-2) !important;
+  min-height: 42px;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
   padding: 8px 0 !important;
   border: 0 !important;
   border-bottom: 1px solid var(--orion-border-soft) !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+  opacity: 1 !important;
 }
 
 .dpp-test-view .bulk-file-check:last-child {
   border-bottom: 0 !important;
 }
 
-.dpp-test-view .bulk-check-icon {
-  width: 7px !important;
-  height: 7px !important;
-  display: block !important;
-  margin: 0 !important;
-  border: 0 !important;
-  border-radius: 50% !important;
-  background: var(--orion-neutral) !important;
-  color: transparent !important;
-  font-size: 0 !important;
-  box-shadow: none !important;
-}
-
-.dpp-test-view .bulk-file-check.found .bulk-check-icon {
-  background: var(--orion-success) !important;
-}
-
+.dpp-test-view .bulk-check-icon,
+.dpp-test-view .bulk-file-check.found .bulk-check-icon,
 .dpp-test-view .bulk-file-check.missing .bulk-check-icon {
-  background: var(--orion-warning) !important;
+  display: none !important;
 }
 
 .dpp-test-view .bulk-file-check strong {
+  color: var(--orion-text) !important;
   font-size: var(--text-sm) !important;
   font-weight: 600 !important;
 }
 
 .dpp-test-view .bulk-file-check small {
+  margin-top: 2px;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
 }
 
-/* Execução */
+/* -------------------------------------------------------------------------- */
+/* Execução                                                                   */
+/* -------------------------------------------------------------------------- */
+
 .dpp-test-view .consolidation-action-panel {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center !important;
+  gap: var(--space-5);
   margin: 0 !important;
   padding: var(--space-3) 0 !important;
   border: 0 !important;
@@ -215,15 +301,22 @@
   box-shadow: none !important;
 }
 
+.dpp-test-view .consolidation-action-panel > div {
+  min-width: 0;
+}
+
 .dpp-test-view .consolidation-action-panel strong {
+  color: var(--orion-text) !important;
   font-size: var(--text-sm) !important;
-  font-weight: 600;
+  font-weight: 600 !important;
 }
 
 .dpp-test-view .consolidation-action-panel p {
-  margin-top: 2px !important;
+  max-width: 900px;
+  margin: 2px 0 0 !important;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
+  line-height: 1.45;
 }
 
 .dpp-test-view .consolidation-action-panel .secondary-button {
@@ -231,15 +324,19 @@
   padding: 6px 10px !important;
   border-radius: var(--radius-sm) !important;
   font-size: var(--text-xs) !important;
-  font-weight: 600;
+  font-weight: 600 !important;
 }
 
-/* Veredito: sem accent bar; o estado usa somente um marcador semântico. */
+/* -------------------------------------------------------------------------- */
+/* Veredito: texto e contexto, sem cor semântica nem marcador                 */
+/* -------------------------------------------------------------------------- */
+
 .dpp-test-view .test-verdict,
 .dpp-test-view .test-verdict.test-pass,
 .dpp-test-view .test-verdict.test-fail {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  align-items: start;
   gap: var(--space-5);
   margin: var(--space-5) 0 0 !important;
   padding: var(--space-4) 0 !important;
@@ -251,40 +348,34 @@
   box-shadow: none !important;
 }
 
-.dpp-test-view .test-verdict h3 {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.dpp-test-view .test-verdict h3,
+.dpp-test-view .test-verdict.test-pass h3,
+.dpp-test-view .test-verdict.test-fail h3 {
+  display: block !important;
+  margin: var(--space-1) 0 0 !important;
   color: var(--orion-text) !important;
   font-size: var(--title) !important;
-  font-weight: 650;
+  font-weight: 650 !important;
+  line-height: 1.2;
 }
 
-.dpp-test-view .test-verdict h3::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: var(--orion-neutral);
-}
-
-.dpp-test-view .test-verdict.test-pass h3::before {
-  background: var(--orion-success);
-}
-
+.dpp-test-view .test-verdict h3::before,
+.dpp-test-view .test-verdict.test-pass h3::before,
 .dpp-test-view .test-verdict.test-fail h3::before {
-  background: var(--orion-danger);
+  content: none !important;
+  display: none !important;
 }
 
 .dpp-test-view .test-verdict p {
-  max-width: 850px;
+  max-width: 820px;
+  margin: var(--space-2) 0 0 !important;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-sm) !important;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .dpp-test-view .test-verdict-note {
+  min-width: 0;
   padding-left: var(--space-4);
   border-left: 1px solid var(--orion-border) !important;
 }
@@ -292,27 +383,54 @@
 .dpp-test-view .test-verdict-note strong {
   color: var(--orion-text) !important;
   font-size: var(--text-xs) !important;
-  font-weight: 600;
+  font-weight: 600 !important;
   text-transform: none;
   letter-spacing: 0;
 }
 
-/* Resumo: uma faixa contínua, sem cards individuais. */
+/* -------------------------------------------------------------------------- */
+/* Resumo das validações: faixa técnica contínua                              */
+/* -------------------------------------------------------------------------- */
+
 .dpp-test-view .test-summary-heading {
+  display: grid;
+  gap: 2px;
   margin-top: var(--space-5);
 }
 
+.dpp-test-view .test-summary-heading h3 {
+  margin: 0;
+  color: var(--orion-text);
+  font-size: var(--text-lg);
+}
+
+.dpp-test-view .test-summary-heading p {
+  margin: 0 !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+}
+
 .dpp-test-view .monthly-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0 !important;
   margin: var(--space-2) 0 var(--space-5) !important;
   border: 0 !important;
   border-top: 1px solid var(--orion-border) !important;
   border-bottom: 1px solid var(--orion-border) !important;
   border-radius: 0 !important;
   background: transparent !important;
+  overflow: hidden;
 }
 
-.dpp-test-view .monthly-metrics .metric-card {
-  min-height: 70px;
+.dpp-test-view .monthly-metrics .metric-card,
+.dpp-test-view .monthly-metrics .metric-ok,
+.dpp-test-view .monthly-metrics .metric-attention {
+  min-width: 0;
+  min-height: 72px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
   padding: 9px 11px !important;
   border: 0 !important;
   border-right: 1px solid var(--orion-border-soft) !important;
@@ -321,32 +439,40 @@
   box-shadow: none !important;
 }
 
-.dpp-test-view .monthly-metrics .metric-card > span {
+.dpp-test-view .monthly-metrics .metric-card:last-child {
+  border-right: 0 !important;
+}
+
+.dpp-test-view .monthly-metrics .metric-card > span,
+.dpp-test-view .monthly-metrics .metric-card > small,
+.dpp-test-view .monthly-metrics .metric-ok > small,
+.dpp-test-view .monthly-metrics .metric-attention > small {
+  overflow: hidden;
   color: var(--orion-text-secondary) !important;
-  font-weight: 600 !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 500 !important;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dpp-test-view .monthly-metrics .metric-card > strong {
+  overflow: hidden;
   color: var(--orion-text) !important;
   font-size: var(--text-lg) !important;
   font-weight: 650 !important;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.dpp-test-view .monthly-metrics .metric-card > small {
-  color: var(--orion-text-secondary) !important;
-  font-weight: 500;
-}
+/* -------------------------------------------------------------------------- */
+/* Relatório e tabelas                                                        */
+/* -------------------------------------------------------------------------- */
 
-.dpp-test-view .monthly-metrics .metric-ok > small {
-  color: var(--orion-success) !important;
-}
-
-.dpp-test-view .monthly-metrics .metric-attention > small {
-  color: var(--orion-danger) !important;
-}
-
-/* Seções do relatório */
 .dpp-test-view .monthly-metrics ~ .panel {
+  width: 100%;
   margin: 0 !important;
   padding: var(--space-5) 0 !important;
   border: 0 !important;
@@ -362,105 +488,130 @@
 }
 
 .dpp-test-view .monthly-metrics ~ .panel .panel-header {
-  align-items: flex-end;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
   gap: var(--space-4);
   margin-bottom: var(--space-3) !important;
 }
 
+.dpp-test-view .monthly-metrics ~ .panel .panel-header > div {
+  min-width: 0;
+  max-width: 920px;
+}
+
 .dpp-test-view .monthly-metrics ~ .panel .panel-header h3 {
+  margin: 0;
   color: var(--orion-text) !important;
   font-size: var(--text-lg) !important;
-  font-weight: 650;
+  font-weight: 650 !important;
 }
 
 .dpp-test-view .monthly-metrics ~ .panel .panel-header p {
-  max-width: 900px;
+  margin: 3px 0 0 !important;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
   line-height: 1.45;
 }
 
-/* Metadados laterais e estados deixam de parecer botões/badges. */
-.dpp-test-view .monthly-metrics ~ .panel .panel-header > .status,
+.dpp-test-view .status,
 .dpp-test-view .source-state,
 .dpp-test-view .unit-badge,
-.dpp-test-view .status {
+.dpp-test-view .test-result-text {
   width: auto !important;
   min-height: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
-  box-shadow: none !important;
   color: var(--orion-text-secondary) !important;
+  box-shadow: none !important;
   font-size: var(--text-xs) !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   line-height: 1.35;
   text-transform: none !important;
   letter-spacing: 0 !important;
-}
-
-.dpp-test-view .unit-badge,
-.dpp-test-view .source-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   white-space: nowrap;
 }
 
+.dpp-test-view .source-state::before,
 .dpp-test-view .unit-badge::before,
-.dpp-test-view .source-state::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: var(--orion-neutral);
-}
-
+.dpp-test-view .source-state.ready::before,
+.dpp-test-view .source-state.required::before,
 .dpp-test-view .unit-badge.ok::before,
-.dpp-test-view .source-state.ready::before {
-  background: var(--orion-success);
-}
-
 .dpp-test-view .unit-badge.warning::before,
-.dpp-test-view .source-state.required::before {
-  background: var(--orion-danger);
-}
-
 .dpp-test-view .unit-badge.neutral::before {
-  background: var(--orion-neutral);
+  content: none !important;
+  display: none !important;
 }
 
-/* Tabelas */
 .dpp-test-view .table-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
   border: 1px solid var(--orion-border) !important;
   border-radius: var(--radius-sm) !important;
   background: var(--orion-surface) !important;
   box-shadow: none !important;
 }
 
+.dpp-test-view .dpp-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-test-view .test-field-comparison .dpp-table {
+  min-width: 980px !important;
+  table-layout: fixed !important;
+}
+
 .dpp-test-view .dpp-table th {
-  height: 32px;
-  padding: 6px 8px !important;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 34px;
+  padding: 7px 9px !important;
+  border-bottom: 1px solid var(--orion-border) !important;
   background: var(--orion-surface-elevated) !important;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
   font-weight: 600 !important;
+  white-space: nowrap;
 }
 
 .dpp-test-view .dpp-table td {
-  height: 36px;
-  padding: 6px 8px !important;
+  height: 40px;
+  padding: 7px 9px !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  background: transparent !important;
   color: var(--orion-text) !important;
   font-size: var(--text-sm) !important;
+  vertical-align: middle;
+}
+
+.dpp-test-view .dpp-table tbody tr:last-child td {
+  border-bottom: 0 !important;
 }
 
 .dpp-test-view .dpp-table tbody tr:hover td {
-  background: var(--orion-blue-soft) !important;
+  background: var(--orion-surface-elevated) !important;
 }
 
-/* Estados vazios e avisos: texto + divisor, sem barra lateral decorativa. */
+.dpp-test-view .dpp-table .number-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-test-view .material-code {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: var(--text-xs) !important;
+}
+
+/* Estados vazios e avisos: nota técnica neutra. */
 .dpp-test-view .rule-box,
 .dpp-test-view .rule-box.warning-box,
 .dpp-test-view .unit-warning {
@@ -475,20 +626,16 @@
 }
 
 .dpp-test-view .rule-box strong,
+.dpp-test-view .rule-box.warning-box strong,
 .dpp-test-view .unit-warning strong {
   color: var(--orion-text) !important;
   font-size: var(--text-sm) !important;
-  font-weight: 600;
-}
-
-.dpp-test-view .rule-box.warning-box strong,
-.dpp-test-view .unit-warning strong {
-  color: var(--orion-warning) !important;
+  font-weight: 600 !important;
 }
 
 .dpp-test-view .rule-box p,
 .dpp-test-view .unit-warning p {
-  margin-top: 2px !important;
+  margin: 2px 0 0 !important;
   color: var(--orion-text-secondary) !important;
   font-size: var(--text-xs) !important;
 }
@@ -500,19 +647,32 @@
   border-bottom: 1px solid var(--orion-border) !important;
   border-radius: 0 !important;
   background: transparent !important;
-  color: var(--orion-danger) !important;
+  color: var(--orion-text) !important;
   box-shadow: none !important;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Responsividade                                                             */
+/* -------------------------------------------------------------------------- */
 
 @media (max-width: 1180px) {
   .dpp-test-view .monthly-metrics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(4) {
+    border-right: 0 !important;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(-n + 4) {
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
 }
 
 @media (max-width: 900px) {
+  .dpp-test-view .monthly-controls,
   .dpp-test-view .test-verdict {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 
   .dpp-test-view .test-verdict-note {
@@ -523,25 +683,64 @@
 }
 
 @media (max-width: 720px) {
-  .dpp-test-view .consolidation-header,
-  .dpp-test-view .bulk-file-picker-head,
-  .dpp-test-view .bulk-file-actions,
-  .dpp-test-view .consolidation-action-panel {
-    align-items: stretch;
-    flex-direction: column;
+  .dpp-test-view {
+    width: 100%;
   }
 
-  .dpp-test-view .consolidation-header > .status {
-    white-space: normal;
+  .dpp-test-view .consolidation-header,
+  .dpp-test-view .bulk-file-picker-head,
+  .dpp-test-view .consolidation-action-panel,
+  .dpp-test-view .monthly-metrics ~ .panel .panel-header {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-2);
+  }
+
+  .dpp-test-view .bulk-file-actions {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .dpp-test-view .bulk-file-actions,
+  .dpp-test-view .bulk-file-button,
+  .dpp-test-view .bulk-file-clear {
+    width: 100%;
+  }
+
+  .dpp-test-view .bulk-package-status {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-1);
+  }
+
+  .dpp-test-view .bulk-package-status span {
+    text-align: left;
   }
 
   .dpp-test-view .monthly-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card,
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(4) {
+    border-right: 1px solid var(--orion-border-soft) !important;
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(even) {
+    border-right: 0 !important;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card:last-child {
+    border-bottom: 0 !important;
   }
 }
 
 @media (max-width: 480px) {
   .dpp-test-view .monthly-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .dpp-test-view .monthly-metrics .metric-card,
+  .dpp-test-view .monthly-metrics .metric-card:nth-child(even) {
+    border-right: 0 !important;
   }
 }
