@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import InfoHint from './InfoHint'
+import ModuleInfoHint from './ModuleInfoHint'
 import { classifyDppBundle, FILE_LABELS } from './dpp-file-bundle'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './bulk-file-picker.css'
@@ -32,6 +33,7 @@ function BulkDppFilePicker({
   processing = false,
   title = 'Adicionar arquivos em massa',
   info = null,
+  infoKey = null,
   footer = null,
 }) {
   const {
@@ -97,10 +99,10 @@ function BulkDppFilePicker({
       <div className="bulk-file-picker-head">
         <div>
           <span className="eyebrow">PACOTE DO MÊS</span>
-          {info ? (
+          {infoKey || info ? (
             <div className="bulk-file-title-with-info">
               <h3>{title}</h3>
-              <InfoHint {...info} />
+              {infoKey ? <ModuleInfoHint moduleKey={infoKey} /> : <InfoHint {...info} />}
             </div>
           ) : (
             <h3>{title}</h3>
