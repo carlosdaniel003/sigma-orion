@@ -16,6 +16,7 @@ from app.services.knowledge_catalog_service import (
 
 
 RUNTIME_SOURCE_PREFIX = "workspace://"
+CHAT_CONTEXT_TTL_HOURS = 24
 
 
 @dataclass(frozen=True, slots=True)
@@ -531,8 +532,15 @@ def load_chat_context(session_id: str) -> dict:
         _ensure_schema(connection)
         _ensure_runtime_schema(connection)
         row = connection.execute(
-            "SELECT context_json FROM rag_chat_audit WHERE session_id = ? ORDER BY id DESC LIMIT 1",
-            (session_id,),
+            """
+            SELECT context_json
+            FROM rag_chat_audit
+            WHERE session_id = ?
+              AND created_at >= datetime('now', ?)
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (session_id, f"-{CHAT_CONTEXT_TTL_HOURS} hours"),
         ).fetchone()
     if row is None:
         return {}
