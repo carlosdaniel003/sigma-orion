@@ -1,7 +1,6 @@
 import { useLayoutEffect, useState } from 'react'
 import AgentOrion from './AgentOrion'
 import WorkspaceNavigation from './WorkspaceNavigation'
-import DashboardInfoLayer from './DashboardInfoLayer'
 import DashboardLoader from './DashboardLoader'
 import DppColumnComparison from './DppColumnComparison'
 import FinalModelPlan from './FinalModelPlan'
@@ -81,7 +80,6 @@ function App() {
           <ScenarioDivergenceController finalDppAnalysis={finalDppAnalysis} />
           <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
           <DppColumnComparison finalDppAnalysis={finalDppAnalysis} apiUrl={API_URL} />
-          <DashboardInfoLayer />
         </section>
 
         {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
