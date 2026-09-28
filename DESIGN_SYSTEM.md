@@ -665,11 +665,11 @@ Permitidos:
 
 Evitar ícone + título + subtítulo + badge + seta simultaneamente.
 
-### Informação contextual do Dashboard
+### Informação contextual do Dashboard e dos Testes do DPP
 
-Cada **bloco analítico ou operacional principal** do Dashboard deve disponibilizar um pequeno `i` de informação junto ao título. O objetivo é explicar a lógica sem poluir permanentemente a tela.
+Cada **módulo analítico ou operacional principal** do Dashboard do DPP e dos Testes do DPP deve disponibilizar um `i` de informação junto ao título. O objetivo é explicar a lógica sem poluir permanentemente a tela.
 
-O tooltip deve responder sempre a três perguntas:
+O tooltip deve responder sempre, e nesta ordem, a três perguntas:
 
 ```text
 O que mostra
@@ -677,17 +677,47 @@ Origem
 Finalidade
 ```
 
-Regras:
+A **Finalidade** deve explicar também a relação do módulo com o restante do sistema: se alimenta outro módulo, se é apenas leitura, se serve para validação/regressão, se entra no workspace do Agente ORION ou se não é atualmente sincronizado com o Agente.
 
-- um `i` por bloco coerente; não colocar um ícone em cada célula, linha ou métrica individual;
-- a origem deve citar a fonte real: Cenário ORION/Python, DPP Final, DPP anterior, PGD, WIU, STK, Explosão etc.;
-- a finalidade deve explicar por que a informação ajuda a análise do DPP;
-- não inventar origem ou cálculo que o backend não sustenta;
-- o ícone deve ser pequeno, neutro e discreto; azul ORION somente em hover/foco;
+#### Fonte única de verdade
+
+As descrições dos módulos ficam em:
+
+```text
+knowledge/modulos-interface.md
+```
+
+Esse arquivo é simultaneamente:
+
+1. fonte do endpoint `GET /api/knowledge/module-info`;
+2. fonte dos componentes `ModuleInfoHint` do frontend;
+3. documento indexado no SQLite/FTS5/BM25;
+4. conhecimento recuperável pelo Agente ORION.
+
+Não manter uma segunda cópia manual do mesmo texto dentro dos componentes React.
+
+As descrições de interface não criam regras determinísticas. Quando citarem cálculo, classificação ou tolerância, devem ser compatíveis com:
+
+```text
+knowledge/motor-deterministico.md
+knowledge/regras-globais.md
+implementação Python vigente
+```
+
+Em caso de conflito, o motor Python e as regras determinísticas prevalecem e `modulos-interface.md` deve ser corrigido.
+
+Regras visuais e de interação:
+
+- um `i` por módulo coerente; não colocar um ícone em cada célula, linha ou métrica individual;
+- a origem deve citar a fonte real: Cenário ORION/Python, DPP Final, DPP anterior, PGD, WIU, STK SAP, Explosão, workspace, resultado de teste etc.;
+- não afirmar que um dado vai para o Agente ORION quando ele não é sincronizado no workspace do RAG;
+- o botão `i` é **quadrado**, com largura e altura iguais e `border-radius: 0`;
+- o botão é neutro; azul ORION somente em hover/foco;
 - tooltip usa superfície elevada, borda e `--shadow-control`, pois existe elevação espacial real;
 - deve funcionar com mouse e teclado (`focus`/`focus-within`), não somente hover;
 - texto do tooltip usa a escala `11–12px` e microcopy do domínio;
-- não usar biblioteca de ícones para representar o `i`; o caractere simples é suficiente.
+- não usar biblioteca de ícones para representar o `i`; o caractere simples é suficiente;
+- o CI deve falhar se um módulo obrigatório ficar sem título, O que mostra, Origem ou Finalidade, ou se a documentação citar um código `REGRA-xxx` inexistente.
 
 ### Marca SIGMA-S ORION
 
