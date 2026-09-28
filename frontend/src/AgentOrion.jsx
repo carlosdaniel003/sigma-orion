@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
+import {
+  AGENT_CONVERSATION_TTL_MS,
+  readAgentConversation,
+  writeAgentConversation,
+} from './agent-conversation-storage'
 import './agent-orion.css'
 
 function formatMonth(value) {
@@ -63,6 +68,30 @@ function createSessionId() {
   return `orion-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function createInitialAgentMessage() {
+  return {
+    id: 'initial',
+    role: 'orion',
+    text: 'Pergunte livremente sobre materiais, modelos, regras, fórmulas, cálculos, fontes, divergências e qualquer conhecimento indexado no ORION. Quando a pergunta envolver dados do mês, respondo a partir do Cenário ORION e do DPP Final sincronizados.',
+    evidence: [],
+    sources: [],
+    entities: [],
+    tool: 'sqlite_sql + fts5_bm25',
+    confidence: 'Banco RAG',
+    auditId: null,
+  }
+}
+
+function createFreshConversation(now = Date.now()) {
+  return {
+    sessionId: createSessionId(),
+    createdAt: now,
+    expiresAt: now + AGENT_CONVERSATION_TTL_MS,
+    updatedAt: now,
+    messages: [createInitialAgentMessage()],
+  }
+}
+
 function responseType(payload) {
   if (payload.model === 'deterministic-router') return 'Conversacional'
   if (payload.model === 'deterministic-status-registry' || payload.model === 'deterministic-rule-registry') return 'Determinística'
@@ -121,25 +150,17 @@ function AgentOrion({ apiUrl }) {
   const [question, setQuestion] = useState('')
   const [evidenceOpen, setEvidenceOpen] = useState(false)
   const [asking, setAsking] = useState(false)
+  const [conversationReady, setConversationReady] = useState(false)
+  const [conversationCreatedAt, setConversationCreatedAt] = useState(0)
+  const [conversationExpiresAt, setConversationExpiresAt] = useState(0)
   const [databaseStatus, setDatabaseStatus] = useState({ state: 'checking', runtimeDocuments: 0, runtimeEntities: 0, database: 'orion.db' })
-  const [messages, setMessages] = useState(() => [
-    {
-      id: 'initial',
-      role: 'orion',
-      text: 'Pergunte livremente sobre materiais, modelos, regras, fórmulas, cálculos, fontes, divergências e qualquer conhecimento indexado no ORION. Quando a pergunta envolver dados do mês, respondo a partir do Cenário ORION e do DPP Final sincronizados.',
-      evidence: [],
-      sources: [],
-      entities: [],
-      tool: 'sqlite_sql + fts5_bm25',
-      confidence: 'Banco RAG',
-      auditId: null,
-    },
-  ])
+  const [messages, setMessages] = useState(() => [createInitialAgentMessage()])
 
   const messageListRef = useRef(null)
   const latestMessageRef = useRef(null)
   const syncedVersionRef = useRef('')
-  const sessionIdRef = useRef(createSessionId())
+  const sessionIdRef = useRef('')
+  const conversationUpdatedAtRef = useRef(0)
 
   const month = dppState?.currentMonth
     || referenceMonth
@@ -179,6 +200,27 @@ function AgentOrion({ apiUrl }) {
   const materials = scenarioForDatabase?.materials?.length || 0
   const models = scenarioForDatabase?.models?.length || 0
 
+  function activateConversation(conversation) {
+    const safeMessages = Array.isArray(conversation?.messages) && conversation.messages.length
+      ? conversation.messages
+      : [createInitialAgentMessage()]
+    sessionIdRef.current = conversation.sessionId
+    conversationUpdatedAtRef.current = Number(conversation.updatedAt) || Number(conversation.createdAt) || Date.now()
+    setConversationCreatedAt(Number(conversation.createdAt) || Date.now())
+    setConversationExpiresAt(Number(conversation.expiresAt) || (Date.now() + AGENT_CONVERSATION_TTL_MS))
+    setMessages(safeMessages)
+    return { ...conversation, messages: safeMessages }
+  }
+
+  function resetExpiredConversation() {
+    const fresh = createFreshConversation()
+    activateConversation(fresh)
+    writeAgentConversation(fresh).catch((error) => {
+      console.warn('Não foi possível persistir a nova conversa do Agente ORION:', error)
+    })
+    return fresh
+  }
+
   async function synchronizeWorkspace(payload = workspacePayload, version = workspaceVersion, signal = undefined) {
     setDatabaseStatus((current) => ({ ...current, state: 'syncing' }))
     const response = await fetch(`${apiUrl}/api/knowledge/workspace/sync`, {
@@ -204,6 +246,65 @@ function AgentOrion({ apiUrl }) {
     })
     return result
   }
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function restoreConversation() {
+      try {
+        const stored = await readAgentConversation()
+        if (cancelled) return
+        const active = stored || createFreshConversation()
+        activateConversation(active)
+        if (!stored) {
+          await writeAgentConversation(active)
+        }
+        if (navigator.storage?.persist) {
+          navigator.storage.persist().catch(() => {})
+        }
+      } catch (error) {
+        if (cancelled) return
+        const fresh = createFreshConversation()
+        activateConversation(fresh)
+        console.warn('Não foi possível restaurar a conversa do Agente ORION:', error)
+      } finally {
+        if (!cancelled) setConversationReady(true)
+      }
+    }
+
+    restoreConversation()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!conversationReady || !conversationCreatedAt || !conversationExpiresAt || !sessionIdRef.current) return
+    const updatedAt = Date.now()
+    conversationUpdatedAtRef.current = updatedAt
+    writeAgentConversation({
+      sessionId: sessionIdRef.current,
+      createdAt: conversationCreatedAt,
+      expiresAt: conversationExpiresAt,
+      updatedAt,
+      messages,
+    }).catch((error) => {
+      console.warn('Não foi possível persistir a conversa do Agente ORION:', error)
+    })
+  }, [messages, conversationReady, conversationCreatedAt, conversationExpiresAt])
+
+  useEffect(() => {
+    if (!conversationReady || !conversationExpiresAt) return undefined
+    const remaining = conversationExpiresAt - Date.now()
+    if (remaining <= 0) {
+      resetExpiredConversation()
+      return undefined
+    }
+    const timer = window.setTimeout(() => {
+      resetExpiredConversation()
+    }, remaining)
+    return () => window.clearTimeout(timer)
+  }, [conversationReady, conversationExpiresAt])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -260,9 +361,18 @@ function AgentOrion({ apiUrl }) {
 
   async function submitQuestion(value = question) {
     const trimmed = String(value || '').trim()
-    if (!trimmed || asking) return
+    if (!trimmed || asking || !conversationReady) return
 
-    setMessages((current) => [...current, { id: `user-${Date.now()}`, role: 'user', text: trimmed }])
+    const now = Date.now()
+    const freshConversation = !conversationExpiresAt || now >= conversationExpiresAt
+      ? resetExpiredConversation()
+      : null
+    const userMessage = { id: `user-${now}`, role: 'user', text: trimmed }
+    if (freshConversation) {
+      setMessages([...freshConversation.messages, userMessage])
+    } else {
+      setMessages((current) => [...current, userMessage])
+    }
     setQuestion('')
     setAsking(true)
 
@@ -388,10 +498,10 @@ function AgentOrion({ apiUrl }) {
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Pergunte sobre materiais, modelos ou divergências..."
-                disabled={asking}
+                placeholder={conversationReady ? 'Pergunte sobre materiais, modelos ou divergências...' : 'Restaurando conversa...'}
+                disabled={asking || !conversationReady}
               />
-              <button type="submit" disabled={!question.trim() || asking}>{asking ? 'Consultando' : 'Enviar'}</button>
+              <button type="submit" disabled={!question.trim() || asking || !conversationReady}>{asking ? 'Consultando' : 'Enviar'}</button>
             </div>
             <small>Enter envia · Shift + Enter cria uma nova linha</small>
           </form>
@@ -450,7 +560,7 @@ function AgentOrion({ apiUrl }) {
               </div>
               <div>
                 <dt>Execução</dt>
-                <dd>Frontend passivo · backend DB-first · contexto persistido no SQLite</dd>
+                <dd>Frontend passivo · backend DB-first · contexto persistido por 24 horas</dd>
               </div>
             </dl>
           </section>
