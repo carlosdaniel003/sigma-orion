@@ -274,3 +274,78 @@ def test_model_real_impact_uses_material_matrix_and_rag_rules(monkeypatch) -> No
     assert row["saldo_effect"] == "4.534"
     assert row["amount_effect"] == "45.340"
     assert row["observed_stk_delta"] == "0"
+
+
+def test_compound_saldo_question_resolves_spaced_model_alias(monkeypatch) -> None:
+    records = [
+        {
+            "entity_type": "model",
+            "entity_key": "CM-200-N",
+            "scope": "scenario",
+            "source": "workspace://scenario/test/model/CM-200-N",
+            "payload": {"name": "CM-200-N", "kit_pgd": 1200, "real": 1200, "difference_real_vs_kit": 0},
+        },
+        {
+            "entity_type": "model",
+            "entity_key": "CM-200-N",
+            "scope": "final",
+            "source": "workspace://final/test/model/CM-200-N",
+            "payload": {"name": "CM-200-N", "pgd": 1200, "real": 1000, "delta": -200},
+        },
+        {
+            "entity_type": "material",
+            "entity_key": "MAT-001",
+            "scope": "scenario",
+            "source": "workspace://scenario/test/material/MAT-001",
+            "payload": {
+                "material": "MAT-001",
+                "description": "Material afetado pelo modelo",
+                "um": "UN",
+                "consumption_by_model": {"CM-200-N": 2},
+                "nec": 2400,
+                "stock_total": 3000,
+                "balance": 600,
+                "price": 5,
+            },
+        },
+        {
+            "entity_type": "material",
+            "entity_key": "MAT-001",
+            "scope": "final",
+            "source": "workspace://final/test/material/MAT-001",
+            "payload": {
+                "material": "MAT-001",
+                "description": "Material afetado pelo modelo",
+                "um": "UN",
+                "nec": 2000,
+                "stock_total": 3000,
+                "balance": 1000,
+            },
+        },
+    ]
+
+    def fake_load_runtime_entities(*, entity_type=None, entity_key=None, scope=None):
+        selected = records
+        if entity_type:
+            selected = [item for item in selected if item["entity_type"] == entity_type]
+        if entity_key:
+            selected = [item for item in selected if item["entity_key"].lower() == entity_key.lower()]
+        if scope:
+            selected = [item for item in selected if item["scope"] == scope]
+        return selected
+
+    monkeypatch.setattr(structured, "load_runtime_entities", fake_load_runtime_entities)
+
+    question = "Como SALDO é calculado? Por que o SALDO do CM 200 N está dando divergência?"
+    plan = plan_database_question(question)
+    knowledge, route = structured.structured_knowledge_answer(plan, {})
+
+    assert route == "model-comparison"
+    assert knowledge is not None
+    assert knowledge.entities == ["CM-200-N"]
+    assert knowledge.context["topic"] == "model_real_impact"
+    assert "REGRA-003" in knowledge.answer
+    assert "STK TTL" in knowledge.answer
+    assert "SALDO" in knowledge.answer
+    assert "CM-200-N" in knowledge.answer
+    assert "identificar de forma única" not in knowledge.answer
