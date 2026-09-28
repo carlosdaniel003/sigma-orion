@@ -20,6 +20,8 @@ _SEARCH_STOP_WORDS = {
     "a", "as", "o", "os", "e", "de", "da", "das", "do", "dos", "em", "no", "na",
     "nos", "nas", "um", "uma", "para", "por", "com", "que", "se", "ao", "aos",
     "qual", "quais", "como", "quando", "onde", "porque",
+    "me", "mim", "voce", "vc", "fale", "fala", "conte", "diga", "sobre",
+    "item", "itens", "material", "materiais",
 }
 
 
