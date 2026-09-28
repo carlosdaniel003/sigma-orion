@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import ModuleInfoHint from './ModuleInfoHint'
 import './dashboard.css'
 import './dashboard-state.css'
 import './dashboard-comparison-metrics.css'
@@ -155,7 +156,10 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
       <header className="page-header dashboard-header">
         <div>
           <span className="eyebrow">VISÃO OPERACIONAL</span>
-          <h2>Visão Geral do cenário inicial gerado pelo ORION</h2>
+          <div className="module-heading-with-info">
+            <h2>Visão Geral do cenário inicial gerado pelo ORION</h2>
+            <ModuleInfoHint moduleKey="dashboard.overview" />
+          </div>
           <p>
             Esta visão mostra o DPP criado pelo motor Python antes dos ajustes, investigações e decisões manuais do analista.
             {scenario && <> Cenário analisado: <strong>{formatMonth(scenario.reference_month)}</strong>.</>}
@@ -343,7 +347,10 @@ function ScenarioComparison({ data, finalDppAnalysis }) {
     <section className="panel dashboard-scenario-comparison">
       <div className="panel-header">
         <div>
-          <h3>ORION × DPP Final</h3>
+          <div className="module-heading-with-info">
+            <h3>ORION × DPP Final</h3>
+            <ModuleInfoHint moduleKey="dashboard.scenario_comparison" />
+          </div>
           <p>Compara os principais indicadores do cenário gerado pelo ORION com o consolidado real e aponta onde os resultados divergem.</p>
         </div>
         <span className={`status ${hasFinal && divergentRows === 0 ? 'comparison-ok' : hasFinal ? 'comparison-warning' : ''}`}>
@@ -404,7 +411,10 @@ function EvolutionPanel({ initial, finalState }) {
     <section className="panel dpp-evolution-panel">
       <div className="panel-header">
         <div>
-          <h3>Evolução do DPP</h3>
+          <div className="module-heading-with-info">
+            <h3>Evolução do DPP</h3>
+            <ModuleInfoHint moduleKey="dashboard.evolution" />
+          </div>
           <p>Compara resultados de alto nível entre o cenário calculado pelo ORION e o DPP Final consolidado, mantendo a origem de cada valor explícita.</p>
         </div>
         <span className="status">{finalState ? 'ORION × DPP FINAL' : 'Aguardando DPP Final'}</span>
@@ -450,29 +460,32 @@ function AiBridge({ initial, finalState }) {
     <section className="panel dpp-ai-bridge">
       <div className="panel-header">
         <div>
-          <h3>Onde entra o Agente ORION</h3>
-          <p>O intervalo entre o cenário inicial e o DPP final representa o trabalho de investigação e decisão que a próxima camada de IA deve apoiar.</p>
+          <div className="module-heading-with-info">
+            <h3>Como o Agente ORION complementa a análise</h3>
+            <ModuleInfoHint moduleKey="dashboard.agent_bridge" />
+          </div>
+          <p>O ORION separa cálculo, recuperação de conhecimento, interpretação e decisão para manter rastreabilidade.</p>
         </div>
-        <span className="status">Próxima camada</span>
+        <span className="status">Fluxo atual</span>
       </div>
 
       <div className="ai-flow-grid">
         <div className="ai-flow-stage current">
-          <span>HOJE</span>
-          <strong>Python gera o cenário inicial</strong>
-          <p>{formatNumber(initial.critical)} materiais críticos entram para investigação.</p>
+          <span>1</span>
+          <strong>Python calcula</strong>
+          <p>Gera o cenário e os fatos determinísticos usados na análise.</p>
         </div>
         <div className="ai-flow-arrow">→</div>
         <div className="ai-flow-stage human">
-          <span>HOJE</span>
-          <strong>Humano investiga e decide</strong>
-          <p>Ajusta REAL, localiza OPC, consulta evidências e consolida o DPP.</p>
+          <span>2</span>
+          <strong>SQLite/RAG + Agente ORION interpretam</strong>
+          <p>Recuperam regras, cenário e DPP Final sincronizados e apresentam evidências.</p>
         </div>
         <div className="ai-flow-arrow">→</div>
         <div className="ai-flow-stage future">
-          <span>FUTURO</span>
-          <strong>Agente ORION apoia a investigação</strong>
-          <p>Sugere prioridade, causa, OPC, OPEN e possíveis ajustes; o humano continua validando.</p>
+          <span>3</span>
+          <strong>Humano valida e decide</strong>
+          <p>Confirma a análise e mantém o controle sobre ajustes e decisões do processo.</p>
         </div>
       </div>
 
@@ -522,7 +535,13 @@ function PlanningPanel({ data }) {
   return (
     <section className="panel dashboard-planning-panel">
       <div className="panel-header">
-        <div><h3>PGD × REAL</h3><p>Compare a referência do PGD com o volume definido no REAL do cenário inicial.</p></div>
+        <div>
+          <div className="module-heading-with-info">
+            <h3>PGD × REAL</h3>
+            <ModuleInfoHint moduleKey="dashboard.planning" />
+          </div>
+          <p>Compare a referência do PGD com o volume definido no REAL do cenário inicial.</p>
+        </div>
         <span className="status">{formatPercent(data.realVsPgd)}</span>
       </div>
       <div className="planning-bars">
@@ -551,7 +570,15 @@ function QualityPanel({ data }) {
   const sourceOk = data.requiredSources.length > 0 && data.loadedRequiredSources === data.requiredSources.length
   return (
     <section className="panel dashboard-quality-panel">
-      <div className="panel-header"><div><h3>Qualidade dos dados</h3><p>Condições básicas para confiar no cenário inicial exibido.</p></div></div>
+      <div className="panel-header">
+        <div>
+          <div className="module-heading-with-info">
+            <h3>Qualidade dos dados</h3>
+            <ModuleInfoHint moduleKey="dashboard.quality" />
+          </div>
+          <p>Condições básicas para confiar no cenário inicial exibido.</p>
+        </div>
+      </div>
       <div className="quality-list">
         <QualityRow label="Fontes obrigatórias" value={`${data.loadedRequiredSources}/${data.requiredSources.length}`} ok={sourceOk} />
         <QualityRow label="Mapeamentos PGD pendentes" value={formatNumber(data.pgdPending)} ok={data.pgdPending === 0} />
@@ -569,7 +596,15 @@ function QualityRow({ label, value, ok }) {
 function DecisionGuide() {
   return (
     <section className="panel dashboard-guide-panel">
-      <div className="panel-header"><div><h3>Como ler o cenário inicial</h3><p>Três perguntas orientam a análise operacional.</p></div></div>
+      <div className="panel-header">
+        <div>
+          <div className="module-heading-with-info">
+            <h3>Como ler o cenário inicial</h3>
+            <ModuleInfoHint moduleKey="dashboard.guide" />
+          </div>
+          <p>Três perguntas orientam a análise operacional.</p>
+        </div>
+      </div>
       <div className="decision-guide">
         <div><span>01</span><strong>Quanto precisamos produzir?</strong><p>PGD define a referência do mês.</p></div>
         <div><span>02</span><strong>Quanto o cenário inicial planeja?</strong><p>REAL começa pela referência disponível no PGD.</p></div>
