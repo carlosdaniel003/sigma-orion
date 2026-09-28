@@ -1,6 +1,6 @@
 # Base de conhecimento
 
-Esta pasta concentra o conhecimento controlado que futuramente será recuperado pelo RAG.
+Esta pasta concentra o conhecimento controlado recuperado pelo SQLite/FTS5/BM25 e usado pelo Agente ORION.
 
 Não colocar regras de negócio presumidas. Tudo deve ser extraído do processo real e validado por um especialista.
 
