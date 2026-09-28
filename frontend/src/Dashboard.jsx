@@ -478,8 +478,8 @@ function AiBridge({ initial, finalState }) {
         <div className="ai-flow-arrow">→</div>
         <div className="ai-flow-stage human">
           <span>2</span>
-          <strong>SQLite/RAG + Agente ORION interpretam</strong>
-          <p>Recuperam regras, cenário e DPP Final sincronizados e apresentam evidências.</p>
+          <strong>SQLite/RAG recupera; Agente ORION interpreta</strong>
+          <p>O banco recupera regras e fatos sincronizados; o Agente organiza a resposta e apresenta evidências.</p>
         </div>
         <div className="ai-flow-arrow">→</div>
         <div className="ai-flow-stage future">
