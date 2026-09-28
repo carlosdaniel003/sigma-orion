@@ -740,14 +740,32 @@ SIGMA-S  ★RION
 
 ## 16. Movimento
 
-Animação deve comunicar estado ou progresso.
+Animação deve comunicar estado, progresso ou mudança espacial real da interface.
 
 Permitido:
 
 - constelação do ORION vinculada ao progresso real do backend;
 - transição curta de tema;
 - feedback de hover/focus;
-- entrada/saída funcional de overlay.
+- entrada/saída funcional de overlay;
+- expansão/recolhimento da navegação lateral.
+
+### Movimento da navegação lateral
+
+A barra lateral pode usar uma transição curta e sóbria ao abrir/recolher para preservar continuidade espacial.
+
+Padrão atual:
+
+- duração aproximada de `180ms`;
+- easing sem bounce/spring;
+- largura da sidebar e deslocamento estrutural do conteúdo mudam juntos;
+- textos podem usar apenas `opacity` e pequena translação;
+- sem blur, glow, escala, parallax ou animação contínua;
+- não adicionar JavaScript por frame para animar a navegação;
+- respeitar `prefers-reduced-motion: reduce`, removendo a transição;
+- a animação deve ocorrer apenas em resposta direta à ação do usuário.
+
+O objetivo é fluidez funcional, não ornamentação.
 
 ### Regra de progresso
 
