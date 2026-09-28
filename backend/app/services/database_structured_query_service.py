@@ -5,6 +5,7 @@ import math
 import re
 import unicodedata
 
+from app.core.config import KNOWLEDGE_DIR
 from app.services.database_answer_service import DatabaseKnowledgeAnswer
 from app.services.database_query_planner_service import QueryPlan
 from app.services.dpp_projection_service import calculate_nec
@@ -16,14 +17,13 @@ from app.services.rag_runtime_service import load_runtime_entities
 NUMERIC_TOLERANCE = 1e-4
 MODEL_IMPACT_RULES = ("REGRA-001", "REGRA-002", "REGRA-003", "REGRA-006")
 
-CALCULATION_RULES = {
-    "nec": ("REGRA-001",),
-    "stk ttl": ("REGRA-002",),
-    "saldo": ("REGRA-003",),
-    "opc": ("REGRA-005",),
-    "stk op": ("REGRA-005", "REGRA-002"),
-    "amount": ("REGRA-006",),
-    "check": ("REGRA-007",),
+MOTOR_CALCULATION_SECTIONS = {
+    "nec": "NEC — fórmula e origem",
+    "stk ttl": "STK TTL — fórmula e componentes",
+    "saldo": "SALDO — fórmula",
+    "amount": "Amount — fórmula",
+    "check": "CHECK — como é comparado",
+    "opc": "OPC — semântica de comparação",
 }
 
 
@@ -124,60 +124,70 @@ def rule_knowledge_answer(plan: QueryPlan) -> DatabaseKnowledgeAnswer | None:
     )
 
 
+def _motor_section(title: str) -> str:
+    path = KNOWLEDGE_DIR / "motor-deterministico.md"
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8")
+    pattern = re.compile(
+        rf"^##\s+{re.escape(title)}\s*$\n(.*?)(?=^##\s+|\Z)",
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(text)
+    if not match:
+        return ""
+    body = match.group(1).strip()
+    return f"{title}\n\n{body}".strip()
+
+
 def calculation_knowledge_answer(plan: QueryPlan) -> DatabaseKnowledgeAnswer | None:
     if not plan.calculation_requested and plan.intent != "formula":
         return None
 
-    normalized_question = _normalize(plan.original_question)
-    normalized_concepts = {_normalize(item) for item in plan.concept_entities}
-    codes: list[str] = []
-
-    def add(code: str) -> None:
-        if code not in codes:
-            codes.append(code)
-
-    if "critic" in normalized_question:
-        for code in ("REGRA-001", "REGRA-002", "REGRA-003", "REGRA-004"):
-            add(code)
-
-    for concept in normalized_concepts:
-        for code in CALCULATION_RULES.get(concept, ()):
-            add(code)
-
-    if not codes:
+    # Criticidade é uma cadeia de regras e é tratada pela rota específica de
+    # materiais críticos, que também conhece o estado atual do workspace.
+    if "critic" in _normalize(plan.original_question):
         return None
 
-    if codes == ["REGRA-003"]:
-        codes = ["REGRA-001", "REGRA-002", "REGRA-003"]
-        answer = (
-            "O SALDO é calculado deterministicamente pela REGRA-003: "
-            "SALDO = STK TTL - NEC. O STK TTL é calculado pela REGRA-002 e a NEC pela REGRA-001."
-        )
-    elif "REGRA-004" in codes:
-        answer = (
-            "A criticidade é derivada dos cálculos determinísticos do ORION: "
-            "REGRA-001 calcula NEC; REGRA-002 calcula STK TTL; REGRA-003 calcula SALDO; "
-            "e a REGRA-004 classifica como material crítico somente quando UM = UN e SALDO < -0,0001."
-        )
-    else:
-        answer = "\n\n".join(rule_evidence_text(code) for code in codes if rule_evidence_text(code))
+    normalized_concepts = [_normalize(item) for item in plan.concept_entities]
+    sections: list[tuple[str, str]] = []
+    for concept in normalized_concepts:
+        title = MOTOR_CALCULATION_SECTIONS.get(concept)
+        if not title:
+            continue
+        content = _motor_section(title)
+        if content and all(existing_title != title for existing_title, _ in sections):
+            sections.append((title, content))
 
-    evidences = [rule_evidence_text(code) for code in codes if rule_evidence_text(code)]
+    # STK OP é explicado conjuntamente por OPC e STK TTL.
+    if "stk op" in normalized_concepts:
+        for title in (
+            MOTOR_CALCULATION_SECTIONS["opc"],
+            MOTOR_CALCULATION_SECTIONS["stk ttl"],
+        ):
+            content = _motor_section(title)
+            if content and all(existing_title != title for existing_title, _ in sections):
+                sections.append((title, content))
+
+    if not sections:
+        return None
+
+    answer = "\n\n".join(content for _, content in sections)
     chunks = [
         KnowledgeChunk(
-            source="regras-globais.md",
-            content=evidence,
+            source="motor-deterministico.md",
+            content=content,
             score=1000.0,
-            heading=evidence.splitlines()[0],
+            heading=title,
             category="deterministic",
         )
-        for evidence in evidences
+        for title, content in sections
     ]
     return DatabaseKnowledgeAnswer(
         answer=answer,
-        sources=["regras-globais.md"],
+        sources=["motor-deterministico.md"],
         chunks=chunks,
-        entities=codes,
+        entities=list(dict.fromkeys(plan.concept_entities)),
         resolved_question=plan.resolved_question,
         context={
             "subject_type": "calculation",
@@ -187,7 +197,6 @@ def calculation_knowledge_answer(plan: QueryPlan) -> DatabaseKnowledgeAnswer | N
             "structured_evidence_complete": True,
         },
     )
-
 
 def _parse_pt_number(token: str) -> float | None:
     text = str(token or "").strip().replace(" ", "")
