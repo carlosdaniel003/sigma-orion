@@ -6,15 +6,27 @@ import math
 import re
 import unicodedata
 
+from app.services.dpp_rule_registry import rule_evidence_text
 from app.services.knowledge_catalog_service import bm25_retrieve
 from app.services.knowledge_service import KnowledgeChunk
 from app.services.rag_runtime_service import load_runtime_entities
 
 
-FORMULA_WORDS = {"formula", "fórmula", "calcula", "calcular", "calculo", "cálculo", "equacao", "equação"}
+FORMULA_WORDS = {
+    "formula", "fórmula", "calcula", "calcular", "calculo", "cálculo", "calculou",
+    "calculado", "calculada", "calculados", "calculadas", "equacao", "equação", "criterio", "critério",
+}
 DEFINITION_WORDS = {"significa", "significado", "definicao", "definição", "definir"}
 CANONICAL_FORMULA_SOURCES = ("motor-deterministico.md", "regras-globais.md")
 DEICTIC_WORDS = {"esse", "essa", "este", "esta", "isso", "deste", "desta", "nesse", "nessa", "neste", "nesta"}
+
+MATERIAL_COLLECTION_NOUNS = {"item", "itens", "material", "materiais", "componente", "componentes"}
+MATERIAL_SEARCH_STOP_WORDS = {
+    "me", "mim", "voce", "vc", "fale", "fala", "conte", "diga", "sobre",
+    "item", "itens", "material", "materiais", "componente", "componentes",
+    "do", "da", "dos", "das", "de", "o", "a", "os", "as", "um", "uma",
+    "quais", "qual", "tem", "existem", "existe", "mostre", "mostrar", "lista", "listar",
+}
 
 MATERIAL_FIELD_ALIASES = {
     "balance": {"saldo", "balance"},
@@ -277,15 +289,69 @@ def _single_material_answer(question: str, material_key: str) -> DatabaseKnowled
     )
 
 
+def _critical_rule_chunks() -> list[KnowledgeChunk]:
+    chunks: list[KnowledgeChunk] = []
+    for code in ("REGRA-001", "REGRA-002", "REGRA-003", "REGRA-004"):
+        evidence = rule_evidence_text(code)
+        if not evidence:
+            continue
+        chunks.append(
+            KnowledgeChunk(
+                source="regras-globais.md",
+                content=evidence,
+                score=1000.0,
+                heading=evidence.splitlines()[0],
+                category="deterministic",
+            )
+        )
+    return chunks
+
+
 def _critical_materials_answer(question: str) -> DatabaseKnowledgeAnswer | None:
     normalized = _normalize(question)
-    if "materia" not in normalized or not ("critic" in normalized or "investigar" in normalized):
+    words = _words(question)
+    has_collection_noun = bool(words & MATERIAL_COLLECTION_NOUNS)
+    if not has_collection_noun or not ("critic" in normalized or "investigar" in normalized):
         return None
+
     records = [
         record
         for record in load_runtime_entities(entity_type="material", scope="scenario")
         if _material_is_critical(record["payload"], "scenario")
     ]
+    records.sort(key=lambda record: (float(record["payload"].get("balance") or 0), record["entity_key"]))
+
+    wants_rule = _is_formula(question) or any(
+        marker in normalized
+        for marker in ("como chegou", "como definiu", "como identific", "qual criterio", "qual regra")
+    )
+    if wants_rule:
+        answer = (
+            "O ORION não escolhe os itens críticos por IA. O motor Python calcula primeiro a NEC pela REGRA-001 "
+            "(NEC = Σ(REAL do modelo × consumo do material no modelo)), calcula o STK TTL pela REGRA-002 "
+            "(STK TTL = STK SAP efetivo + EXPLOSÃO + STK OP), calcula o SALDO pela REGRA-003 "
+            "(SALDO = STK TTL - NEC) e então aplica a REGRA-004. "
+            "Um material é crítico somente quando UM = UN e SALDO < -0,0001. "
+            f"No Cenário ORION atualmente sincronizado, {len(records)} material(is) atendem a essa condição."
+        )
+        chunks = _critical_rule_chunks()
+        if records:
+            chunks.append(_runtime_chunk(records[0], "Material crítico · amostra do cenário atual"))
+        return DatabaseKnowledgeAnswer(
+            answer=answer,
+            sources=["regras-globais.md", "sqlite://rag_runtime_entities/material/scenario"],
+            chunks=chunks,
+            entities=["REGRA-001", "REGRA-002", "REGRA-003", "REGRA-004"],
+            resolved_question=question,
+            context={
+                "subject_type": "collection",
+                "subject_key": "materiais críticos",
+                "topic": "critical_rule",
+                "structured_evidence_complete": True,
+                "skip_llm": True,
+            },
+        )
+
     if not records:
         return DatabaseKnowledgeAnswer(
             answer="O banco sincronizado não possui materiais críticos no Cenário ORION atual.",
@@ -293,7 +359,7 @@ def _critical_materials_answer(question: str) -> DatabaseKnowledgeAnswer | None:
             resolved_question=question,
             context={"subject_type": "collection", "subject_key": "materiais críticos", "topic": "critical"},
         )
-    records.sort(key=lambda record: (float(record["payload"].get("balance") or 0), record["entity_key"]))
+
     rows = [
         {
             "material": record["entity_key"],
@@ -305,11 +371,12 @@ def _critical_materials_answer(question: str) -> DatabaseKnowledgeAnswer | None:
     ]
     return DatabaseKnowledgeAnswer(
         answer=(
-            f"O Cenário ORION atual possui {len(records)} materiais críticos no banco sincronizado. "
+            f"O Cenário ORION atual possui {len(records)} materiais críticos. "
+            "Eles são materiais com UM = UN e SALDO abaixo de -0,0001 conforme a REGRA-004. "
             "A lista completa está na tabela abaixo."
         ),
-        sources=["sqlite://rag_runtime_entities/material/scenario"],
-        chunks=[_runtime_chunk(records[0], "Materiais críticos · consulta estruturada")],
+        sources=["sqlite://rag_runtime_entities/material/scenario", "regras-globais.md"],
+        chunks=[_runtime_chunk(records[0], "Materiais críticos · consulta estruturada"), *_critical_rule_chunks()[-1:]],
         entities=[record["entity_key"] for record in records],
         table={
             "title": "Materiais críticos · Cenário ORION",
@@ -323,7 +390,141 @@ def _critical_materials_answer(question: str) -> DatabaseKnowledgeAnswer | None:
             "rows": rows,
         },
         resolved_question=question,
-        context={"subject_type": "collection", "subject_key": "materiais críticos", "topic": "critical"},
+        context={
+            "subject_type": "collection",
+            "subject_key": "materiais críticos",
+            "topic": "critical",
+            "structured_evidence_complete": True,
+        },
+    )
+
+
+def _material_collection_terms(question: str) -> list[str]:
+    words = [
+        word
+        for word in _normalize(question).split()
+        if len(word) > 2 and word not in MATERIAL_SEARCH_STOP_WORDS
+    ]
+    return list(dict.fromkeys(words))
+
+
+def _material_collection_answer(question: str) -> DatabaseKnowledgeAnswer | None:
+    words = _words(question)
+    if not (words & MATERIAL_COLLECTION_NOUNS):
+        return None
+
+    terms = _material_collection_terms(question)
+    if not terms:
+        return None
+
+    scenario_records = load_runtime_entities(entity_type="material", scope="scenario")
+    final_records = load_runtime_entities(entity_type="material", scope="final")
+    final_by_key = {str(record.get("entity_key") or ""): record for record in final_records}
+
+    def searchable(record: dict) -> str:
+        payload = record.get("payload") or {}
+        values = [
+            record.get("entity_key"),
+            payload.get("material"),
+            payload.get("material_key"),
+            payload.get("description"),
+            payload.get("um"),
+            payload.get("group_origin"),
+            payload.get("check"),
+            payload.get("wiu"),
+            payload.get("opc"),
+            payload.get("optional_material"),
+            payload.get("status"),
+        ]
+        return _normalize(" ".join(str(value or "") for value in values))
+
+    scenario_matches = [
+        record
+        for record in scenario_records
+        if all(term in searchable(record) for term in terms)
+    ]
+
+    rows: list[dict] = []
+    chunks: list[KnowledgeChunk] = []
+    sources: list[str] = []
+    seen: set[str] = set()
+
+    for record in scenario_matches:
+        key = str(record.get("entity_key") or "")
+        payload = record.get("payload") or {}
+        final_record = final_by_key.get(key)
+        final_payload = (final_record or {}).get("payload") or {}
+        rows.append({
+            "material": key,
+            "description": payload.get("description") or final_payload.get("description") or "—",
+            "um": payload.get("um") or final_payload.get("um") or "—",
+            "status": payload.get("status") or ("INVESTIGAR" if payload.get("critical") else "—"),
+            "balance": _format_number(payload.get("balance")),
+        })
+        seen.add(key)
+        if len(chunks) < 5:
+            chunks.append(_runtime_chunk(record, f"Material {key} · resultado da busca"))
+        if record.get("source") and record["source"] not in sources:
+            sources.append(record["source"])
+
+    if not rows:
+        for record in final_records:
+            if not all(term in searchable(record) for term in terms):
+                continue
+            key = str(record.get("entity_key") or "")
+            if key in seen:
+                continue
+            payload = record.get("payload") or {}
+            rows.append({
+                "material": key,
+                "description": payload.get("description") or "—",
+                "um": payload.get("um") or "—",
+                "status": "Crítico" if payload.get("critical") else "—",
+                "balance": _format_number(payload.get("balance")),
+            })
+            if len(chunks) < 5:
+                chunks.append(_runtime_chunk(record, f"Material {key} · resultado da busca"))
+            if record.get("source") and record["source"] not in sources:
+                sources.append(record["source"])
+
+    label = " ".join(terms)
+    if not rows:
+        return DatabaseKnowledgeAnswer(
+            answer=f"Não encontrei materiais no workspace sincronizado compatíveis com a busca por “{label}”.",
+            sources=[],
+            chunks=[],
+            resolved_question=question,
+            context={"subject_type": "collection", "subject_key": label, "topic": "material_search"},
+        )
+
+    rows.sort(key=lambda row: (str(row["description"]), str(row["material"])))
+    return DatabaseKnowledgeAnswer(
+        answer=(
+            f"Encontrei {len(rows)} material(is) no workspace sincronizado compatíveis com a busca por “{label}”. "
+            "Os resultados vêm diretamente dos materiais calculados/sincronizados pelo ORION."
+        ),
+        sources=sources[:10],
+        chunks=chunks,
+        entities=[row["material"] for row in rows],
+        table={
+            "title": f"Materiais encontrados · {label}",
+            "total_rows": len(rows),
+            "columns": [
+                {"key": "material", "label": "Material", "kind": "code"},
+                {"key": "description", "label": "Descrição", "kind": "description"},
+                {"key": "um", "label": "UM"},
+                {"key": "status", "label": "Status"},
+                {"key": "balance", "label": "SALDO ORION", "align": "right"},
+            ],
+            "rows": rows,
+        },
+        resolved_question=question,
+        context={
+            "subject_type": "collection",
+            "subject_key": label,
+            "topic": "material_search",
+            "structured_evidence_complete": True,
+        },
     )
 
 
@@ -727,6 +928,10 @@ def answer_database_knowledge(question: str, context: dict | None = None) -> Dat
     critical = _critical_materials_answer(resolved)
     if critical is not None:
         return critical
+
+    material_collection = _material_collection_answer(resolved)
+    if material_collection is not None:
+        return material_collection
 
     model_key = _find_model_key(question, context)
     if model_key:
