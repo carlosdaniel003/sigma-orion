@@ -1,6 +1,6 @@
 # SIGMA-S ORION — Estado atual do projeto
 
-Atualizado em: **2026-08-27**
+Atualizado em: **2026-09-28**
 
 Este arquivo registra o estado funcional atual do projeto. Deve ser atualizado quando houver mudança relevante de arquitetura, fluxo do DPP, frontend ou capacidade operacional.
 
@@ -363,7 +363,7 @@ Resumo; a especificação completa está em `DESIGN_SYSTEM.md`:
 
 - densidade média-alta;
 - menos cards;
-- radius 3–8 px como padrão;
+- cantos retos nos controles e painéis;
 - sem glassmorphism;
 - sem gradiente decorativo;
 - sem glow;
@@ -412,3 +412,8 @@ Os arquivos persistidos em IndexedDB permanecem somente no navegador/origem loca
 5. manter Dashboard orientado às perguntas do analista, evitando redundância;
 6. integrar RAG/LLM somente sobre fatos já consolidados pelo motor determinístico;
 7. integrar n8n quando a orquestração externa trouxer valor real.
+
+
+## Atualização visual de 2026-09-28
+
+Navegação lateral fixa e recolhível, organizada por áreas com rótulos visíveis, substitui o dock flutuante. O cabeçalho mostra o contexto atual e mantém a busca do conhecimento. O chat prioriza a conversa e oferece evidências/inspeção sob demanda. Controles de ícone são quadrados; painéis, inputs e tabelas usam tokens de radius zero. Mantidos os dois temas, o Dashboard inicial, o pacote compartilhado, endpoints e cálculos determinísticos.

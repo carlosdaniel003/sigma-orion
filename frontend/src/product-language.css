@@ -5,10 +5,10 @@
  */
 
 :root {
-  --radius-xs: 3px;
-  --radius-sm: 5px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -56,11 +56,6 @@ body,
 body {
   font-size: var(--text-md);
   line-height: 1.45;
-}
-
-.content {
-  padding-top: var(--space-5) !important;
-  padding-bottom: 64px !important;
 }
 
 .page-header {
@@ -197,19 +192,6 @@ input,
 textarea,
 select {
   font-size: var(--text-sm) !important;
-}
-
-.workspace-dock,
-.topbar-nav {
-  border-radius: var(--radius-md) !important;
-  box-shadow: var(--shadow-control) !important;
-}
-
-.workspace-button,
-.nav-icon-button,
-.topbar-status,
-.topbar-brand {
-  border-radius: var(--radius-sm) !important;
 }
 
 .dpp-state-grid {
@@ -467,11 +449,6 @@ table .number-cell,
   box-shadow: none !important;
 }
 
-:root[data-theme='light'] .workspace-dock,
-:root[data-theme='light'] .topbar-nav {
-  box-shadow: var(--shadow-control) !important;
-}
-
 /* Loader is a full-screen operating state, not a floating marketing card. */
 .orion-working-overlay,
 :root[data-theme='light'] .orion-working-overlay {
@@ -530,9 +507,6 @@ table .number-cell,
 }
 
 @media (max-width: 760px) {
-  .content {
-    padding-top: var(--space-4) !important;
-  }
 
   .dashboard-comparison-card,
   .dashboard-kpi-comparison .dashboard-comparison-card {

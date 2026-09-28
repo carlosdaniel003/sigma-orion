@@ -118,13 +118,14 @@ function AgentOrion({ apiUrl }) {
   } = useDppWorkspace()
 
   const [question, setQuestion] = useState('')
+  const [evidenceOpen, setEvidenceOpen] = useState(false)
   const [asking, setAsking] = useState(false)
   const [databaseStatus, setDatabaseStatus] = useState({ state: 'checking', runtimeDocuments: 0, runtimeEntities: 0, database: 'orion.db' })
   const [messages, setMessages] = useState(() => [
     {
       id: 'initial',
       role: 'orion',
-      text: 'Toda consulta é resolvida pelo backend sobre o SQLite sincronizado. Dados estruturados usam SQL; conhecimento textual usa FTS5/BM25; o contexto da conversa também fica registrado no banco.',
+      text: 'Pergunte sobre materiais, modelos e diferenças entre o Cenário ORION e o DPP Final. Use as evidências da resposta para apoiar sua análise.',
       evidence: [],
       sources: [],
       entities: [],
@@ -314,9 +315,9 @@ function AgentOrion({ apiUrl }) {
     <section className="agent-orion-page" aria-labelledby="agent-orion-title">
       <header className="agent-orion-header">
         <div>
-          <span className="agent-orion-kicker">CONSULTA AO BANCO RAG</span>
+          <span className="agent-orion-kicker">ASSISTENTE DE ANÁLISE DPP</span>
           <h2 id="agent-orion-title">Agente ORION</h2>
-          <p>Dados atuais são consultados como entidades estruturadas no SQLite; conhecimento e código são recuperados por FTS5/BM25. O frontend apenas envia perguntas e apresenta a resposta.</p>
+          <p>Consulte materiais, compare cenários e investigue divergências com as evidências do seu DPP.</p>
         </div>
         <div className="agent-orion-context" aria-label="Contexto atual do agente">
           <strong>{formatMonth(month)}</strong>
@@ -331,14 +332,17 @@ function AgentOrion({ apiUrl }) {
         <span><i data-state={databaseStatus.state === 'ready' ? 'ready' : 'pending'} aria-hidden="true" />{databaseStatusText(databaseStatus)}</span>
       </div>
 
-      <div className="agent-orion-layout">
+      <div className="agent-orion-layout" data-evidence-open={evidenceOpen}>
         <section className="agent-conversation" aria-label="Conversa com o Agente ORION">
           <div className="agent-conversation-head">
             <div>
               <strong>Conversa</strong>
-              <span>Pergunta livre → SQL para fatos + FTS5/BM25 para conhecimento → resposta auditada.</span>
+              <span>{materials} materiais · {models} modelos no contexto atual.</span>
             </div>
-            <small>{materials} materiais · {models} modelos</small>
+            <button type="button" className="agent-evidence-toggle" aria-expanded={evidenceOpen}
+              aria-controls="agent-evidence" onClick={() => setEvidenceOpen((value) => !value)}>
+              {evidenceOpen ? 'Ocultar evidências' : 'Ver evidências'}
+            </button>
           </div>
 
           <div className="agent-message-list" aria-live="polite" ref={messageListRef}>
@@ -383,7 +387,7 @@ function AgentOrion({ apiUrl }) {
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Digite uma pergunta. O contexto das mensagens anteriores é mantido no banco."
+                placeholder="Pergunte sobre materiais, modelos ou divergências..."
                 disabled={asking}
               />
               <button type="submit" disabled={!question.trim() || asking}>{asking ? 'Consultando' : 'Enviar'}</button>
@@ -392,7 +396,7 @@ function AgentOrion({ apiUrl }) {
           </form>
         </section>
 
-        <aside className="agent-evidence" aria-label="Evidências e inspeção da resposta">
+        <aside id="agent-evidence" className="agent-evidence" hidden={!evidenceOpen} aria-label="Evidências e inspeção da resposta">
           <section>
             <div className="agent-section-heading">
               <strong>Evidências recuperadas</strong>
