@@ -15,6 +15,7 @@ from app.services.rag_runtime_service import load_runtime_entities
 FORMULA_WORDS = {
     "formula", "fórmula", "calcula", "calcular", "calculo", "cálculo", "calculou",
     "calculado", "calculada", "calculados", "calculadas", "equacao", "equação", "criterio", "critério",
+    "define", "definir", "definido", "definida", "determina", "determinar", "determinado", "determinada",
 }
 DEFINITION_WORDS = {"significa", "significado", "definicao", "definição", "definir"}
 CANONICAL_FORMULA_SOURCES = ("motor-deterministico.md", "regras-globais.md")
@@ -137,14 +138,36 @@ def _resolved_question(question: str, context: dict) -> str:
     return question
 
 
+def _identifier_pattern(value: str) -> re.Pattern[str] | None:
+    normalized = _normalize(value)
+    parts = [part for part in re.split(r"[-_.\s]+", normalized) if part]
+    if not parts:
+        return None
+    separator = r"[-_.\s]*"
+    return re.compile(
+        rf"(?<![a-z0-9]){separator.join(re.escape(part) for part in parts)}(?![a-z0-9])",
+        flags=re.IGNORECASE,
+    )
+
+
 def _find_exact_entity_key(question: str, entity_type: str) -> str | None:
     normalized = _normalize(question)
     entities = load_runtime_entities(entity_type=entity_type)
-    matches = [
-        entity["entity_key"]
-        for entity in entities
-        if _normalize(entity["entity_key"]) and _normalize(entity["entity_key"]) in normalized
-    ]
+    matches: list[str] = []
+    for entity in entities:
+        key = str(entity.get("entity_key") or "").strip()
+        if not key:
+            continue
+        normalized_key = _normalize(key)
+        pattern = _identifier_pattern(key)
+        if (
+            normalized_key
+            and (
+                normalized_key in normalized
+                or (pattern is not None and pattern.search(normalized))
+            )
+        ):
+            matches.append(key)
     if not matches:
         return None
     return max(matches, key=len)
@@ -329,7 +352,12 @@ def _critical_materials_answer(question: str) -> DatabaseKnowledgeAnswer | None:
 
     wants_rule = _is_formula(question) or any(
         marker in normalized
-        for marker in ("como chegou", "como definiu", "como identific", "qual criterio", "qual regra")
+        for marker in (
+            "como chegou", "como definiu", "como definir", "como e feito",
+            "como identific", "qual criterio", "qual regra",
+            "o que define", "o que determina", "o que e material critico",
+            "o que significa material critico",
+        )
     )
     if wants_rule:
         answer = (
@@ -982,16 +1010,22 @@ def answer_database_knowledge(question: str, context: dict | None = None) -> Dat
         if answer is not None:
             return answer
 
-    # Definições explícitas do glossário têm prioridade sobre consultas amplas
-    # de coleção. Ex.: "O que significa material crítico?" não deve listar o
-    # workspace; deve responder a definição versionada no RAG.
-    definition = _definition_answer(resolved)
-    if definition is not None:
-        return definition
-
+    # Consultas específicas de criticidade e cálculo precisam vencer a definição
+    # genérica de "Material". Caso contrário, perguntas como "como é feito o
+    # cálculo para definir material crítico?" são sequestradas pelo glossário.
     critical = _critical_materials_answer(resolved)
     if critical is not None:
         return critical
+
+    formula = _formula_answer(resolved)
+    if formula is not None:
+        return formula
+
+    # Definições explícitas do glossário continuam prioritárias para conceitos
+    # simples, como "O que significa Material?".
+    definition = _definition_answer(resolved)
+    if definition is not None:
+        return definition
 
     material_collection = _material_collection_answer(resolved)
     if material_collection is not None:
@@ -1006,10 +1040,6 @@ def answer_database_knowledge(question: str, context: dict | None = None) -> Dat
     comparison = _comparison_answer(resolved)
     if comparison is not None:
         return comparison
-
-    formula = _formula_answer(resolved)
-    if formula is not None:
-        return formula
 
     python_answer = _python_answer(question, context)
     if python_answer is not None:
