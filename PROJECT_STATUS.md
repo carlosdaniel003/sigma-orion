@@ -78,6 +78,32 @@ Princípios:
 - o chat não deve devolver JSON bruto ou trechos internos desconectados quando houver evidência suficiente para uma resposta legível;
 - perguntas fora do conhecimento/fatos disponíveis continuam sendo respondidas com abstinência explícita.
 
+### Roteamento composto e registro de cálculos
+
+O Agente ORION preserva múltiplos objetivos presentes na mesma pergunta. Uma consulta pode pedir simultaneamente fórmula, explicação e comparação sem perder uma dessas partes.
+
+O plano de consulta registra explicitamente:
+
+- `calculation_requested`;
+- `comparison_requested`;
+- conceitos reconhecidos;
+- regras/status explícitos;
+- contexto conversacional aplicável.
+
+Identificadores de modelo são resolvidos tolerando separadores equivalentes, por exemplo `CM-200-N`, `CM 200 N` e `CM_200_N`.
+
+Cálculos conhecidos usam registro determinístico antes do BM25:
+
+- NEC → REGRA-001;
+- STK TTL → REGRA-002;
+- SALDO → REGRA-003;
+- criticidade → REGRA-001/002/003/004;
+- OPC/STK OP → REGRA-005;
+- Amount → REGRA-006;
+- CHECK → REGRA-007.
+
+Perguntas compostas de divergência continuam usando dados estruturados do workspace e acrescentam as regras necessárias para explicar a propagação do cálculo.
+
 ### Persistência da conversa
 
 A conversa ativa do Agente ORION possui retenção de **24 horas corridas a partir da criação da sessão**.
