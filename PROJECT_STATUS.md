@@ -78,6 +78,20 @@ Princípios:
 - o chat não deve devolver JSON bruto ou trechos internos desconectados quando houver evidência suficiente para uma resposta legível;
 - perguntas fora do conhecimento/fatos disponíveis continuam sendo respondidas com abstinência explícita.
 
+### Persistência da conversa
+
+A conversa ativa do Agente ORION possui retenção de **24 horas corridas a partir da criação da sessão**.
+
+Comportamento atual:
+
+- o frontend persiste a sessão e as mensagens em IndexedDB, com fallback para `localStorage`;
+- o mesmo `session_id` é reutilizado ao navegar entre páginas, atualizar a aplicação ou fechar/reabrir o navegador dentro das 24 horas;
+- tabelas, evidências, fontes e metadados visíveis da conversa são restaurados junto com as mensagens;
+- ao completar 24 horas, a conversa visível é reiniciada automaticamente com uma nova sessão;
+- o backend só reutiliza contexto conversacional de registros com até 24 horas;
+- os registros antigos de auditoria podem permanecer no SQLite para rastreabilidade, mas não participam mais do contexto ativo após a expiração.
+
+
 ## Fluxo mensal do DPP
 
 ```text
