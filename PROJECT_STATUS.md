@@ -20,6 +20,23 @@ n8n orquestra futuramente
 
 A prioridade atual é manter os cálculos objetivos fora da LLM e construir um fluxo rastreável para o DPP mensal.
 
+## Público e estratégia de adoção
+
+O ORION é voltado principalmente a analistas e usuários que hoje trabalham diretamente com Excel e consomem indicadores em formatos próximos ao Power BI.
+
+A estratégia de produto é conduzir esse público de forma gradual de:
+
+```text
+planilha manual
+→ sistema com tabelas e comparações familiares
+→ automação determinística
+→ investigação assistida pelo Agente ORION
+```
+
+O frontend deve preservar familiaridade com tabelas, colunas, filtros, totais, diferenças e drill-down, enquanto elimina trabalho repetitivo. A experiência deve priorizar **industrialidade, fluidez e clareza visual**.
+
+O Agente ORION é uma camada de assistência sobre dados rastreáveis. Ele não substitui a evidência: respostas, análises e recomendações devem permitir retorno aos materiais, modelos, regras e fontes que sustentam o resultado.
+
 ## Stack atual
 
 - Frontend: React + Vite
