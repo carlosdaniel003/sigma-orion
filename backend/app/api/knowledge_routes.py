@@ -5,6 +5,7 @@ from app.schemas.agent import ChatRequest, ChatResponse
 from app.services.database_chat_service import answer_database_question
 from app.services.knowledge_catalog_service import list_catalog_entries, sync_knowledge_index
 from app.services.knowledge_inventory_service import build_knowledge_inventory
+from app.services.module_info_service import module_info_payload
 from app.services.rag_runtime_service import sync_runtime_workspace
 from app.services.rag_test_service import run_rag_battery
 
@@ -24,6 +25,11 @@ def knowledge_catalog(
 @router.get("/inventory")
 def knowledge_inventory() -> dict:
     return build_knowledge_inventory()
+
+
+@router.get("/module-info")
+def knowledge_module_info() -> dict:
+    return module_info_payload()
 
 
 @router.post("/index/sync")
