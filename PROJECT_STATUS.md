@@ -315,17 +315,22 @@ O REAL esperado pode ser injetado no teste para isolar a validação do motor de
 
 ### Interface atual dos Testes
 
-A tela de Testes foi alinhada ao `DESIGN_SYSTEM.md` e funciona como relatório técnico de validação, não como coleção de cards:
+A tela de Testes foi reconstruída como uma página técnica contínua e orientada ao modelo mental de Excel/Power BI:
 
-- configuração e mês em faixa operacional compacta;
-- pacote de arquivos mostrado como lista técnica dentro de um único agrupamento;
-- veredito do teste destacado primeiro, por borda semântica e texto;
-- Materiais, Matriz, KIT PGD, STK SAP, Explosão, NEC e SALDO em uma única faixa de resumo com divisores;
-- comparação campo a campo como tabela principal;
-- Divergências ORION, Intervenções humanas e Correções do legado em seções separadas por divisores;
-- estados vazios apresentados como notas técnicas, sem card dentro de card;
-- tabelas densas, cabeçalho sticky, números tabulares e suporte aos temas claro/escuro;
-- estados de validação usam texto neutro e hierarquia; verde/amarelo/vermelho não são usados como letras ou bolinhas de status.
+- um único eixo de alinhamento e largura útil centralizada para toda a página;
+- cabeçalho separado em contexto do teste e fluxo Reconstrução → Comparação;
+- preparação organizada em mês, contexto do pacote compartilhado e lista técnica dos arquivos usados;
+- arquivos do pacote apresentados em linhas com categoria e nome do arquivo, sem bolinhas ou marcadores semânticos;
+- execução isolada em faixa própria, com ação explícita de executar/reexecutar;
+- status técnicos do backend são convertidos para texto legível ao usuário, sem exibir códigos como `APROVADO_COM_...`;
+- veredito apresentado por hierarquia tipográfica e contexto, sem verde/vermelho, badge ou accent bar;
+- REAL controlado permanece como contexto lateral do veredito, separado por divisor estrutural;
+- Materiais, Matriz, KIT PGD, STK SAP, Explosão, NEC e SALDO formam uma faixa de resumo com números tabulares;
+- comparação campo a campo é a superfície principal do relatório, com cabeçalho sticky e alinhamento numérico;
+- Divergências ORION, Intervenções humanas e Correções do legado são seções sucessivas do mesmo relatório;
+- estados vazios e avisos são notas técnicas neutras;
+- o layout se reorganiza em uma coluna em larguras menores sem perder acesso às tabelas via scroll horizontal;
+- temas claro/escuro e informações contextuais `i` são preservados.
 
 ## Regras determinísticas principais
 
