@@ -28,6 +28,11 @@ MATERIAL_SEARCH_STOP_WORDS = {
     "quais", "qual", "tem", "existem", "existe", "mostre", "mostrar", "lista", "listar",
 }
 
+GENERIC_QUERY_STOP_WORDS = MATERIAL_SEARCH_STOP_WORDS | {
+    "como", "porque", "por", "que", "isso", "essa", "esse", "esta", "este",
+    "orion", "agente", "informacao", "informacoes", "dados",
+}
+
 MATERIAL_FIELD_ALIASES = {
     "balance": {"saldo", "balance"},
     "nec": {"nec", "necessidade"},
@@ -833,24 +838,44 @@ def _source_authority(source: str, question: str) -> float:
     normalized_source = source.lower()
     normalized_question = _normalize(question)
     if normalized_source.endswith("readme.md"):
-        return 0.15
+        return 0.10
     if re.search(r"(?:demo|mock|test|fixture)", normalized_source):
         return 0.05
+
+    comparison_intent = any(
+        token in normalized_question
+        for token in ("compar", "diverg", "diferenc", "coluna", "campo", "check")
+    )
+    if source.startswith("workspace://") and "/comparison/column/" in normalized_source:
+        return 1.45 if comparison_intent else 0.20
+    if source.startswith("workspace://") and "/comparison/" in normalized_source:
+        return 1.35 if comparison_intent else 0.45
     if source.startswith("workspace://"):
         return 1.35
+
     if source == "motor-deterministico.md":
-        return 1.45
+        return 1.55
     if source == "regras-globais.md":
-        return 1.35
+        return 1.50
     if source == "glossario.md":
-        return 1.30
+        return 1.40
+    if source == "modulos-interface.md":
+        interface_intent = any(
+            token in normalized_question
+            for token in ("dashboard", "testes", "modulo", "tela", "interface", "finalidade", "origem")
+        )
+        return 1.25 if interface_intent else 0.65
     if source.startswith("python://"):
-        return 1.15 if ("python" in normalized_question or "codigo" in normalized_question) else 0.55
+        return 1.15 if ("python" in normalized_question or "codigo" in normalized_question) else 0.45
     return 1.0
 
 
 def _relevant_sentences(question: str, content: str, max_chars: int = 900) -> str:
-    query_words = {word for word in _words(question) if len(word) > 2}
+    query_words = {
+        word
+        for word in _words(question)
+        if len(word) > 2 and word not in GENERIC_QUERY_STOP_WORDS
+    }
     cleaned = re.sub(r"^#{1,6}\s*", "", content, flags=re.MULTILINE)
     cleaned = cleaned.replace("**", "").replace("__", "")
     parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+|\n+", cleaned) if part.strip()]
@@ -911,7 +936,12 @@ def _generic_rag_answer(question: str, context: dict) -> DatabaseKnowledgeAnswer
         chunks=[_as_chunk(item) for item, _ in selected],
         entities=[subject_key] if subject_key else [],
         resolved_question=resolved,
-        context={"subject_type": subject_type or "knowledge", "subject_key": subject_key, "topic": selected[0][0].heading},
+        context={
+            "subject_type": subject_type or "knowledge",
+            "subject_key": subject_key,
+            "topic": selected[0][0].heading,
+            "force_synthesis": True,
+        },
     )
 
 
