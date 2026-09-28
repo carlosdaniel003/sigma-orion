@@ -193,8 +193,8 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         response_model = "deterministic-rule-registry"
     elif structured_route == "calculation-registry" and not enhancement.used:
         audit_provider = "deterministic-calculation-registry"
-        response_provider = "local-router"
-        response_model = "deterministic-calculation-registry"
+        response_provider = "local-rag"
+        response_model = "sqlite-fts5-bm25"
     elif enhancement.used:
         audit_provider = f"grounded-llm:{enhancement.provider or 'configured'}"
         response_provider = enhancement.provider or "local-llm"
