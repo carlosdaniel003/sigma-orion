@@ -144,13 +144,32 @@ No tema claro, preto/cinza assumem ação e seleção. Verde, amarelo e vermelho
 
 ### 6.3 Cores semânticas
 
-- Azul `#46D9FF`: informação, análise ORION, interação e seleção no tema escuro.
-- Verde `#27F29A`: OK, disponível, concluído, confirmado.
-- Amarelo `#F5C451`: atenção, investigação, risco não confirmado.
-- Vermelho `#FF5D6C`: problema confirmado, erro, déficit crítico.
-- Cinza: neutro, sem informação, ainda não analisado.
+Os tokens semânticos continuam disponíveis para situações em que a cor representa **dados, telemetria ou uma ação real**, mas não são a linguagem padrão de status da interface.
 
-Azul e verde são identidade, mas não devem colorir tudo. Meta visual aproximada: **80% neutro / 15% identidade / 5% estado**.
+- Azul `#46D9FF`: identidade ORION, foco, seleção, ação e progresso medido.
+- Verde `#27F29A`, amarelo `#F5C451` e vermelho `#FF5D6C`: reservados a visualizações/telemetria em que a cor seja necessária para interpretar dados ou progresso.
+- Cinza e as cores de texto do tema: padrão para estados, resultados, divergências e mensagens operacionais.
+
+### Regra de neutralidade semântica
+
+**Status passivos não devem usar texto verde, amarelo, vermelho ou azul e não devem usar bolinhas coloridas.**
+
+Isso vale globalmente para:
+
+- Dashboard;
+- Testes do DPP;
+- Base de conhecimento;
+- Agente ORION;
+- listas de arquivos;
+- tabelas;
+- comparações ORION × DPP Final;
+- divergências;
+- estados OK / atenção / erro / pendente;
+- indicadores de origem e disponibilidade.
+
+A informação deve continuar explícita por palavras, números, hierarquia tipográfica, divisores e, quando necessário, uma diferença neutra de superfície.
+
+Cores continuam permitidas em controles realmente interativos, foco, seleção, marca, realce de pesquisa e progresso real do processamento.
 
 ## 7. Radius
 
@@ -318,35 +337,44 @@ Esse padrão não deve ser usado como solução visual padrão para estados como
 Preferir, nesta ordem:
 
 1. texto simples;
-2. pequeno ponto de status + texto neutro;
-3. ícone discreto + texto;
-4. mudança tipográfica;
-5. mudança muito sutil de cor na célula ou linha da tabela;
-6. fundo discretamente diferente quando houver seleção real.
+2. texto principal + descrição secundária;
+3. mudança tipográfica moderada;
+4. alinhamento/coluna específica;
+5. divisor;
+6. mudança muito sutil de fundo neutro quando houver seleção, expansão ou necessidade real de agrupamento.
 
-Não utilizar barra lateral como fallback visual padrão para status.
+Não utilizar bolinha colorida, ponto semântico, círculo, quadrado colorido ou barra lateral como tratamento padrão de status.
 
-Exemplo preferido:
+Exemplos preferidos:
 
 ```text
-● Mantido
-● Reduzido
-● Acima do PGD
+Sem divergência
+Divergência · Δ total +16.872 un.
+Pendente · aguardando DPP Final
+Erro · não foi possível carregar a análise
 ```
 
-O ponto pode utilizar a cor semântica, mas o texto deve permanecer predominantemente na cor normal da interface.
+Também é aceitável separar a informação em linhas:
+
+```text
+Resultado
+Divergência
+
+Δ total
++16.872 un.
+```
 
 Evitar:
 
 ```text
-[ Mantido ]
-[ Reduzido ]
-[ Acima do PGD ]
+● Sem divergência
+● Atenção
+● Erro
 ```
 
-quando esses elementos tiverem aparência de cápsula, chip ou botão.
+e qualquer equivalente em verde, amarelo, vermelho ou azul.
 
-Em tabelas, status devem preferencialmente ser apresentados como texto + pequeno marcador, sem fundo e sem contorno.
+Em tabelas, status devem aparecer como texto neutro na própria célula. Se o estado precisar de maior destaque, usar peso tipográfico, uma segunda linha de contexto ou superfície neutra — não cor semântica decorativa.
 
 ### Uma cor, um canal
 
@@ -859,3 +887,52 @@ Atualização visual solicitada em 2026-09-28:
 - `navigation.css` controla o frame; tokens geométricos continuam centralizados em `product-language.css`.
 
 A referência ao ChatGPT orienta a organização, sem acrescentar recursos fictícios de histórico ou nova conversa.
+
+
+## 23. Linguagem neutra global
+
+Atualização visual aprovada em **2026-09-28** e aplicável a todo o SIGMA-S ORION.
+
+Esta seção substitui qualquer orientação anterior que recomendasse ponto/bolinha semântica como tratamento padrão.
+
+### Regra
+
+O ORION deve se aproximar da sobriedade visual de ferramentas como o ChatGPT sem copiar sua identidade. A interface usa predominantemente:
+
+- texto branco/preto conforme o tema;
+- texto secundário cinza;
+- superfícies neutras;
+- divisores;
+- alinhamento;
+- tipografia;
+- tabelas compactas.
+
+Não usar como linguagem padrão:
+
+- números ou valores em azul/ciano apenas por serem do ORION;
+- texto verde para OK;
+- texto amarelo para atenção/divergência;
+- texto vermelho para erro/criticidade;
+- bolinhas verdes, amarelas ou vermelhas;
+- marcadores coloridos anexados a status;
+- fundos semânticos pastel;
+- bordas semânticas decorativas.
+
+### Exceções funcionais
+
+A cor pode permanecer quando representa uma interação ou telemetria real:
+
+- botão/ação primária;
+- foco de teclado;
+- item interativo selecionado quando necessário;
+- marca ORION;
+- destaque de busca;
+- progresso real;
+- constelação de carregamento ligada aos checkpoints reais do backend;
+- visualização de dados em que a cor seja indispensável e tenha legenda/contexto.
+
+Mesmo nas exceções, texto operacional deve permanecer predominantemente neutro.
+
+### Implementação
+
+A camada `frontend/src/industrial-neutral-language.css` é carregada por último e funciona como compliance global para neutralizar estilos semânticos legados. Novos componentes devem nascer neutros e não depender dessa camada para corrigir padrões antigos.
