@@ -402,7 +402,7 @@ function DppTest({ apiUrl }) {
                       <td className="number-cell">{(check.human_interventions || 0).toLocaleString('pt-BR')}</td>
                       <td className="number-cell">{(check.legacy_corrections || 0).toLocaleString('pt-BR')}</td>
                       <td className="number-cell">{check.mismatches.toLocaleString('pt-BR')}</td>
-                      <td><CheckBadge check={check} /></td>
+                      <td><CheckResult check={check} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -494,7 +494,7 @@ function DifferenceTable({ items, showReason = false }) {
   )
 }
 
-function CheckBadge({ check }) {
+function CheckResult({ check }) {
   if (check.mismatches) return <span className="test-result-text">DIVERGE</span>
   const human = check.human_interventions || 0
   const legacy = check.legacy_corrections || 0
