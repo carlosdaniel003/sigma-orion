@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import InfoHint from './InfoHint'
+import ModuleInfoHint from './ModuleInfoHint'
 import './dpp-column-comparison.css'
 import './dpp-column-divergence-detail.css'
 
@@ -187,13 +187,7 @@ function DppColumnComparison({ finalDppAnalysis, apiUrl }) {
         <div>
           <div className="dpp-column-comparison-title-row">
             <h3 id="dpp-column-comparison-title">Comparativo completo das colunas do DPP</h3>
-            <InfoHint
-              title="Comparativo completo das colunas do DPP"
-              what="Mostra as colunas da aba DPP respeitando a função de cada campo. Colunas calculadas são comparadas; OPC é tratado como consolidação mais recente do DPP Final; COMENTS é contexto mensal do analista; CHECK é comparado pelo conjunto de modelos, sem considerar a ordem do texto."
-              source="DPP Final: valores e registros consolidados do mês. Cenário ORION: projeção canônica dos materiais, matriz Material × Modelo e campos calculados pelo motor Python."
-              purpose="Separar divergências reais de diferenças esperadas do processo e investigar a causa das divergências calculadas sem classificar reordenação, atualização de OPC ou comentários mensais como erro."
-              align="right"
-            />
+<ModuleInfoHint moduleKey="dashboard.column_comparison" align="right" />
           </div>
           <p>
             Texto é resumido por quantidade de itens preenchidos; colunas numéricas são resumidas pela soma. Apenas campos com regra de comparação equivalente entram na contagem de divergências.
