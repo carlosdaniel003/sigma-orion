@@ -145,7 +145,7 @@ Componentes atuais incluem:
 
 ### Informação contextual dos componentes
 
-Os principais blocos visíveis do Dashboard possuem um pequeno botão `i` junto ao título. O conteúdo aparece por hover ou foco de teclado e segue sempre a mesma estrutura:
+Todos os módulos analíticos/operacionais principais do **Dashboard do DPP** e dos **Testes do DPP** possuem um botão `i` quadrado junto ao título. O conteúdo aparece por hover ou foco de teclado e segue sempre a mesma estrutura:
 
 ```text
 O que mostra
@@ -153,24 +153,69 @@ Origem
 Finalidade
 ```
 
-A camada `DashboardInfoLayer.jsx` injeta os pontos de informação sem duplicar a lógica dos componentes. `InfoHint.jsx` é o componente visual/acessível compartilhado.
+A fonte única dessas descrições é:
 
-Atualmente existem explicações específicas para:
+```text
+knowledge/modulos-interface.md
+```
 
-- Visão Geral do cenário ORION;
-- Cenário atual;
-- Pacote compartilhado do DPP;
+Fluxo:
+
+```text
+knowledge/modulos-interface.md
+        ├── GET /api/knowledge/module-info
+        │        ↓
+        │   ModuleInfoHint.jsx
+        │        ↓
+        │   Dashboard / Testes
+        │
+        └── SQLite / FTS5 / BM25
+                 ↓
+            Agente ORION
+```
+
+Assim, o mesmo conteúdo usado para explicar os módulos ao usuário também é conhecimento recuperável pelo Agente ORION. O frontend não mantém uma segunda cópia manual das descrições.
+
+O contrato é validado no CI por `backend/tests/test_module_info.py`:
+
+- módulos obrigatórios precisam existir;
+- título, O que mostra, Origem e Finalidade não podem estar vazios;
+- referências `REGRA-xxx` precisam corresponder a regras existentes;
+- `modulos-interface.md` precisa estar indexado como conhecimento operacional para o Agente ORION.
+
+O Dashboard cobre atualmente:
+
+- contexto/Visão Geral;
+- pacote compartilhado;
 - Excel do cenário ORION;
-- Estado do DPP;
 - Evolução do DPP;
-- Cenário ORION × DPP Final;
-- Situação dos modelos;
-- Principais gargalos;
-- Modelos com maior risco;
-- Estado da construção do DPP;
-- Plano consolidado por modelo.
+- papel do Agente ORION;
+- ORION × DPP Final;
+- aderência PGD × REAL;
+- qualidade dos dados;
+- guia de leitura;
+- plano consolidado por modelo;
+- comparativo completo das colunas.
 
-As descrições registram a fonte real utilizada em cada bloco — cenário Python, DPP Final, DPP anterior, matriz Material × Modelo, PGD, WIU, STK SAP, Explosão e demais fontes quando aplicável — e não devem atribuir ao backend cálculos que ele não realiza.
+Os Testes cobrem atualmente:
+
+- visão geral;
+- preparação;
+- mês de referência;
+- pacote compartilhado;
+- arquivos usados;
+- execução;
+- veredito;
+- REAL controlado;
+- resumo das validações;
+- comparação campo a campo;
+- divergências ORION;
+- intervenções humanas;
+- correções do legado.
+
+As descrições devem refletir a implementação vigente. Em particular, resultados de **Testes do DPP ainda não são sincronizados como evidência runtime do Agente ORION**; cenário, DPP Final e comparativos do workspace são sincronizados. Nenhum tooltip deve afirmar integração que o backend ainda não executa.
+
+As regras de cálculo continuam pertencendo ao Python e a `motor-deterministico.md` / `regras-globais.md`; a documentação dos módulos descreve origem e uso, mas não substitui essas fontes determinísticas.
 
 ### Exportação Excel do cenário ORION
 
