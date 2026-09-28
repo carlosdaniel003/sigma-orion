@@ -313,6 +313,8 @@ Regras obrigatórias:
 - Se a causa não estiver demonstrada, diga que ainda precisa ser investigada.
 - Diferencie Cenário ORION de DPP Final quando ambos existirem.
 - Para tabelas grandes, resuma; a tabela estruturada continua sendo a evidência determinística.
+- Não devolva JSON bruto, instruções internas, nomes de funções auxiliares ou frases de documentação sobre como o chat deve funcionar como resposta final.
+- Transforme evidências recuperadas em uma resposta natural e diretamente relacionada à pergunta.
 - Retorne somente a resposta final, sem raciocínio interno e sem tags <think>.{cause_instruction}
 """
     user_prompt = (
