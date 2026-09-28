@@ -21,6 +21,10 @@ Antes de alterar o projeto, usar estes arquivos como fontes de verdade:
 - **[`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md)** — regras normativas de interface, identidade e anti-“vibe code”.
 - **[`docs/LOCAL_LLM.md`](./docs/LOCAL_LLM.md)** — instalação portátil e execução da LLM local sem privilégio administrativo.
 
+### Ajuda contextual dos módulos
+
+Os botões `i` do Dashboard do DPP e dos Testes do DPP usam `knowledge/modulos-interface.md` como fonte única de **O que mostra / Origem / Finalidade**. O mesmo arquivo é indexado no SQLite/RAG e fica disponível ao Agente ORION. As regras determinísticas continuam sendo definidas pelo Python, `knowledge/motor-deterministico.md` e `knowledge/regras-globais.md`.
+
 ### Regra para alterações de frontend
 
 Toda mudança visual deve:
@@ -130,7 +134,7 @@ A identidade possui:
 - alternância Sol/Lua;
 - logo própria SIGMA-S ORION;
 - favicon próprio;
-- cores semânticas para OK, atenção e crítico.
+- linguagem neutra para status passivos; cores semânticas ficam reservadas a telemetria, progresso e visualizações em que a cor seja necessária.
 
 O frontend deve parecer software industrial deliberadamente projetado, não landing page SaaS ou template gerado por IA. A especificação completa está em `DESIGN_SYSTEM.md`.
 
