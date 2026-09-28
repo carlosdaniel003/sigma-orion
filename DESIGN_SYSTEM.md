@@ -936,3 +936,119 @@ Mesmo nas exceções, texto operacional deve permanecer predominantemente neutro
 ### Implementação
 
 A camada `frontend/src/industrial-neutral-language.css` é carregada por último e funciona como compliance global para neutralizar estilos semânticos legados. Novos componentes devem nascer neutros e não depender dessa camada para corrigir padrões antigos.
+
+
+## 24. Público-alvo e ponte Excel → automação
+
+O ORION foi pensado para usuários que hoje consomem diretamente planilhas de Excel e análises visuais próximas ao Power BI. O objetivo do produto não é romper abruptamente com esse repertório, mas transformar esse fluxo em um sistema automatizado, rastreável e assistido pelo Agente ORION.
+
+### Princípio de transição
+
+A interface deve funcionar como uma ponte:
+
+```text
+Excel / planilhas
+      ↓
+tabelas e indicadores familiares
+      ↓
+sistema ORION
+      ↓
+automação determinística
+      ↓
+Agente ORION / IA
+```
+
+O usuário precisa reconhecer rapidamente os dados que já conhece, entender de onde vieram e perceber o ganho da automação sem sentir que perdeu controle sobre a informação.
+
+### Três pilares
+
+A linguagem visual do ORION deve equilibrar permanentemente:
+
+1. **Industrial**
+   - aparência técnica;
+   - densidade adequada ao trabalho;
+   - superfícies sóbrias;
+   - organização previsível;
+   - informação acima de ornamentação.
+
+2. **Fluidez**
+   - reduzir cliques e trocas desnecessárias de contexto;
+   - manter navegação previsível;
+   - preservar filtros, seleção e contexto durante a análise;
+   - permitir ir do resumo ao detalhe sem interromper o raciocínio;
+   - o Agente ORION deve complementar o trabalho, não esconder os dados que sustentam a resposta.
+
+3. **Clareza visual**
+   - hierarquia evidente;
+   - nomes e unidades explícitos;
+   - origem do dado acessível;
+   - comparação direta;
+   - estados comunicados por texto e estrutura;
+   - evitar códigos visuais que o usuário precise aprender antes de entender a informação.
+
+### Familiaridade com Excel e Power BI
+
+Tabelas e gráficos não devem ser tratados como recursos secundários. Para este público eles são a linguagem de trabalho já conhecida.
+
+Priorizar:
+
+- tabelas compactas e legíveis;
+- cabeçalhos fixos em conjuntos longos;
+- alinhamento consistente de números;
+- unidades próximas ao valor;
+- filtros e busca fáceis de localizar;
+- ordenação compreensível;
+- totais, diferenças e comparações explícitas;
+- drill-down do agregado para o material/modelo que explica o resultado;
+- gráficos somente quando tornam uma relação, tendência ou comparação mais rápida de entender do que uma tabela.
+
+Evitar transformar dados naturalmente tabulares em cards apenas para modernizar a aparência.
+
+### Modernizar sem descaracterizar
+
+O ORION não deve reproduzir visualmente uma planilha do Excel, mas deve preservar seu modelo mental útil:
+
+- linhas representam registros;
+- colunas têm significado estável;
+- números podem ser comparados verticalmente;
+- filtros alteram um conjunto visível;
+- totais e diferenças possuem posição previsível;
+- a evidência detalhada permanece acessível.
+
+A modernização deve acrescentar:
+
+- automação;
+- validação;
+- persistência de contexto;
+- rastreabilidade;
+- explicação;
+- navegação;
+- IA assistiva.
+
+Não deve retirar a capacidade do analista de inspecionar os dados.
+
+### Agente ORION
+
+A IA representa uma nova camada para esse público. Por isso:
+
+- respostas devem se conectar aos dados e termos do DPP;
+- evidências devem permanecer acessíveis;
+- tabelas devem ser usadas quando a resposta envolver muitos materiais/modelos;
+- o agente não deve substituir uma comparação objetiva por texto longo;
+- quando um número vier do cenário, DPP Final, RAG ou cálculo determinístico, essa origem deve ser identificável;
+- a conversa deve reduzir trabalho manual e investigação repetitiva, não criar uma nova camada de complexidade.
+
+### Critério de decisão para novos componentes
+
+Antes de desenhar uma nova tela ou componente, perguntar:
+
+```text
+Um usuário acostumado com Excel/Power BI entende em poucos segundos:
+1. o que está vendo?
+2. de onde veio?
+3. como comparar?
+4. onde investigar?
+5. o que o ORION automatizou?
+```
+
+Se a resposta for não, simplificar a interface antes de acrescentar novos elementos visuais.
