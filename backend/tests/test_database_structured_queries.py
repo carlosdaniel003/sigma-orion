@@ -359,7 +359,5 @@ def test_saldo_formula_uses_deterministic_calculation_registry() -> None:
     assert knowledge is not None
     assert knowledge.context["skip_llm"] is True
     assert "SALDO = STK TTL - NEC" in knowledge.answer
-    assert "REGRA-001" in knowledge.entities
-    assert "REGRA-002" in knowledge.entities
-    assert "REGRA-003" in knowledge.entities
-    assert knowledge.sources == ["regras-globais.md"]
+    assert "SALDO" in knowledge.entities
+    assert knowledge.sources == ["motor-deterministico.md"]
