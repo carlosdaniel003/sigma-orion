@@ -26,6 +26,16 @@ DEFINITION_FOCUS_MARKERS = (
     "significado", "significa", "definicao", "quer dizer", "o que e", "o que sao", "sobre",
 )
 
+TOPICAL_MARKERS = (
+    "fale sobre", "fala sobre", "me fale sobre", "me fala sobre",
+    "conte sobre", "me conte sobre", "o que sabemos sobre",
+)
+
+FORMULA_MARKERS = {
+    "formula", "calculo", "calcula", "calcular", "calculou", "calculado", "calculada",
+    "calculados", "calculadas", "equacao", "criterio",
+}
+
 
 @dataclass(slots=True)
 class QueryPlan:
@@ -246,7 +256,7 @@ def _intent(question: str) -> str:
         return "comparison"
     if any(marker in normalized for marker in EXPLANATION_MARKERS):
         return "explanation"
-    if words & {"formula", "calculo", "calcula", "calcular", "equacao"}:
+    if words & FORMULA_MARKERS or "como o orion calcula" in normalized or "como foi calcul" in normalized:
         return "formula"
     if (
         "significa" in normalized
@@ -256,7 +266,7 @@ def _intent(question: str) -> str:
         or normalized.startswith("o que e ")
         or normalized.startswith("o que sao ")
         or normalized.startswith("o que sabemos sobre ")
-        or normalized.startswith("fale sobre ")
+        or any(marker in normalized for marker in TOPICAL_MARKERS)
         or normalized.startswith("o que diz ")
         or normalized.startswith("e o que diz ")
     ):
@@ -381,7 +391,10 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         needs_synthesis = False
     if statuses and intent == "definition":
         needs_synthesis = False
-    if intent == "definition" and normalized_question.startswith(("explique ", "fale sobre ")):
+    if intent == "definition" and (
+        normalized_question.startswith("explique ")
+        or any(marker in normalized_question for marker in TOPICAL_MARKERS)
+    ):
         needs_synthesis = True
     if normalized_question.startswith("explique "):
         needs_synthesis = True
