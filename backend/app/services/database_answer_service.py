@@ -982,6 +982,13 @@ def answer_database_knowledge(question: str, context: dict | None = None) -> Dat
         if answer is not None:
             return answer
 
+    # Definições explícitas do glossário têm prioridade sobre consultas amplas
+    # de coleção. Ex.: "O que significa material crítico?" não deve listar o
+    # workspace; deve responder a definição versionada no RAG.
+    definition = _definition_answer(resolved)
+    if definition is not None:
+        return definition
+
     critical = _critical_materials_answer(resolved)
     if critical is not None:
         return critical
@@ -999,10 +1006,6 @@ def answer_database_knowledge(question: str, context: dict | None = None) -> Dat
     comparison = _comparison_answer(resolved)
     if comparison is not None:
         return comparison
-
-    definition = _definition_answer(resolved)
-    if definition is not None:
-        return definition
 
     formula = _formula_answer(resolved)
     if formula is not None:
