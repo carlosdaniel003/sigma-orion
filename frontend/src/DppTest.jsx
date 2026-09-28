@@ -470,7 +470,6 @@ function DppTest({ apiUrl }) {
       )}
     </div>
   )
-  )
 }
 
 function DifferenceTable({ items, showReason = false }) {
