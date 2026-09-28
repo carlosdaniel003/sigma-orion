@@ -16,6 +16,16 @@ from app.services.rag_runtime_service import load_runtime_entities
 NUMERIC_TOLERANCE = 1e-4
 MODEL_IMPACT_RULES = ("REGRA-001", "REGRA-002", "REGRA-003", "REGRA-006")
 
+CALCULATION_RULES = {
+    "nec": ("REGRA-001",),
+    "stk ttl": ("REGRA-002",),
+    "saldo": ("REGRA-003",),
+    "opc": ("REGRA-005",),
+    "stk op": ("REGRA-005", "REGRA-002"),
+    "amount": ("REGRA-006",),
+    "check": ("REGRA-007",),
+}
+
 
 def _normalize(text: object) -> str:
     normalized = unicodedata.normalize("NFKD", str(text or "").lower())
@@ -109,6 +119,71 @@ def rule_knowledge_answer(plan: QueryPlan) -> DatabaseKnowledgeAnswer | None:
             "subject_type": "rule",
             "subject_key": item["code"],
             "topic": "rule_definition",
+            "structured_evidence_complete": True,
+        },
+    )
+
+
+def calculation_knowledge_answer(plan: QueryPlan) -> DatabaseKnowledgeAnswer | None:
+    if not plan.calculation_requested and plan.intent != "formula":
+        return None
+
+    normalized_question = _normalize(plan.original_question)
+    normalized_concepts = {_normalize(item) for item in plan.concept_entities}
+    codes: list[str] = []
+
+    def add(code: str) -> None:
+        if code not in codes:
+            codes.append(code)
+
+    if "critic" in normalized_question:
+        for code in ("REGRA-001", "REGRA-002", "REGRA-003", "REGRA-004"):
+            add(code)
+
+    for concept in normalized_concepts:
+        for code in CALCULATION_RULES.get(concept, ()):
+            add(code)
+
+    if not codes:
+        return None
+
+    if codes == ["REGRA-003"]:
+        codes = ["REGRA-001", "REGRA-002", "REGRA-003"]
+        answer = (
+            "O SALDO é calculado deterministicamente pela REGRA-003: "
+            "SALDO = STK TTL - NEC. O STK TTL é calculado pela REGRA-002 e a NEC pela REGRA-001."
+        )
+    elif "REGRA-004" in codes:
+        answer = (
+            "A criticidade é derivada dos cálculos determinísticos do ORION: "
+            "REGRA-001 calcula NEC; REGRA-002 calcula STK TTL; REGRA-003 calcula SALDO; "
+            "e a REGRA-004 classifica como material crítico somente quando UM = UN e SALDO < -0,0001."
+        )
+    else:
+        answer = "\n\n".join(rule_evidence_text(code) for code in codes if rule_evidence_text(code))
+
+    evidences = [rule_evidence_text(code) for code in codes if rule_evidence_text(code)]
+    chunks = [
+        KnowledgeChunk(
+            source="regras-globais.md",
+            content=evidence,
+            score=1000.0,
+            heading=evidence.splitlines()[0],
+            category="deterministic",
+        )
+        for evidence in evidences
+    ]
+    return DatabaseKnowledgeAnswer(
+        answer=answer,
+        sources=["regras-globais.md"],
+        chunks=chunks,
+        entities=codes,
+        resolved_question=plan.resolved_question,
+        context={
+            "subject_type": "calculation",
+            "subject_key": " + ".join(plan.concept_entities) or "cálculo determinístico",
+            "topic": "deterministic_calculation",
+            "skip_llm": True,
             "structured_evidence_complete": True,
         },
     )
@@ -558,6 +633,10 @@ def structured_knowledge_answer(plan: QueryPlan, context: dict | None = None) ->
 
     if plan.intent == "comparison":
         return _model_comparison_answer(plan, context), "model-comparison"
+
+    calculation = calculation_knowledge_answer(plan)
+    if calculation is not None:
+        return calculation, "calculation-registry"
 
     if plan.context_rule_entities:
         rule = rule_knowledge_answer(plan)
