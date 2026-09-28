@@ -33,7 +33,8 @@ TOPICAL_MARKERS = (
 
 FORMULA_MARKERS = {
     "formula", "calculo", "calcula", "calcular", "calculou", "calculado", "calculada",
-    "calculados", "calculadas", "equacao", "criterio",
+    "calculados", "calculadas", "equacao", "criterio", "define", "definir", "definido",
+    "determina", "determinar", "determinado",
 }
 
 
@@ -53,6 +54,8 @@ class QueryPlan:
     needs_synthesis: bool = False
     allow_python: bool = False
     smalltalk: bool = False
+    calculation_requested: bool = False
+    comparison_requested: bool = False
 
 
 def _normalize(text: str) -> str:
@@ -252,12 +255,15 @@ def _intent(question: str) -> str:
     words = _words(question)
     if any(marker in normalized for marker in CODE_MARKERS):
         return "code"
+    # Comparações continuam sendo a rota principal quando a mesma pergunta também
+    # pede fórmula/cálculo. O plano preserva calculation_requested para que a rota
+    # estruturada combine regra + dados, em vez de escolher apenas um dos dois.
     if "compar" in normalized or "diverg" in normalized or "diferenc" in normalized:
         return "comparison"
-    if any(marker in normalized for marker in EXPLANATION_MARKERS):
-        return "explanation"
     if words & FORMULA_MARKERS or "como o orion calcula" in normalized or "como foi calcul" in normalized:
         return "formula"
+    if any(marker in normalized for marker in EXPLANATION_MARKERS):
+        return "explanation"
     if (
         "significa" in normalized
         or "significado" in normalized
@@ -298,7 +304,7 @@ def _rule_requirements(question: str, context: dict, concepts: list[str], status
         add(concept)
 
     context_topic = _normalize(str(context.get("topic") or ""))
-    if intent == "explanation" and ("critic" in normalized or context_topic == "critical"):
+    if intent in {"explanation", "formula", "definition", "fact"} and ("critic" in normalized or context_topic == "critical"):
         add("REGRA-004 material crítico UM SALDO", "REGRA-004")
 
     if any(status in {"FORA_ESCOPO_UM", "OK", "INVESTIGAR"} for status in statuses) and intent == "explanation":
@@ -344,6 +350,16 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
     context_rules: list[str] = []
     normalized_question = _normalize(stripped)
     intent = _intent(stripped)
+    calculation_requested = bool(
+        _words(stripped) & FORMULA_MARKERS
+        or "como o orion calcula" in normalized_question
+        or "como foi calcul" in normalized_question
+    )
+    comparison_requested = bool(
+        "compar" in normalized_question
+        or "diverg" in normalized_question
+        or "diferenc" in normalized_question
+    )
 
     focus = _definition_focus(stripped, concepts)
     has_definition_focus = any(marker in normalized_question for marker in ("significado", "significa", "definicao", "quer dizer"))
@@ -414,6 +430,8 @@ def plan_database_question(question: str, context: dict | None = None) -> QueryP
         needs_synthesis=needs_synthesis,
         allow_python=allow_python,
         smalltalk=False,
+        calculation_requested=calculation_requested,
+        comparison_requested=comparison_requested,
     )
 
 
