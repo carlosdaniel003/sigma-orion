@@ -47,7 +47,7 @@ A interface deve ser:
 - rápida de ler;
 - compatível com uso prolongado.
 
-A referência de maturidade é a densidade e disciplina de ferramentas profissionais de engenharia, IDEs e software corporativo moderno. Não copiar a identidade de nenhum produto específico.
+A referência de maturidade é a densidade e disciplina de ferramentas profissionais de engenharia, IDEs e software corporativo moderno. A organização do ChatGPT é referência para a navegação lateral recolhível e a área de conversa. A marca, as cores semânticas e os fluxos operacionais continuam próprios do ORION.
 
 ## 4. Padrões proibidos
 
@@ -155,17 +155,17 @@ Azul e verde são identidade, mas não devem colorir tudo. Meta visual aproximad
 ## 7. Radius
 
 ```css
---radius-xs: 3px;
---radius-sm: 5px;
---radius-md: 8px;
---radius-lg: 10px;
+--radius-xs: 0px;
+--radius-sm: 0px;
+--radius-md: 0px;
+--radius-lg: 0px;
 ```
 
 Regras:
 
-- inputs e botões: `5px`;
-- tabelas, agrupamentos e seções: `5–8px`;
-- elementos especiais: máximo habitual de `10px`;
+- inputs e botões: cantos retos (`0px`);
+- tabelas, agrupamentos e seções: cantos retos (`0px`);
+- controles de ícone: área quadrada, com largura e altura iguais;
 - cápsula (`999px`, `9999px`, `50px`, `rounded-full`) não faz parte da linguagem padrão de informação ou status;
 - cápsulas são reservadas a controles interativos cuja própria interação justifique o formato, conforme a seção de status e badges;
 - não usar `16–24px` como padrão.
@@ -241,7 +241,7 @@ Preferir:
 
 Quando um card for realmente necessário:
 
-- radius pequeno;
+- cantos retos;
 - sem sombra grande;
 - padding compacto;
 - conteúdo específico do domínio;
@@ -843,3 +843,19 @@ Para qualquer mudança visual futura:
 6. não reintroduzir estilos legados de 16–24 px, grandes sombras, glassmorphism, cards excessivos, pills/badges como padrão de status ou accent bars decorativas.
 
 A consistência do sistema tem prioridade sobre criatividade isolada em uma única tela.
+
+## 22. Layout industrial com navegação lateral
+
+Atualização visual solicitada em 2026-09-28:
+
+- lateral fixa, recolhível, com nomes das áreas e agrupamentos DPP / conhecimento;
+- estado selecionado por fundo neutro e `aria-current`, sem faixa decorativa;
+- cabeçalho compacto com título da área e busca contextual do conhecimento;
+- controles de ícone quadrados; campos, tabelas e áreas de texto mantêm proporções adequadas ao conteúdo e cantos retos;
+- conversa ocupa a área central; evidências e inspeção abrem por controle explícito, sem perda de rastreabilidade;
+- navegação compacta em telas pequenas, expansível com botão de fechamento;
+- temas claro/escuro, foco visível e rótulos acessíveis preservados;
+- `WorkspaceNavigation.jsx` concentra navegação e seus ícones; `App.jsx` mantém a seleção das áreas e a composição funcional;
+- `navigation.css` controla o frame; tokens geométricos continuam centralizados em `product-language.css`.
+
+A referência ao ChatGPT orienta a organização, sem acrescentar recursos fictícios de histórico ou nova conversa.
