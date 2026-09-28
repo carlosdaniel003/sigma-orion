@@ -378,50 +378,36 @@ Em tabelas, status devem aparecer como texto neutro na própria célula. Se o es
 
 ### Uma cor, um canal
 
-**Não codificar o mesmo estado simultaneamente por texto, borda e preenchimento.**
+Quando a cor for realmente necessária em uma exceção funcional, não codificar o mesmo significado simultaneamente por texto, borda e preenchimento.
 
-Escolher preferencialmente apenas um canal para receber a cor semântica:
-
-```text
-● verde + texto normal
-```
-
-ou:
+Para **status passivos**, o padrão é ainda mais simples:
 
 ```text
-ícone âmbar + texto normal
+texto neutro + contexto
 ```
 
-ou, quando realmente necessário:
+Exemplo:
 
 ```text
-texto verde
+Divergência
+Δ total +16.872 un.
 ```
 
-Evitar:
-
-```text
-texto verde + fundo verde + borda verde
-```
-
-A cor deve comunicar estado, não decorar o componente inteiro.
+Não utilizar ponto, ícone ou texto colorido apenas para sinalizar o estado.
 
 ### Uso de cores semânticas
 
-Não aplicar simultaneamente cor semântica no:
+Verde, amarelo e vermelho não são a linguagem padrão de status do ORION.
 
-- texto;
-- fundo;
-- borda.
+Podem ser usados apenas quando a cor é parte necessária de:
 
-Preferir que apenas um destes elementos receba a cor:
+- telemetria;
+- progresso real;
+- visualização de dados;
+- gráfico com legenda;
+- situação excepcional em que a leitura perderia informação relevante sem cor.
 
-- ponto;
-- ícone;
-- indicador;
-- texto, quando o contexto realmente exigir.
-
-O resultado precisa continuar compreensível sem cor.
+Mesmo nesses casos, a informação deve continuar compreensível por texto, valor, eixo, legenda ou estrutura.
 
 ### Tipografia de status
 
@@ -505,7 +491,6 @@ A implementação deve preferir algo estruturalmente simples, por exemplo:
 
 ```jsx
 <span className="status-text">
-  <span className="status-dot" aria-hidden="true" />
   Mantido
 </span>
 ```
