@@ -125,7 +125,7 @@ function AgentOrion({ apiUrl }) {
     {
       id: 'initial',
       role: 'orion',
-      text: 'Pergunte sobre materiais, modelos e diferenças entre o Cenário ORION e o DPP Final. Use as evidências da resposta para apoiar sua análise.',
+      text: 'Pergunte livremente sobre materiais, modelos, regras, fórmulas, cálculos, fontes, divergências e qualquer conhecimento indexado no ORION. Quando a pergunta envolver dados do mês, respondo a partir do Cenário ORION e do DPP Final sincronizados.',
       evidence: [],
       sources: [],
       entities: [],
@@ -317,7 +317,7 @@ function AgentOrion({ apiUrl }) {
         <div>
           <span className="agent-orion-kicker">ASSISTENTE DE ANÁLISE DPP</span>
           <h2 id="agent-orion-title">Agente ORION</h2>
-          <p>Consulte materiais, compare cenários e investigue divergências com as evidências do seu DPP.</p>
+          <p>Consulte qualquer conhecimento do ORION e investigue os dados calculados do DPP com evidências rastreáveis.</p>
         </div>
         <div className="agent-orion-context" aria-label="Contexto atual do agente">
           <strong>{formatMonth(month)}</strong>
