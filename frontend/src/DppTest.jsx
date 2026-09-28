@@ -327,7 +327,7 @@ function DppTest({ apiUrl }) {
                 </div>
                 <p>{result.summary.generated_materials.toLocaleString('pt-BR')} materiais gerados × {result.summary.expected_materials.toLocaleString('pt-BR')} materiais no gabarito.</p>
               </div>
-              <span className={`source-state ${result.pass ? 'ready' : 'required'}`}>{result.status}</span>
+              <span className="test-result-text">{result.status}</span>
             </div>
             <div className="table-scroll">
               <table className="dpp-table">
@@ -443,13 +443,13 @@ function DifferenceTable({ items, showReason = false }) {
 }
 
 function CheckBadge({ check }) {
-  if (check.mismatches) return <span className="unit-badge warning">DIVERGE</span>
+  if (check.mismatches) return <span className="test-result-text">DIVERGE</span>
   const human = check.human_interventions || 0
   const legacy = check.legacy_corrections || 0
-  if (human && legacy) return <span className="unit-badge neutral">HUMANO + LEGADO</span>
-  if (human) return <span className="unit-badge neutral">HUMANO</span>
-  if (legacy) return <span className="unit-badge neutral">LEGADO</span>
-  return <span className="unit-badge ok">OK</span>
+  if (human && legacy) return <span className="test-result-text">HUMANO + LEGADO</span>
+  if (human) return <span className="test-result-text">HUMANO</span>
+  if (legacy) return <span className="test-result-text">LEGADO</span>
+  return <span className="test-result-text">OK</span>
 }
 
 function TestMetric({ label, check }) {
