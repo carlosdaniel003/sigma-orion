@@ -1,0 +1,18 @@
+/* Dashboard: keep only operational sections relevant to the current DPP workflow. */
+.dpp-ai-bridge,
+.dashboard-footer-grid {
+  display: none !important;
+}
+
+/* The monthly files are loaded once from the shared package above the dashboard. */
+.dpp-state-card.final > .bulk-file-picker {
+  display: none !important;
+}
+
+.dashboard-shared-package {
+  margin-bottom: 22px;
+}
+
+.dashboard-shared-package .bulk-file-picker {
+  margin: 0;
+}

@@ -1,0 +1,340 @@
+from io import BytesIO
+
+from fastapi.testclient import TestClient
+from openpyxl import Workbook
+
+from app.main import app
+
+
+def build_xlsx() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Estoque"
+    sheet.append(["material", "quantidade"])
+    sheet.append(["ABC001", 10])
+    sheet.append(["ABC002", 20])
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def build_dpp_xlsx() -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "DPP"
+
+    sheet["E2"] = "OK"
+    sheet["F2"] = "NG"
+
+    sheet["D3"] = "KIT Disponivel PGD (JULHO)"
+    sheet["E3"] = 100
+    sheet["F3"] = 50
+
+    sheet["E4"] = "MODEL-A"
+    sheet["F4"] = "MODEL-B"
+
+    sheet["D5"] = "REAL"
+    sheet["E5"] = 80
+    sheet["F5"] = 50
+
+    sheet["E8"] = "1000-01"
+    sheet["F8"] = "2000-01"
+
+    headers = [
+        "Material",
+        "Descrição",
+        "UM",
+        "Grupo Origem",
+        "MODEL-A",
+        "MODEL-B",
+        "Check",
+        "WIU",
+        "NEC",
+        "STK 01.07",
+        "EXPLOSÃO 01.07",
+        "OPC",
+        "STK OP",
+        "STK TTL",
+        "SALDO",
+        "Preço",
+        "Amount",
+        "Coments",
+    ]
+    for column, value in enumerate(headers, start=1):
+        sheet.cell(9, column, value)
+
+    values = [
+        "MAT-001",
+        "Material de teste",
+        "UN",
+        "Local",
+        2,
+        1,
+        "MODEL-A// MODEL-B",
+        "MODEL-A// MODEL-B",
+        210,
+        100,
+        20,
+        None,
+        0,
+        120,
+        -90,
+        1.5,
+        -135,
+        "Investigar divergência",
+    ]
+    for column, value in enumerate(values, start=1):
+        sheet.cell(10, column, value)
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def test_health() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_agent_status_uses_offline_rag_by_default() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/agent/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "mock"
+    assert payload["model"] == "mock-local"
+    assert payload["mode"] == "offline-rag"
+    assert "SQLite" in payload["message"]
+
+
+def test_knowledge_status_loads_versioned_files() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/knowledge/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "sqlite-fts5-bm25"
+    assert payload["fts5_enabled"] is True
+    assert payload["embedding_enabled"] is False
+    assert payload["document_count"] >= 4
+    assert payload["chunk_count"] >= 4
+    assert "guardrails.md" in payload["files"]
+    assert "motor-deterministico.md" in payload["files"]
+
+
+def test_agent_demo_is_explicitly_fake() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/agent/demo")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "mock"
+    assert payload["is_demo"] is True
+    assert "Demonstra" in payload["demo_notice"]
+
+
+def test_agent_demo_chat_is_not_used_as_operational_rag() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/agent/chat-demo",
+            json={"question": "Por que MAT-DEMO-001 está crítico?"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "mock"
+    assert payload["is_demo"] is True
+    assert "chat operacional" in payload["answer"]
+
+
+def test_database_chat_uses_sqlite_rag_without_external_llm() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/knowledge/chat",
+            json={"question": "Qual a fórmula para calcular NEC?"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "local-rag"
+    assert payload["model"] == "sqlite-fts5-bm25"
+    assert payload["database"] == "orion.db"
+    assert payload["is_demo"] is False
+    assert "NEC = Σ(REAL do modelo × consumo do material naquele modelo)" in payload["answer"]
+    assert "calculate_nec" in payload["answer"]
+    assert payload["knowledge_sources"] == ["motor-deterministico.md"]
+    assert payload["retrieval"]
+    assert payload["audit_id"] is not None
+
+
+def test_database_chat_synthesizes_other_deterministic_formulas() -> None:
+    cases = [
+        ("Como calcula STK TTL?", "STK TTL = STK SAP efetivo + EXPLOSÃO + STK OP"),
+        ("Qual a fórmula do SALDO?", "SALDO = STK TTL - NEC"),
+        ("Qual a fórmula do Amount?", "Amount = Preço × SALDO"),
+    ]
+
+    with TestClient(app) as client:
+        for question, expected_formula in cases:
+            response = client.post("/api/knowledge/chat", json={"question": question})
+            assert response.status_code == 200
+            payload = response.json()
+            assert expected_formula in payload["answer"]
+            assert payload["knowledge_sources"] == ["motor-deterministico.md"]
+
+
+def test_workspace_is_indexed_before_free_form_chat() -> None:
+    workspace = {
+        "month": "2026-07",
+        "state": {"package": "ready", "scenario": "current", "final_dpp": "missing-file"},
+        "scenario": {
+            "scenario_id": "scenario-test-db",
+            "reference_month": "2026-07",
+            "summary": {"materials": 1, "models": 1},
+            "models": [{"name": "MODEL-X", "kit_pgd": 100, "real": 90}],
+            "materials": [
+                {
+                    "material": "MAT-RAG-001",
+                    "description": "Material sincronizado de teste",
+                    "um": "UN",
+                    "nec": 50,
+                    "stock_total": 40,
+                    "balance": -10,
+                    "status": "INVESTIGAR",
+                }
+            ],
+        },
+        "final_dpp": None,
+    }
+
+    with TestClient(app) as client:
+        sync_response = client.post("/api/knowledge/workspace/sync", json=workspace)
+        assert sync_response.status_code == 200
+        sync_payload = sync_response.json()
+        assert sync_payload["runtime_document_count"] >= 3
+
+        response = client.post(
+            "/api/knowledge/chat",
+            json={"question": "Qual o SALDO do material MAT-RAG-001?"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "MAT-RAG-001" in payload["answer"]
+    assert "SALDO ORION: -10" in payload["answer"]
+    assert any(source.startswith("workspace://scenario/scenario-test-db/material/MAT-RAG-001") for source in payload["knowledge_sources"])
+    assert payload["audit_id"] is not None
+
+
+def test_structured_mock_analysis_is_saved_to_history() -> None:
+    request_payload = {
+        "metrics": {
+            "total_materials": 2,
+            "critical": 1,
+            "attention": 0,
+            "ok": 1,
+        },
+        "facts": {
+            "scenario": "teste automatizado",
+            "materials": [
+                {"material": "TEST-001", "gap": -10},
+                {"material": "TEST-002", "gap": 5},
+            ],
+        },
+        "objective": "Validar o contrato estruturado sem usar uma LLM externa.",
+    }
+
+    with TestClient(app) as client:
+        analysis_response = client.post("/api/agent/analyze", json=request_payload)
+        assert analysis_response.status_code == 200
+        analysis = analysis_response.json()
+        assert analysis["provider"] == "mock"
+        assert analysis["metrics"] == request_payload["metrics"]
+        assert analysis["risks"] == []
+        assert analysis["recommendations"] == []
+
+        history_response = client.get("/api/analyses/history")
+        assert history_response.status_code == 200
+        history = history_response.json()
+        assert any(item["analysis_id"] == analysis["analysis_id"] for item in history)
+
+        detail_response = client.get(f"/api/analyses/{analysis['analysis_id']}")
+        assert detail_response.status_code == 200
+        assert detail_response.json()["payload"]["analysis_id"] == analysis["analysis_id"]
+
+
+def test_save_feedback() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/feedback",
+            json={
+                "analysis_id": "demo-test",
+                "recommendation_id": "rec-test",
+                "decision": "approved",
+                "comment": None,
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["saved"] is True
+    assert isinstance(response.json()["id"], int)
+
+
+def test_inspect_xlsx() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/files/inspect",
+            files={
+                "files": (
+                    "estoque.xlsx",
+                    build_xlsx(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["files_received"] == 1
+    assert payload["files"][0]["filename"] == "estoque.xlsx"
+    assert payload["files"][0]["sheets"][0]["name"] == "Estoque"
+    assert payload["files"][0]["sheets"][0]["rows"] == 2
+    assert payload["files"][0]["sheets"][0]["columns"] == ["material", "quantidade"]
+
+
+def test_dpp_analysis_recalculates_deterministic_fields() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/dpp/analyze?divergence_limit=20",
+            files={
+                "file": (
+                    "DPP_TESTE.xlsx",
+                    build_dpp_xlsx(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["sheet"] == "DPP"
+    assert payload["structure"]["model_count"] == 2
+    assert payload["summary"]["total_materials"] == 1
+    assert payload["summary"]["materials_to_investigate"] == 1
+    assert payload["summary"]["validation"]["nec"]["mismatches"] == 0
+    assert payload["summary"]["validation"]["stk_total"]["mismatches"] == 0
+    assert payload["summary"]["validation"]["saldo"]["mismatches"] == 0
+    assert payload["summary"]["validation"]["amount"]["mismatches"] == 0
+
+    divergence = payload["divergences"][0]
+    assert divergence["material"] == "MAT-001"
+    assert divergence["python"]["nec"] == 210
+    assert divergence["python"]["stock_total"] == 120
+    assert divergence["python"]["balance"] == -90
+    assert divergence["python"]["amount"] == -135
+    assert divergence["python"]["status"] == "INVESTIGAR"

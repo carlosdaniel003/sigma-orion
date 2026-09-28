@@ -1,0 +1,845 @@
+/*
+ * Testes do DPP — página técnica orientada a usuários de Excel/Power BI.
+ * Fonte de verdade visual: DESIGN_SYSTEM.md.
+ *
+ * Objetivos:
+ * - um único eixo de alinhamento;
+ * - hierarquia clara entre preparação, execução e relatório;
+ * - tabelas como superfície principal;
+ * - sem cards decorativos, pills, bolinhas ou texto semântico colorido;
+ * - conteúdo legível sem cortes em desktop e responsivo em telas menores.
+ */
+
+.dpp-test-view {
+  min-width: 0;
+}
+
+.dpp-test-page {
+  width: min(100%, 1440px);
+  min-width: 0;
+  margin-inline: auto;
+  padding: 0 0 var(--space-6);
+  color: var(--orion-text);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cabeçalho                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-6);
+  padding: var(--space-5) 0 var(--space-5);
+  border-bottom: 1px solid var(--orion-border);
+}
+
+.dpp-test-hero-copy {
+  min-width: 0;
+}
+
+.dpp-test-kicker {
+  display: block;
+  margin: 0 0 var(--space-2);
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dpp-test-title-row,
+.dpp-test-label-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dpp-test-title-row {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.dpp-test-title-row h2,
+.dpp-test-title-row h3 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.dpp-test-hero h2 {
+  color: var(--orion-text);
+  font-size: clamp(22px, 2vw, 28px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.dpp-test-hero p {
+  max-width: 880px;
+  margin: var(--space-2) 0 0;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.dpp-test-flow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: 3px;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.dpp-test-flow span[aria-hidden='true'] {
+  color: var(--orion-text-secondary);
+}
+
+.dpp-test-page .info-hint-trigger {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Seções                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-section {
+  min-width: 0;
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--orion-border);
+}
+
+.dpp-test-section-header {
+  min-width: 0;
+  margin-bottom: var(--space-4);
+}
+
+.dpp-test-section-header-with-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, auto);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.dpp-test-section-header > div {
+  min-width: 0;
+}
+
+.dpp-test-section-header h3 {
+  margin: 0;
+  color: var(--orion-text);
+  font-size: var(--text-lg);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.dpp-test-section-header p {
+  max-width: 900px;
+  margin: var(--space-1) 0 0;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.dpp-test-section-title-row {
+  width: fit-content;
+}
+
+.dpp-test-section-meta {
+  justify-self: end;
+  max-width: 420px;
+  padding-top: 2px;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Preparação                                                                 */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-preparation {
+  padding-top: var(--space-5);
+}
+
+.dpp-test-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-5);
+  padding-bottom: var(--space-4);
+}
+
+.dpp-test-month-field,
+.dpp-test-shared-context {
+  min-width: 0;
+}
+
+.dpp-test-label-row label,
+.dpp-test-label-row strong {
+  min-width: 0;
+  color: var(--orion-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.dpp-test-month-field input {
+  width: 100%;
+  min-height: 38px;
+  margin-top: var(--space-2);
+  padding: 8px 10px;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-sm);
+  background: var(--orion-surface);
+  color: var(--orion-text);
+  outline: none;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-test-month-field input:focus {
+  border-color: var(--orion-blue);
+  box-shadow: var(--shadow-control);
+}
+
+.dpp-test-shared-context p {
+  max-width: 820px;
+  margin: var(--space-1) 0 0;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+/* Pacote reutiliza o componente compartilhado, mas nesta tela vira uma subseção. */
+.dpp-test-page .bulk-file-picker,
+.dpp-test-page .bulk-file-picker.compact,
+.dpp-test-page .bulk-file-picker.is-processing {
+  width: 100%;
+  margin: 0 !important;
+  padding: var(--space-4) 0 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-page .bulk-file-picker-head {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
+  gap: var(--space-5);
+}
+
+.dpp-test-page .bulk-file-picker-head > div:first-child {
+  min-width: 0;
+}
+
+.dpp-test-page .bulk-file-picker-head .eyebrow {
+  display: block;
+  margin: 0 0 var(--space-1);
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.dpp-test-page .bulk-file-picker-head h3 {
+  margin: 0 !important;
+  color: var(--orion-text);
+  font-size: var(--text-md) !important;
+  font-weight: 650;
+}
+
+.dpp-test-page .bulk-file-picker-head p {
+  max-width: 820px;
+  margin: var(--space-1) 0 0 !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  line-height: 1.45;
+}
+
+.dpp-test-page .bulk-file-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.dpp-test-page .bulk-file-button,
+.dpp-test-page .bulk-file-clear {
+  min-height: 34px;
+  padding: 7px 10px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+}
+
+.dpp-test-page .bulk-file-button {
+  min-width: 170px;
+}
+
+.dpp-test-page .bulk-package-status,
+.dpp-test-page .bulk-package-status.ready,
+.dpp-test-page .bulk-package-status.missing,
+.dpp-test-page .bulk-package-status.processing {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0 !important;
+  padding: var(--space-3) 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--orion-border-soft) !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-page .bulk-package-status strong {
+  display: block !important;
+  color: var(--orion-text) !important;
+  font-size: var(--text-sm) !important;
+  font-weight: 500 !important;
+}
+
+.dpp-test-page .bulk-package-status strong::before {
+  content: none !important;
+  display: none !important;
+}
+
+.dpp-test-page .bulk-package-status span {
+  min-width: 0;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.dpp-test-page .bulk-file-checks {
+  display: grid;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.dpp-test-page .bulk-file-check,
+.dpp-test-page .bulk-file-check.found,
+.dpp-test-page .bulk-file-check.missing,
+.dpp-test-page .bulk-file-check.optional {
+  min-height: 42px;
+  display: block !important;
+  padding: 9px 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.dpp-test-page .bulk-file-check:last-child {
+  border-bottom: 0 !important;
+}
+
+.dpp-test-page .bulk-check-icon,
+.dpp-test-page .bulk-file-check.found .bulk-check-icon,
+.dpp-test-page .bulk-file-check.missing .bulk-check-icon {
+  display: none !important;
+}
+
+.dpp-test-page .bulk-file-check > div {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: minmax(190px, 0.34fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.dpp-test-page .bulk-file-check strong {
+  min-width: 0;
+  color: var(--orion-text) !important;
+  font-size: var(--text-sm) !important;
+  font-weight: 600 !important;
+}
+
+.dpp-test-page .bulk-file-check small {
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execução                                                                   */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-runbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--orion-border);
+}
+
+.dpp-test-runbar > div {
+  min-width: 0;
+}
+
+.dpp-test-runbar p {
+  max-width: 900px;
+  margin: var(--space-1) 0 0;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.dpp-test-runbar .secondary-button {
+  min-height: 36px;
+  padding: 8px 12px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Relatório                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-report {
+  min-width: 0;
+}
+
+.dpp-test-verdict {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  align-items: start;
+  gap: var(--space-6);
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--orion-border);
+}
+
+.dpp-test-verdict-main {
+  min-width: 0;
+}
+
+.dpp-test-verdict-title {
+  width: auto;
+  align-items: flex-start;
+}
+
+.dpp-test-verdict h3 {
+  max-width: 900px;
+  color: var(--orion-text) !important;
+  font-size: clamp(20px, 2vw, 26px) !important;
+  font-weight: 650 !important;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.dpp-test-verdict h3::before {
+  content: none !important;
+  display: none !important;
+}
+
+.dpp-test-verdict-main > p {
+  max-width: 900px;
+  margin: var(--space-3) 0 0;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.dpp-test-controlled-real {
+  min-width: 0;
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--orion-border);
+}
+
+.dpp-test-controlled-real p {
+  margin: var(--space-2) 0 0;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Resumo                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-summary-section {
+  padding-top: var(--space-5);
+}
+
+.dpp-test-page .monthly-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0 !important;
+  margin: 0 !important;
+  border: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: var(--orion-surface) !important;
+  overflow: hidden;
+}
+
+.dpp-test-page .monthly-metrics .metric-card,
+.dpp-test-page .monthly-metrics .metric-ok,
+.dpp-test-page .monthly-metrics .metric-attention {
+  min-width: 0;
+  min-height: 86px;
+  display: grid;
+  align-content: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) !important;
+  border: 0 !important;
+  border-right: 1px solid var(--orion-border-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-page .monthly-metrics .metric-card:last-child {
+  border-right: 0 !important;
+}
+
+.dpp-test-page .monthly-metrics .metric-card > span {
+  overflow: hidden;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 500 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dpp-test-page .monthly-metrics .metric-card > strong {
+  overflow: hidden;
+  color: var(--orion-text) !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 650 !important;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dpp-test-page .monthly-metrics .metric-card > small,
+.dpp-test-page .monthly-metrics .metric-ok > small,
+.dpp-test-page .monthly-metrics .metric-attention > small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 400 !important;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tabelas                                                                    */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-page .table-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: var(--orion-surface) !important;
+  box-shadow: none !important;
+  scrollbar-gutter: stable;
+}
+
+.dpp-test-page .dpp-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-test-field-comparison .dpp-table {
+  min-width: 1120px !important;
+  table-layout: fixed !important;
+}
+
+.dpp-test-field-comparison .test-col-validation { width: 23%; }
+.dpp-test-field-comparison .test-col-compared { width: 10%; }
+.dpp-test-field-comparison .test-col-matches { width: 10%; }
+.dpp-test-field-comparison .test-col-human { width: 16%; }
+.dpp-test-field-comparison .test-col-legacy { width: 14%; }
+.dpp-test-field-comparison .test-col-orion { width: 15%; }
+.dpp-test-field-comparison .test-col-result { width: 12%; }
+
+.dpp-test-page .dpp-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 38px;
+  padding: 8px 10px !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text-secondary) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+}
+
+.dpp-test-page .dpp-table td {
+  height: 42px;
+  padding: 8px 10px !important;
+  border-bottom: 1px solid var(--orion-border-soft) !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  font-size: var(--text-sm) !important;
+  line-height: 1.4;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.dpp-test-page .dpp-table tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+.dpp-test-page .dpp-table tbody tr:hover td {
+  background: var(--orion-surface-elevated) !important;
+}
+
+.dpp-test-page .dpp-table .number-cell,
+.dpp-test-field-comparison th:not(:first-child) {
+  text-align: right;
+}
+
+.dpp-test-field-comparison th:last-child,
+.dpp-test-field-comparison td:last-child {
+  text-align: center;
+}
+
+.dpp-test-page .material-code {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: var(--text-xs) !important;
+}
+
+.dpp-test-page .test-result-text {
+  display: inline;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 500 !important;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Notas e estados vazios                                                     */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-empty,
+.dpp-test-note {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--orion-border-soft);
+}
+
+.dpp-test-empty strong,
+.dpp-test-note strong {
+  color: var(--orion-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.dpp-test-empty span,
+.dpp-test-note span {
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.dpp-test-error {
+  margin: var(--space-3) 0 0 !important;
+  padding: var(--space-3) 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+  box-shadow: none !important;
+}
+
+/* Neutralização local explícita contra CSS legado. */
+.dpp-test-page .status,
+.dpp-test-page .source-state,
+.dpp-test-page .unit-badge {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.dpp-test-page .status::before,
+.dpp-test-page .source-state::before,
+.dpp-test-page .unit-badge::before,
+.dpp-test-page .bulk-package-status strong::before,
+.dpp-test-page .bulk-check-icon {
+  content: none !important;
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsividade                                                             */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .dpp-test-page .monthly-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .dpp-test-page .monthly-metrics .metric-card:nth-child(4) {
+    border-right: 0 !important;
+  }
+
+  .dpp-test-page .monthly-metrics .metric-card:nth-child(-n + 4) {
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .dpp-test-hero,
+  .dpp-test-verdict {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .dpp-test-flow {
+    padding-top: 0;
+  }
+
+  .dpp-test-controlled-real {
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--orion-border);
+    border-left: 0;
+  }
+
+  .dpp-test-setup-grid {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 720px) {
+  .dpp-test-page {
+    width: 100%;
+  }
+
+  .dpp-test-section-header-with-meta,
+  .dpp-test-runbar,
+  .dpp-test-page .bulk-file-picker-head,
+  .dpp-test-page .bulk-package-status {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-2);
+  }
+
+  .dpp-test-section-meta {
+    justify-self: start;
+    max-width: none;
+    text-align: left;
+  }
+
+  .dpp-test-page .bulk-file-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .dpp-test-page .bulk-file-button,
+  .dpp-test-page .bulk-file-clear {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dpp-test-page .bulk-file-check > div {
+    grid-template-columns: 1fr !important;
+    gap: 2px;
+  }
+
+  .dpp-test-page .bulk-file-check small {
+    white-space: normal;
+  }
+
+  .dpp-test-runbar .secondary-button {
+    justify-self: start;
+  }
+
+  .dpp-test-page .monthly-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dpp-test-page .monthly-metrics .metric-card,
+  .dpp-test-page .monthly-metrics .metric-card:nth-child(4) {
+    border-right: 1px solid var(--orion-border-soft) !important;
+    border-bottom: 1px solid var(--orion-border-soft) !important;
+  }
+
+  .dpp-test-page .monthly-metrics .metric-card:nth-child(even) {
+    border-right: 0 !important;
+  }
+
+  .dpp-test-page .monthly-metrics .metric-card:last-child {
+    border-bottom: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dpp-test-page .monthly-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dpp-test-page .monthly-metrics .metric-card,
+  .dpp-test-page .monthly-metrics .metric-card:nth-child(even) {
+    border-right: 0 !important;
+  }
+
+  .dpp-test-page .bulk-file-actions {
+    flex-direction: column;
+  }
+}

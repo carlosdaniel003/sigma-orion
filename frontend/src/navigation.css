@@ -1,0 +1,243 @@
+/* Application frame. Visual tokens are defined in product-language.css. */
+.app-shell {
+  --sidebar-width: 256px;
+  --shell-header-height: 58px;
+  --sidebar-motion-duration: 180ms;
+  --sidebar-motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  min-height: 100dvh;
+  display: block;
+  padding-left: var(--sidebar-width);
+  transition: padding-left var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.app-shell:has(.shell-sidebar[data-collapsed='true']) { --sidebar-width: 64px; }
+
+.shell-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 90;
+  width: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  padding: var(--space-2);
+  border-right: 1px solid var(--orion-border);
+  background: var(--orion-surface);
+  transition: width var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.shell-sidebar-head {
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--shell-header-height) - var(--space-4));
+  margin-bottom: var(--space-5);
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 40px;
+  padding: 0 var(--space-2);
+  background: transparent;
+  color: var(--orion-text);
+}
+
+.shell-mobile-close.shell-icon-button { display: none; }
+
+.shell-navigation { flex: 1; min-height: 0; overflow-y: auto; }
+.shell-nav-group { margin-top: var(--space-5); }
+.shell-nav-group > p {
+  max-height: 24px;
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--orion-text-secondary);
+  transition:
+    max-height var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    margin var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    padding var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    opacity 90ms ease-out 50ms,
+    transform var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.shell-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  background: transparent;
+  color: var(--orion-text-secondary);
+  text-align: left;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  transition:
+    gap var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    padding var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.shell-nav-item > span {
+  min-width: 0;
+  max-width: 190px;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  white-space: nowrap;
+  transition:
+    max-width var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    opacity 100ms ease-out 55ms,
+    transform var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.shell-nav-item:hover,
+.shell-brand:hover,
+.shell-icon-button:hover { background: var(--orion-surface-elevated); color: var(--orion-text); }
+.shell-nav-item[aria-current='page'] { background: var(--orion-surface-elevated); color: var(--orion-text); font-weight: 600; }
+
+.shell-nav-item svg,
+.shell-icon-button svg {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: miter;
+}
+
+.shell-nav-item:focus-visible,
+.shell-icon-button:focus-visible,
+.shell-brand:focus-visible { outline: 2px solid var(--orion-blue); outline-offset: -2px; }
+
+.shell-sidebar-footer { margin-top: var(--space-4); padding-top: var(--space-2); border-top: 1px solid var(--orion-border); }
+.shell-product-caption {
+  display: block;
+  max-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--orion-text-secondary);
+  transition:
+    max-height var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    padding var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    opacity 90ms ease-out 50ms,
+    transform var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.shell-sidebar[data-collapsed='true'] .shell-nav-item {
+  justify-content: center;
+  gap: 0;
+  padding: var(--space-2);
+}
+
+.shell-sidebar[data-collapsed='true'] .shell-nav-item > span {
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+  transition-delay: 0ms;
+}
+
+.shell-sidebar[data-collapsed='true'] .shell-nav-group > p {
+  max-height: 0;
+  margin-bottom: 0;
+  padding-inline: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+  transition-delay: 0ms;
+}
+
+.shell-sidebar[data-collapsed='true'] .shell-product-caption {
+  max-height: 0;
+  padding-block: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+  transition-delay: 0ms;
+}
+
+.shell-sidebar[data-collapsed='true'] .brand-logo-full { display: none; }
+.shell-sidebar[data-collapsed='true'] .brand-logo-compact { display: block; }
+.shell-sidebar[data-collapsed='false'] .brand-logo-full { display: block; }
+.shell-sidebar[data-collapsed='false'] .brand-logo-compact { display: none; }
+
+.shell-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  height: var(--shell-header-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-5);
+  border-bottom: 1px solid var(--orion-border);
+  background: var(--orion-bg);
+}
+
+.shell-icon-button {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  color: var(--orion-text-secondary);
+}
+
+.shell-view-title { min-width: 0; font-size: var(--text-md); font-weight: 500; }
+.shell-topbar .knowledge-topbar-search { margin-left: auto; border-radius: var(--radius-sm); }
+.app-shell > .content {
+  width: 100%;
+  min-width: 0;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+
+.app-shell > .content:has(.agent-orion-page),
+.app-shell > .content:has(.knowledge-page) {
+  height: calc(100dvh - var(--shell-header-height));
+  padding-block: var(--space-4) !important;
+}
+
+@media (max-width: 1000px) {
+  .app-shell { --sidebar-width: 224px; }
+}
+
+@media (max-width: 760px) {
+  .app-shell { --sidebar-width: 64px; --shell-header-height: 54px; }
+  .shell-sidebar[data-collapsed='false'] .shell-mobile-close { display: grid; }
+  .shell-sidebar[data-collapsed='false'] .shell-brand { padding-inline: 0; }
+  .shell-sidebar[data-collapsed='false'] { width: min(256px, calc(100vw - 64px)); z-index: 110; }
+  .shell-topbar { padding-inline: var(--space-2); gap: var(--space-2); }
+  .app-shell > .content { padding-inline: var(--space-3); }
+  .shell-view-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shell-topbar:has(.knowledge-topbar-search) .shell-view-title { display: none; }
+  .shell-topbar .knowledge-topbar-search { flex: 1; width: auto; }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .shell-sidebar,
+  .shell-nav-item,
+  .shell-nav-item > span,
+  .shell-nav-group > p,
+  .shell-product-caption {
+    transition: none !important;
+  }
+}

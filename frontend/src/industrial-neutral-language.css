@@ -1,0 +1,308 @@
+/*
+ * SIGMA-S ORION — neutral industrial language.
+ *
+ * Loaded last on purpose. This is the product-wide compliance layer for the
+ * 2026-09-28 visual direction: operational state is communicated by words,
+ * hierarchy, spacing and neutral surfaces — not by colored text or colored dots.
+ *
+ * Identity/interaction color remains allowed for real controls, focus, search
+ * highlighting and measured progress. Semantic green/yellow/red must not be
+ * the default presentation of status information.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* 1. Product-wide status text: neutral, never a semantic pill                */
+/* -------------------------------------------------------------------------- */
+
+.status,
+.source-state,
+.unit-badge,
+.consolidation-status,
+.severity,
+.final-model-comparison-status,
+.knowledge-index-status,
+.bulk-package-status,
+.dpp-test-view .status,
+.dpp-test-view .source-state,
+.dpp-test-view .unit-badge {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--orion-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.source-state.ready,
+.source-state.required,
+.source-state.optional,
+.unit-badge.ok,
+.unit-badge.warning,
+.unit-badge.error,
+.unit-badge.neutral,
+.severity.low,
+.severity.medium,
+.severity.high,
+.bulk-package-status.ready,
+.bulk-package-status.missing,
+.bulk-package-status.processing,
+.final-model-comparison-status.stable,
+.final-model-comparison-status.attention,
+.final-model-comparison-status.missing,
+.dpp-test-view .source-state.ready,
+.dpp-test-view .source-state.required,
+.dpp-test-view .unit-badge.ok,
+.dpp-test-view .unit-badge.warning,
+.dpp-test-view .unit-badge.error,
+.dpp-test-view .unit-badge.neutral {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+}
+
+/* Informational badges that are retained in markup become plain text. */
+.unit-badge,
+.source-state,
+.final-model-comparison-status {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  font-weight: 500 !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2. Remove decorative/semantic dots and markers across the product          */
+/* -------------------------------------------------------------------------- */
+
+.dashboard-scenario-comparison > .panel-header > .status::before,
+.scenario-comparison-divergence strong::before,
+.dashboard-kpi.good::after,
+.dashboard-kpi.attention::after,
+.final-model-comparison-status::before,
+.bulk-package-status strong::before,
+.status-dot,
+.quality-dot,
+.readiness-marker,
+.pipeline-marker,
+.bulk-check-icon,
+.dpp-column-state-marker,
+.agent-orion-statusline i {
+  display: none !important;
+}
+
+/* Reclaim layout space left by removed markers. */
+.bulk-file-check,
+.dpp-dashboard-view .bulk-file-check {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.pipeline-step {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.dpp-column-difference-cell {
+  padding-left: 10px !important;
+}
+
+.agent-orion-statusline span {
+  gap: 0 !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 3. Dashboard: ORION × DPP Final and all metric/status surfaces             */
+/* -------------------------------------------------------------------------- */
+
+.scenario-comparison-value.orion strong,
+:root[data-theme='light'] .scenario-comparison-value.orion strong,
+.dashboard-comparison-values .orion-value strong,
+.dashboard-comparison-values .final-value strong,
+.dashboard-comparison-heading h3 {
+  color: var(--orion-text) !important;
+}
+
+.dashboard-scenario-comparison > .panel-header > .status,
+.dashboard-scenario-comparison > .panel-header > .status.comparison-ok,
+.dashboard-scenario-comparison > .panel-header > .status.comparison-warning {
+  display: block !important;
+  color: var(--orion-text-secondary) !important;
+  font-weight: 400 !important;
+}
+
+.scenario-comparison-divergence,
+.scenario-comparison-divergence.ok,
+.scenario-comparison-divergence.warning,
+.scenario-comparison-divergence.pending {
+  background: transparent !important;
+}
+
+.scenario-comparison-divergence strong,
+.scenario-comparison-divergence.ok strong,
+.scenario-comparison-divergence.warning strong,
+.scenario-comparison-divergence.pending strong {
+  color: var(--orion-text) !important;
+  font-weight: 500 !important;
+}
+
+.dashboard-kpi.good strong,
+.dashboard-kpi.attention strong,
+.dashboard-kpi.critical strong,
+.dashboard-mini-kpi.good strong,
+.dashboard-mini-kpi.attention strong,
+.dashboard-mini-kpi.critical strong,
+.metric.ok strong,
+.metric.attention strong,
+.metric.critical strong,
+.dashboard-negative {
+  color: var(--orion-text) !important;
+}
+
+.dashboard-kpi.good,
+.dashboard-kpi.attention,
+.dashboard-kpi.critical,
+.dashboard-mini-kpi.good,
+.dashboard-mini-kpi.attention,
+.dashboard-mini-kpi.critical,
+.metric.ok,
+.metric.attention,
+.metric.critical {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+}
+
+.dpp-evolution-row small.attention,
+.dpp-evolution-row small.neutral,
+.delta-value.changed,
+.delta-value.neutral {
+  color: var(--orion-text) !important;
+}
+
+.final-model-plan-summary .attention strong,
+.final-model-plan-summary .stable strong,
+.final-model-plan-table .delta-value.changed,
+.final-model-plan-table .delta-value.neutral {
+  color: var(--orion-text) !important;
+}
+
+.final-model-plan-eyebrow,
+.final-model-plan-source.orion-source span,
+.final-model-plan-table .final-model-plan-group-head th.orion-group {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dashboard-comparison-legend i,
+.dashboard-comparison-legend i.orion,
+.dashboard-comparison-legend i.final {
+  display: none !important;
+}
+
+/* Divergent rows use structure, not semantic tinting. */
+.row-warning td,
+.final-model-plan-table tbody tr.divergent td {
+  background: transparent !important;
+  color: var(--orion-text) !important;
+}
+
+.final-model-plan-table tbody tr.divergent:hover td,
+.row-warning:hover td {
+  background: var(--orion-surface-elevated) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 4. Testes / consolidação / pacote mensal                                   */
+/* -------------------------------------------------------------------------- */
+
+.dpp-test-view .test-pass h3,
+.dpp-test-view .test-fail h3,
+.dpp-test-view .monthly-metrics .metric-ok > small,
+.dpp-test-view .monthly-metrics .metric-attention > small,
+.capability-ready span,
+.capability-pending span {
+  color: var(--orion-text) !important;
+}
+
+.dpp-test-view .test-verdict.test-pass,
+.dpp-test-view .test-verdict.test-fail {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+}
+
+.dpp-test-view .rule-box.warning-box,
+.dpp-test-view .unit-warning,
+.rule-box.warning-box,
+.unit-warning,
+.pending-list div {
+  border-color: var(--orion-border) !important;
+  background: transparent !important;
+  color: var(--orion-text) !important;
+}
+
+.source-card.source-ready,
+.bulk-file-check.found,
+.bulk-file-check.missing,
+.dpp-dashboard-view .bulk-file-check.found,
+.dpp-dashboard-view .bulk-file-check.missing {
+  border-color: var(--orion-border-soft) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 5. Agent ORION                                                             */
+/* -------------------------------------------------------------------------- */
+
+.agent-orion-kicker,
+.agent-message[data-role='orion'] .agent-message-author {
+  color: var(--orion-text-secondary) !important;
+}
+
+.agent-orion-statusline {
+  color: var(--orion-text-secondary) !important;
+}
+
+.agent-orion-statusline span {
+  color: var(--orion-text-secondary) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 6. Knowledge / validation errors                                            */
+/* -------------------------------------------------------------------------- */
+
+.knowledge-error,
+.alert.error,
+.dpp-column-detail-state.error {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 7. DPP column comparison                                                    */
+/* -------------------------------------------------------------------------- */
+
+.dpp-column-difference-cell[data-state='stable'],
+.dpp-column-difference-cell[data-state='warning'],
+.dpp-column-difference-cell[data-state='unsupported'] {
+  color: var(--orion-text) !important;
+}
+
+.dpp-column-difference-cell[data-state='warning'] {
+  background: var(--orion-surface-elevated) !important;
+}
+
+.dpp-column-difference-cell[data-state='stable'] {
+  background: transparent !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 8. Keep color only where it represents real interaction/progress           */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Deliberately not neutralized:
+ * - primary/action controls;
+ * - focus outlines;
+ * - selected interactive filters;
+ * - search-result highlighting;
+ * - measured loader/progress and Orion constellation progress.
+ *
+ * Those are interactions or process telemetry, not passive status decoration.
+ */

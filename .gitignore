@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Corporate data files - never commit real input data to this public repository
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+
+# Local LLM artifacts - keep large model/runtime files outside the repository
+*.gguf
+/local-llm/
+
+# Local data
+/data/*.db
+/data/*.sqlite
+/data/*.sqlite3
+/data/dpp_scenario_state.*
+/data/uploads/*
+!/data/uploads/.gitkeep
+
+# Node
+node_modules/
+frontend/dist/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,177 @@
+/* Apple-like visual refinement for the dashboard KPI hierarchy. */
+.dashboard-kpi-grid {
+  gap: 12px;
+}
+
+.dashboard-kpi-primary {
+  align-items: stretch;
+}
+
+.dashboard-kpi {
+  position: relative;
+  min-height: 164px;
+  display: grid;
+  grid-template-rows: auto minmax(48px, 1fr) auto;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid #e5e5ea;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.025), 0 8px 24px rgba(0, 0, 0, 0.035);
+}
+
+.dashboard-kpi > span {
+  color: #6e6e73;
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+.dashboard-kpi > div {
+  display: flex;
+  align-items: baseline;
+  align-self: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+}
+
+.dashboard-kpi strong {
+  color: #1d1d1f;
+  font-size: clamp(2rem, 2.55vw, 2.7rem);
+  font-weight: 650;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  white-space: nowrap;
+}
+
+.dashboard-kpi-unit {
+  flex: 0 0 auto;
+  color: #8e8e93;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-kpi p {
+  min-height: 34px;
+  margin: 0;
+  color: #86868b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+/* Keep semantic meaning without tinting the whole tile. */
+.dashboard-kpi.good,
+.dashboard-kpi.attention {
+  border-color: #e5e5ea;
+  background: #ffffff;
+}
+
+.dashboard-kpi.good strong,
+.dashboard-kpi.attention strong {
+  color: #1d1d1f;
+}
+
+.dashboard-kpi.good::after,
+.dashboard-kpi.attention::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.dashboard-kpi.good::after {
+  background: #34c759;
+}
+
+.dashboard-kpi.attention::after {
+  background: #ff9f0a;
+}
+
+.dashboard-kpi-secondary {
+  align-items: stretch;
+  margin-top: 12px;
+}
+
+.dashboard-mini-kpi {
+  min-height: 104px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  column-gap: 18px;
+  row-gap: 12px;
+  align-items: start;
+  padding: 16px 18px;
+  border: 1px solid #e7e7ec;
+  border-radius: 16px;
+  background: #fbfbfd;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.018);
+}
+
+.dashboard-mini-kpi > span {
+  min-width: 0;
+  align-self: center;
+  color: #6e6e73;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+}
+
+.dashboard-mini-kpi strong {
+  align-self: center;
+  justify-self: end;
+  color: #1d1d1f;
+  font-size: 1.45rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.dashboard-mini-kpi small {
+  grid-column: 1 / -1;
+  align-self: end;
+  color: #8e8e93;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.dashboard-mini-kpi.good strong {
+  color: #248a3d;
+}
+
+.dashboard-mini-kpi.attention strong {
+  color: #9a6700;
+}
+
+.dashboard-mini-kpi.critical strong {
+  color: #b42318;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-kpi,
+  .dashboard-mini-kpi {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard-kpi {
+    grid-template-rows: auto auto auto;
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .dashboard-kpi p {
+    min-height: 0;
+  }
+
+  .dashboard-mini-kpi {
+    min-height: 96px;
+  }
+}
