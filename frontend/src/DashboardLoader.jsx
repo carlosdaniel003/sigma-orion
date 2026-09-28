@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
 import Dashboard from './Dashboard'
+import ModuleInfoHint from './ModuleInfoHint'
 import OrionWorking from './OrionWorking'
 import { classifyDppBundle } from './dpp-file-bundle'
 import { useDppWorkspace } from './DppWorkspaceContext'
@@ -489,7 +490,10 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
       <div className="dashboard-scenario-export" aria-label="Exportar cenário ORION">
         <div>
           <span>ARQUIVO DO CENÁRIO</span>
-          <strong>Excel do cenário ORION</strong>
+          <div className="module-heading-with-info">
+            <strong>Excel do cenário ORION</strong>
+            <ModuleInfoHint moduleKey="dashboard.export" />
+          </div>
           <small>
             {bundle.baseDpp
               ? `Usa ${bundle.baseDpp.name} somente como estrutura visual. Todos os dados operacionais da aba DPP são preenchidos com o Cenário ORION.`
@@ -532,7 +536,10 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
           <header className="page-header dashboard-header">
             <div>
               <span className="eyebrow">VISÃO OPERACIONAL</span>
-              <h2>Dashboard do DPP</h2>
+              <div className="module-heading-with-info">
+                <h2>Dashboard do DPP</h2>
+                <ModuleInfoHint moduleKey="dashboard.overview" />
+              </div>
               <p>Carregue o pacote mensal aqui uma única vez. O SIGMA-S ORION gera o cenário e prepara as demais telas usando os mesmos arquivos.</p>
             </div>
             <span className="status">Aguardando pacote</span>
@@ -546,6 +553,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
             onBundle={() => {}}
             processing={generating}
             title="Carregar pacote do DPP"
+            infoKey="dashboard.package"
           />
         </>
       ) : (
@@ -560,6 +568,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
               processing={generating}
               compact
               title="Pacote compartilhado do DPP"
+              infoKey="dashboard.package"
               footer={packageFooter}
             />
           </section>
