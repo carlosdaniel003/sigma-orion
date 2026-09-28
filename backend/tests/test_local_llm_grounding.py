@@ -180,3 +180,39 @@ def test_local_llm_failure_keeps_grounded_fallback(monkeypatch) -> None:
     assert result.answer == factual
     assert result.used is False
     assert result.fallback is True
+
+
+def test_generic_rag_can_force_natural_language_synthesis(monkeypatch) -> None:
+    provider = FakeLocalProvider("O conhecimento recuperado informa que o processo usa WIU como dado do DPP.")
+    monkeypatch.setattr("app.services.llm_grounding_service._provider", lambda: provider)
+
+    plan = QueryPlan(
+        original_question="Me fale sobre WIU no processo",
+        resolved_question="Me fale sobre WIU no processo",
+        retrieval_question="Me fale sobre WIU no processo",
+        intent="fact",
+        entities=["WIU"],
+        concept_entities=["WIU"],
+        needs_synthesis=False,
+    )
+    knowledge = DatabaseKnowledgeAnswer(
+        answer="WIU aparece no conhecimento operacional do DPP.",
+        sources=["glossario.md"],
+        chunks=[
+            KnowledgeChunk(
+                source="glossario.md",
+                heading="WIU",
+                category="operational",
+                score=10.0,
+                content="WIU é uma informação associada aos modelos do material no DPP.",
+            )
+        ],
+        context={"force_synthesis": True},
+    )
+
+    result = enhance_grounded_answer("Me fale sobre WIU no processo", plan, {}, knowledge)
+
+    assert provider.calls == 1
+    assert result.used is True
+    assert result.fallback is False
+    assert "WIU" in result.answer
