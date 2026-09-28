@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
+import ModuleInfoHint from './ModuleInfoHint'
 import './final-model-plan.css'
 
 const NUMERIC_TOLERANCE = 1e-4
@@ -237,7 +238,10 @@ function FinalModelPlan({ finalDppAnalysis }) {
       <div className="final-model-plan-heading">
         <div>
           <span className="final-model-plan-eyebrow">ORION × DPP FINAL</span>
-          <h3>Plano consolidado por modelo</h3>
+          <div className="module-heading-with-info">
+            <h3>Plano consolidado por modelo</h3>
+            <ModuleInfoHint moduleKey="dashboard.final_model_plan" />
+          </div>
           <p>Compara, modelo a modelo, o KIT disponível PGD e o REAL gerados pelo ORION com os valores efetivamente consolidados no DPP Final.</p>
         </div>
 
