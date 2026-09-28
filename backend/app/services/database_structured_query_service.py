@@ -173,9 +173,32 @@ def _paired_models() -> dict[str, dict[str, dict]]:
     return pairs
 
 
+def _model_identifier_pattern(value: str) -> re.Pattern[str] | None:
+    normalized = _normalize(value)
+    parts = [part for part in re.split(r"[-_.\s]+", normalized) if part]
+    if not parts:
+        return None
+    separator = r"[-_.\s]*"
+    return re.compile(
+        rf"(?<![a-z0-9]){separator.join(re.escape(part) for part in parts)}(?![a-z0-9])",
+        flags=re.IGNORECASE,
+    )
+
+
 def _explicit_model(question: str, context: dict, pairs: dict[str, dict[str, dict]]) -> str | None:
     normalized_question = _normalize(question)
-    matches = [key for key in pairs if _normalize(key) and _normalize(key) in normalized_question]
+    matches: list[str] = []
+    for key in pairs:
+        normalized_key = _normalize(key)
+        pattern = _model_identifier_pattern(key)
+        if (
+            normalized_key
+            and (
+                normalized_key in normalized_question
+                or (pattern is not None and pattern.search(normalized_question))
+            )
+        ):
+            matches.append(key)
     if matches:
         return max(matches, key=len)
     if str(context.get("subject_type") or "") == "model":
@@ -247,6 +270,7 @@ def _wants_model_impact(plan: QueryPlan) -> bool:
     concepts = {_normalize(item) for item in plan.concept_entities}
     return (
         bool(concepts & {"nec", "saldo", "stk ttl", "amount"})
+        or plan.calculation_requested
         or "influenc" in normalized
         or "impact" in normalized
         or "afet" in normalized
