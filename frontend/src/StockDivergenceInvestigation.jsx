@@ -98,7 +98,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
     if (!selectedId || !scrollRef.current) return
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     scrollRef.current.scrollIntoView({
-      behavior: reducedMotion ? 'instant' : 'smooth',
+      behavior: reducedMotion ? 'auto' : 'smooth',
       block: 'start',
     })
   }, [selectedId])
@@ -197,7 +197,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
           {result.materials.some((material) => material.candidates.some((candidate) => candidate.validation)) && (
             <div className="orion-stock-projection">
               <h4>Projeção do gap após validações</h4>
-              <p>Somente quantidade disponível e comprovadamente fora do DPP. Não modifica o cenário oficial.</p>
+              <p>Somente quantidade declarada disponível e não contabilizada no DPP. Não modifica o cenário oficial.</p>
               <div className="orion-stock-investigation-scroll">
                 <table>
                   <thead><tr><th>PN</th><th>Gap inicial</th><th>Quantidade adicional</th><th>Gap projetado restante</th></tr></thead>

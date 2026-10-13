@@ -82,8 +82,20 @@ function BulkDppFilePicker({
     const incomingFiles = Array.from(event.target.files || [])
     if (!incomingFiles.length || processing) return
 
+    // Acrescentar o DPP Final, por exemplo, não deve apagar uma investigação
+    // do mesmo STK. Uma fonte efetivamente substituída invalida o cache.
+    const replacing = incomingFiles.some((file) => {
+      const kind = kindFromFilename(file)
+      const month = kind === 'dpp' ? fileMonthReference(file.name) : null
+      return selectedFiles.some((existing) => {
+        if (kind === 'unknown' || kindFromFilename(existing) !== kind) return false
+        if (kind !== 'dpp') return true
+        const previousMonth = fileMonthReference(existing.name)
+        return month && previousMonth ? month === previousMonth : existing.name === file.name
+      })
+    })
     setFiles((current) => mergeFiles(current, incomingFiles))
-    setStockInvestigation(null)
+    if (replacing) setStockInvestigation(null)
     event.target.value = ''
   }
 
