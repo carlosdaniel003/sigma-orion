@@ -143,3 +143,130 @@ def test_endpoint_uses_registered_scenario_and_returns_source_rows(monkeypatch):
             files={"stock": ("STK JULHO.xlsx", stock_bytes([]), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         )
         assert missing.status_code == 404
+
+
+def test_pcm_review_persists_and_only_excluded_available_stock_projects_gap(monkeypatch):
+    from uuid import uuid4
+
+    current = scenario()
+    current["scenario_id"] = uuid4().hex
+    original = deepcopy(current)
+    stock = stock_bytes(example_rows())
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    def request(client):
+        return client.post(
+            "/api/dpp/investigations/stock-divergence",
+            data={"scenario_id": current["scenario_id"]},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+
+    def validate(client, identifier, **values):
+        data = {
+            "scenario_id": current["scenario_id"],
+            "candidate_id": identifier,
+            "decision": "AVAILABLE",
+            "accounting": "NOT_INCLUDED",
+            "confirmed_quantity": "3",
+            "pcm": "PCM Teste",
+            "warehouse": "Almox Teste",
+            "evidence": "Material localizado e conferido pelo Almoxarifado.",
+            **values,
+        }
+        return client.post(
+            "/api/dpp/investigations/stock-divergence/review",
+            data=data,
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+
+    with TestClient(app) as client:
+        baseline = request(client)
+        assert baseline.status_code == 200
+        material = baseline.json()["materials"][0]
+        assert material["negative_balance"] == 10
+        first, second = material["candidates"]
+        assert first["candidate_id"]
+        assert not first["validation"]
+        assert material["projected_gap_remaining"] == 10
+
+        confirmed = validate(client, first["candidate_id"])
+        assert confirmed.status_code == 200
+        item = confirmed.json()["materials"][0]
+        assert item["confirmed_increment_outside_dpp"] == 3
+        assert item["projected_gap_remaining"] == 7
+        assert item["candidates"][0]["validation"]["pcm"] == "PCM Teste"
+        assert len(item["candidates"][0]["validation_history"]) == 1
+        assert confirmed.json()["changes_dpp"] is False
+        assert current == original
+
+        repeated = validate(client, first["candidate_id"])
+        assert repeated.status_code == 200
+        assert len(repeated.json()["materials"][0]["candidates"][0]["validation_history"]) == 1
+
+        already_counted = validate(client, second["candidate_id"], accounting="INCLUDED", confirmed_quantity="4")
+        assert already_counted.status_code == 200
+        assert already_counted.json()["materials"][0]["projected_gap_remaining"] == 7
+
+        unknown = validate(client, second["candidate_id"], accounting="UNKNOWN", confirmed_quantity="4")
+        assert unknown.status_code == 200
+        assert unknown.json()["materials"][0]["projected_gap_remaining"] == 7
+
+        corrected = validate(client, first["candidate_id"], decision="UNAVAILABLE",
+                             accounting="UNKNOWN", confirmed_quantity="0",
+                             evidence="O estoque foi localizado mas a baixa foi confirmada.")
+        assert corrected.status_code == 200
+        assert corrected.json()["materials"][0]["projected_gap_remaining"] == 10
+        assert len(corrected.json()["materials"][0]["candidates"][0]["validation_history"]) == 2
+
+        # Stored decisions remain visible after a fresh query/reload.
+        reloaded = request(client)
+        assert reloaded.status_code == 200
+        assert reloaded.json()["summary"]["candidates_reviewed"] == 2
+        assert reloaded.json()["materials"][0]["projected_gap_remaining"] == 10
+        assert current == original
+
+
+def test_pcm_review_rejects_invalid_and_foreign_candidates(monkeypatch):
+    from uuid import uuid4
+
+    current = scenario()
+    current["scenario_id"] = uuid4().hex
+    stock = stock_bytes(example_rows())
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    def validate(client, identifier, **values):
+        data = {
+            "scenario_id": current["scenario_id"], "candidate_id": identifier,
+            "decision": "AVAILABLE", "accounting": "NOT_INCLUDED",
+            "confirmed_quantity": "3", "pcm": "PCM Teste", "warehouse": "Almox Teste",
+            "evidence": "Conferido presencialmente com o Almoxarifado.",
+            **values,
+        }
+        return client.post(
+            "/api/dpp/investigations/stock-divergence/review",
+            data=data, files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+
+    with TestClient(app) as client:
+        initial = client.post(
+            "/api/dpp/investigations/stock-divergence",
+            data={"scenario_id": current["scenario_id"]},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+        identifier = initial.json()["materials"][0]["candidates"][0]["candidate_id"]
+        assert validate(client, "invalid_candidate").status_code == 400
+        assert validate(client, identifier, confirmed_quantity="5.01").status_code == 400
+        assert validate(client, identifier, confirmed_quantity="nan").status_code in (400, 422)
+        assert validate(client, identifier, evidence="sem prova").status_code == 400
+        assert validate(client, identifier, accounting="INVALID").status_code == 400
+        assert validate(client, identifier, decision="UNAVAILABLE",
+                        accounting="NOT_INCLUDED", confirmed_quantity="1").status_code == 400
+
+        report = client.post(
+            "/api/dpp/investigations/stock-divergence",
+            data={"scenario_id": current["scenario_id"]},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        ).json()
+        assert report["summary"]["candidates_reviewed"] == 0
