@@ -569,3 +569,5 @@ Primeira entrega somente investigativa, correspondente ao fluxo da reunião:
 - a API é POST /api/dpp/investigations/stock-divergence e o Dashboard oferece consulta manual.
 
 Etapa 4.2 (Qualidade), scrap, movimento de inventário, recebimento, opcionais, retrabalho e Data Lake **não** fazem parte desta entrega. A automação de decisão e recálculo de gap ficam pendentes de definição e validação do processo.
+
+O STK do cenário mensal novo registra fingerprint SHA-256; a investigação compara o conteúdo recebido com esse fingerprint para impedir o cruzamento silencioso de snapshots diferentes mesmo com nomes de arquivo iguais. Cenários antigos sem fingerprint preservam temporariamente a validação por nome.

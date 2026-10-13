@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from io import BytesIO
+from hashlib import sha256
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -62,6 +63,9 @@ def investigate_stock_divergence(
     expected_filename = (stock_source or {}).get("filename")
     if expected_filename and expected_filename.casefold() != stock_filename.casefold():
         raise ValueError("O STK enviado não corresponde ao nome do arquivo usado para gerar este cenário.")
+    expected_fingerprint = (stock_source or {}).get("fingerprint_sha256")
+    if expected_fingerprint and sha256(stock_content).hexdigest() != expected_fingerprint:
+        raise ValueError("O conteúdo do STK difere do arquivo usado na geração do cenário. Refaça a geração com o pacote correto.")
 
     critical = {
         key: material

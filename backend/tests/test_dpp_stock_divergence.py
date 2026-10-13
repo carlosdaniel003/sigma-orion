@@ -1,6 +1,7 @@
 """Cobertura do primeiro corte da investigação de estoque (etapa 4.1)."""
 from copy import deepcopy
 from io import BytesIO
+from hashlib import sha256
 
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
@@ -92,6 +93,27 @@ def test_rejects_unrelated_or_invalid_stock_files(filename):
             stock_content=stock_bytes(example_rows()),
             stock_filename=filename,
             scenario=scenario(),
+        )
+
+
+def test_identical_filename_but_different_snapshot_is_rejected():
+    current = scenario()
+    original_bytes = stock_bytes(example_rows())
+    current["sources"][0]["fingerprint_sha256"] = sha256(original_bytes).hexdigest()
+
+    valid = investigate_stock_divergence(
+        stock_content=original_bytes,
+        stock_filename="STK JULHO.xlsx",
+        scenario=current,
+    )
+    assert valid["summary"]["materials_with_candidates"] == 1
+
+    changed_bytes = stock_bytes(example_rows() + [["MAT-NEG", "Material crítico", 9, "G702", 0, 0, "UN", "1063"]])
+    with pytest.raises(ValueError, match="conteúdo do STK difere"):
+        investigate_stock_divergence(
+            stock_content=changed_bytes,
+            stock_filename="STK JULHO.xlsx",
+            scenario=current,
         )
 
 

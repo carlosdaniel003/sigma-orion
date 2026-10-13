@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 from copy import deepcopy
+from hashlib import sha256
 import unicodedata
 
 from fastapi import UploadFile
@@ -403,7 +404,7 @@ async def generate_monthly_dpp(
         {"id": "base_dpp", "label": "DPP mês anterior", "required": True, "loaded": True, "filename": base_dpp.filename, "detail": f"{base_diag['materials']} materiais históricos · {base_diag['optional_materials']} OPCs"},
         {"id": "wiu", "label": "WIU", "required": True, "loaded": True, "filename": wiu.filename, "detail": f"{wiu_diag['imported_materials']} materiais importados · {wiu_diag['models']} modelos"},
         {"id": "explosion", "label": "Explosão de Placas", "required": True, "loaded": True, "filename": explosion.filename, "detail": f"{explosion_matches} materiais encontrados"},
-        {"id": "stock", "label": "STK SAP", "required": True, "loaded": True, "filename": stock.filename, "detail": f"{stock_matches} materiais encontrados no snapshot"},
+        {"id": "stock", "label": "STK SAP", "required": True, "loaded": True, "filename": stock.filename, "fingerprint_sha256": sha256(stock_content).hexdigest(), "detail": f"{stock_matches} materiais encontrados no snapshot"},
         {"id": "pgd", "label": "PGD", "required": True, "loaded": True, "filename": pgd.filename, "detail": f"{pgd_mapping['mapped_positive_models']} modelos aplicados ao DPP em {reference_month} · {len(pgd_mapping['out_of_scope_positive'])} positivos fora do escopo"},
         {"id": "open", "label": "OPEN", "required": False, "loaded": open_content is not None, "filename": open_orders.filename if open_orders is not None else None, "detail": f"{open_matches} materiais da base com evidência pendente" if open_content else "Opcional: evidência de investigação, sem alterar o saldo"},
     ]
