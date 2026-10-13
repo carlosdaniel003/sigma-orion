@@ -11,6 +11,8 @@ from app.main import app
 from app.api import routes
 from app.services.dpp_stock_divergence_service import investigate_stock_divergence
 
+MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
 
 def stock_bytes(rows: list[list], *, original: bool = True) -> bytes:
     workbook = Workbook()
