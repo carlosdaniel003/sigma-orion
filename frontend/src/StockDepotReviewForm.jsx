@@ -12,7 +12,7 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
   const [values, setValues] = useState(previous ? {
     decision: previous.decision,
     accounting: previous.accounting,
-    quantity: previous.decision === 'AVAILABLE' ? String(previous.confirmed_quantity) : '',
+    quantity: previous.confirmed_quantity > 0 ? String(previous.confirmed_quantity) : '',
     justification: previous.evidence || '',
   } : options)
   const [saving, setSaving] = useState(false)
@@ -33,7 +33,7 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
     form.append('candidate_id', candidate.candidate_id)
     form.append('decision', values.decision)
     form.append('accounting', values.decision === 'UNAVAILABLE' ? 'UNKNOWN' : values.accounting)
-    form.append('confirmed_quantity', values.decision === 'UNAVAILABLE' ? '0' : values.quantity)
+    form.append('confirmed_quantity', values.quantity || '0')
     // Reaproveita o campo persistido no SQLite sem migração de schema.
     form.append('evidence', values.justification)
     try {
@@ -57,7 +57,7 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
         <strong>Validação: PN {material.material} · {candidate.depot} · centro {candidate.center || '—'}</strong>
         <button className="secondary-button" type="button" onClick={onCancel} disabled={saving}>Cancelar</button>
       </div>
-      <p>Registro manual de validação, sem alteração no estoque oficial do DPP.</p>
+      <p>Disponível e fora do DPP reduz o gap projetado; indisponível e justificado apenas explica a falta. Nenhuma dessas validações altera o SALDO oficial.</p>
       <div className="orion-stock-review-fields">
         <label>Resultado
           <select value={values.decision} onChange={(e) => update('decision', e.target.value)} disabled={saving}>
@@ -65,26 +65,31 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
             <option value="UNAVAILABLE">Indisponível / baixa</option>
           </select>
         </label>
+        <label>
+          {values.decision === 'AVAILABLE'
+            ? `Quantidade disponível (máx. ${candidate.quantity} ${candidate.unit})`
+            : `Quantidade indisponível justificada (máx. ${candidate.quantity} ${candidate.unit})`}
+          <input required={values.decision === 'AVAILABLE'} type="number" min="0"
+            max={candidate.quantity} step="any" value={values.quantity}
+            placeholder={values.decision === 'UNAVAILABLE' ? '0 — quantidade não comprovada' : undefined}
+            onChange={(event) => update('quantity', event.target.value)} disabled={saving} />
+        </label>
         {values.decision === 'AVAILABLE' && (
-          <>
-            <label>Quantidade disponível (máx. {candidate.quantity} {candidate.unit})
-              <input required type="number" min="0" max={candidate.quantity} step="any" value={values.quantity}
-                onChange={(e) => update('quantity', e.target.value)} disabled={saving} />
-            </label>
-            <label>Quantidade já contabilizada no DPP?
-              <select value={values.accounting} onChange={(e) => update('accounting', e.target.value)} disabled={saving}>
-                <option value="UNKNOWN">Não foi possível confirmar</option>
-                <option value="INCLUDED">Sim · já contabilizada</option>
-                <option value="NOT_INCLUDED">Não · fora do DPP</option>
-              </select>
-            </label>
-          </>
+          <label>Quantidade já contabilizada no DPP?
+            <select value={values.accounting} onChange={(event) => update('accounting', event.target.value)} disabled={saving}>
+              <option value="UNKNOWN">Não foi possível confirmar</option>
+              <option value="INCLUDED">Sim · já contabilizada</option>
+              <option value="NOT_INCLUDED">Não · fora do DPP</option>
+            </select>
+          </label>
         )}
 
       </div>
       <label className="orion-stock-review-justification">
-        Justificativa (opcional)
-        <textarea rows={3} maxLength={4000} value={values.justification}
+        {values.decision === 'UNAVAILABLE' && Number(values.quantity) > 0
+          ? 'Justificativa da quantidade indisponível (obrigatória)'
+          : 'Justificativa (opcional)'}
+        <textarea rows={3} maxLength={4000} required={values.decision === 'UNAVAILABLE' && Number(values.quantity) > 0} value={values.justification}
           placeholder="Ex.: 14.325 peças P000 — divergência entre sistemas/SAP, aguardando confirmação."
           onChange={(event) => update('justification', event.target.value)} disabled={saving} />
       </label>
@@ -98,7 +103,7 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
           <ul>{candidate.validation_history.map((entry) => (
             <li key={entry.id}>
               {entry.created_at || 'Sem data'} · {entry.decision === 'AVAILABLE' ? 'Disponível' : 'Indisponível'}
-              · {entry.confirmed_quantity} {candidate.unit} · {entry.accounting}.
+              · {entry.confirmed_quantity} {candidate.unit} · {entry.decision === 'UNAVAILABLE' ? 'quantidade justificada, sem recuperação' : entry.accounting}.
               {entry.evidence && <div>Justificativa: {entry.evidence}</div>}
             </li>
           ))}</ul>

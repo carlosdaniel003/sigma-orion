@@ -72,11 +72,11 @@
 
 ## dashboard.stock_divergence — Divergência de Estoque
 
-**O que mostra:** PNs críticos do Cenário ORION com registros M221, P277 ou G702 na aba ORIGINAL do STK SAP; quantidade, centro e linha. Permite registrar validação manual por depósito, sem exigir identificação de responsáveis, com campo opcional de justificativa e histórico de revisões.
+**O que mostra:** Consulta os PNs críticos do Cenário ORION nos depósitos M221, P277 e G702 da aba ORIGINAL do STK SAP, registros e linhas de origem. Permite validar quantidade disponível, quantidade indisponível justificada e contabilização no DPP, preservando o histórico no SQLite. Resume o déficit inicial, o gap após recuperação e a falta sem justificativa por PN, inclusive PNs sem registro nesses depósitos.
 
-**Origem:** STK do pacote, Cenário ORION e histórico local de validações em SQLite. O resultado da consulta permanece no workspace IndexedDB até o pacote ser substituído ou limpo. A aba CONSOLIDADO continua sendo a fonte do cálculo determinístico do DPP.
+**Origem:** STK SAP do pacote compartilhado, cenário calculado pelo motor Python e histórico de revisões local em SQLite. A consulta é persistida no IndexedDB até mudança do pacote ou do cenário, e o cálculo oficial do DPP segue exclusivamente a fonte consolidada.
 
-**Finalidade:** Registrar disponibilidade/baixa, indicar a justificativa operacional quando fornecida e verificar se quantidade está contabilizada. Só AVAILABLE + NOT_INCLUDED entra na projeção separada de gap, que não altera NEC, STK TTL, SALDO, REAL nem Excel do DPP. Não há identificação obrigatória de responsáveis nem autenticação corporativa. Estes registros ainda não integram os fatos runtime do Agente ORION; não executa a etapa 4.2.
+**Finalidade:** Executar a decisão de encerramento do fluxo 4.1: quantidade comprovadamente disponibilizada fora do DPP diminui somente o gap projetado; quantidade indisponível com justificativa explica parte do déficit mas não aumenta estoque. Se a falta estiver totalmente explicada, o item é marcado como finalizado; caso persista falta sem justificativa após alguma validação, é sinalizado para a próxima etapa 4.2; materiais sem registros seguem diretamente para a mesma sinalização. Itens sem decisões seguem aguardando validação. A análise 4.2 em si não foi implementada. Nenhum SALDO, NEC, STK TTL, REAL ou SAP é alterado, e os dados ainda não são sincronizados como fatos runtime do Agente ORION.
 
 
 ## dashboard.guide — Como ler o cenário inicial

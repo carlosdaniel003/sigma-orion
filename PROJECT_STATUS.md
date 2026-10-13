@@ -596,3 +596,13 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O formulário Validar/Revisar volta a oferecer **Justificativa (opcional)**, sem restaurar responsável PCM, contato do Almoxarifado ou um campo separado de evidências.
 - A justificativa é persistida no campo SQLite `evidence` já existente, recuperada ao revisar o registro e exibida no histórico. A API não mudou e continua aceitando registros sem justificativa, preservando retrocompatibilidade.
 - Sem impacto em estoque oficial, SALDO, REAL ou projeção do gap.
+
+### Etapa 4.1 — Decisão do fluxograma e encaminhamento lógico (2026-10-13)
+
+- O texto do fluxo declara: cada causa explica somente quantidade comprovada.
+- Para material AVAILABLE + NOT_INCLUDED, o campo confirmed_quantity é a quantidade adicional efetivamente recuperada na projeção.
+- Para UNAVAILABLE, o mesmo campo armazenado representa a quantidade indisponível especificamente justificada; justificativa textual é obrigatória apenas quando essa quantidade é positiva. Zero permanece válido como registro sem quantidade explicada. A estrutura do banco já existente não precisa de migração.
+- `gap_após_recuperação = max(0, déficit_original - disponível_adicional)`; `falta_sem_justificativa = max(0, gap_após_recuperação - indisponível_justificada)`. A justificativa não é somada como estoque. Unidade permanece a do PN.
+- Sem falta não explicada: `FINISHED`. Restando falta após alguma validação: `QUALITY_4_2`, sinalização lógica, reavaliável após cada revisão humana. Havendo registros sem qualquer validação: `AWAITING_VALIDATION`. Sem registros M221/P277/G702: encaminhamento direto para 4.2.
+- A lista de encaminhamento abrange também PNs sem registros em depósito. A interface apresenta o valor de cada componente e não executa a etapa de Qualidade.
+- A identidade dos dados persistidos na interface recebe versão da regra para recalcular consultas antigas do navegador; SALDO oficial permanece intacto.

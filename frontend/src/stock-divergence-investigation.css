@@ -64,3 +64,5 @@
 .orion-stock-review-justification {
   margin-block: var(--space-3, 12px);
 }
+
+.orion-stock-projection td small { display: block; margin-top: var(--space-1, 4px); color: var(--orion-text-secondary); }
