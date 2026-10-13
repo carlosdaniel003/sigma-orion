@@ -4,9 +4,6 @@ const options = {
   decision: 'AVAILABLE',
   accounting: 'UNKNOWN',
   quantity: '',
-  pcm: '',
-  warehouse: '',
-  evidence: '',
 }
 
 function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSaved, onCancel, apiUrl = '' }) {
@@ -15,9 +12,6 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
     decision: previous.decision,
     accounting: previous.accounting,
     quantity: previous.decision === 'AVAILABLE' ? String(previous.confirmed_quantity) : '',
-    pcm: previous.pcm,
-    warehouse: previous.warehouse,
-    evidence: previous.evidence,
   } : options)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -38,9 +32,6 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
     form.append('decision', values.decision)
     form.append('accounting', values.decision === 'UNAVAILABLE' ? 'UNKNOWN' : values.accounting)
     form.append('confirmed_quantity', values.decision === 'UNAVAILABLE' ? '0' : values.quantity)
-    form.append('pcm', values.pcm)
-    form.append('warehouse', values.warehouse)
-    form.append('evidence', values.evidence)
     try {
       const response = await fetch(apiUrl + '/api/dpp/investigations/stock-divergence/review', {
         method: 'POST',
@@ -62,7 +53,7 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
         <strong>Validação: PN {material.material} · {candidate.depot} · centro {candidate.center || '—'}</strong>
         <button className="secondary-button" type="button" onClick={onCancel} disabled={saving}>Cancelar</button>
       </div>
-      <p>Esta confirmação é declarada pelo usuário; o ORION ainda não autentica o PCM nem o Almoxarifado.</p>
+      <p>Registro manual de validação, sem alteração no estoque oficial do DPP.</p>
       <div className="orion-stock-review-fields">
         <label>Resultado
           <select value={values.decision} onChange={(e) => update('decision', e.target.value)} disabled={saving}>
@@ -85,19 +76,8 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
             </label>
           </>
         )}
-        <label>Responsável PCM (informado)
-          <input required minLength={2} maxLength={120} value={values.pcm}
-            onChange={(e) => update('pcm', e.target.value)} disabled={saving} />
-        </label>
-        <label>Contato no Almoxarifado (informado)
-          <input required minLength={2} maxLength={120} value={values.warehouse}
-            onChange={(e) => update('warehouse', e.target.value)} disabled={saving} />
-        </label>
+
       </div>
-      <label className="orion-stock-review-evidence">Justificativa e evidência
-        <textarea required minLength={10} maxLength={4000} rows={3} value={values.evidence}
-          onChange={(e) => update('evidence', e.target.value)} disabled={saving} />
-      </label>
       {error && <p role="alert">{error}</p>}
       <button className="primary-button" type="submit" disabled={saving}>
         {saving ? 'Salvando...' : 'Registrar confirmação'}
@@ -107,9 +87,9 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
           <summary>Histórico de revisões ({candidate.validation_history.length})</summary>
           <ul>{candidate.validation_history.map((entry) => (
             <li key={entry.id}>
-              {entry.created_at || 'Sem data'} · {entry.pcm} · {entry.decision === 'AVAILABLE' ? 'Disponível' : 'Indisponível'}
+              {entry.created_at || 'Sem data'} · {entry.decision === 'AVAILABLE' ? 'Disponível' : 'Indisponível'}
               · {entry.confirmed_quantity} {candidate.unit} · {entry.accounting}.
-              <div>{entry.evidence}</div>
+              {entry.evidence && <div>{entry.evidence}</div>}
             </li>
           ))}</ul>
         </details>

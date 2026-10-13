@@ -268,7 +268,7 @@ async def review_stock_divergence_route(
     scenario_id: str = Form(...), stock: UploadFile = File(...),
     candidate_id: str = Form(...), decision: str = Form(...),
     accounting: str = Form(...), confirmed_quantity: float = Form(0),
-    pcm: str = Form(...), warehouse: str = Form(...), evidence: str = Form(...),
+    pcm: str = Form(""), warehouse: str = Form(""), evidence: str = Form(""),
 ) -> dict:
     scenario = get_monthly_scenario(scenario_id)
     if scenario is None:

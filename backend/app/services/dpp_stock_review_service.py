@@ -73,7 +73,7 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
     report["note"] = (
         "Gap projetado somente para quantidades declaradas disponíveis e ainda não "
         "contabilizadas no DPP. Esta projeção não altera STK TTL, NEC, SALDO ou REAL. "
-        "Nomes do PCM e do Almoxarifado são declarados, sem autenticação de identidade."
+        "A validação é um registro manual sem identificação obrigatória e sem autenticação."
     )
     return report
 
@@ -89,10 +89,9 @@ def register_review(
         raise ValueError("Indique disponível ou indisponível.")
     if accounting not in {"INCLUDED", "NOT_INCLUDED", "UNKNOWN"}:
         raise ValueError("Classificação de contabilização inválida.")
-    if not 2 <= len(pcm) <= 120 or not 2 <= len(warehouse) <= 120:
-        raise ValueError("Informe os nomes do PCM e do contato do Almoxarifado (2 a 120 caracteres).")
-    if not 10 <= len(evidence) <= 4000:
-        raise ValueError("Informe a justificativa e a evidência da confirmação (10 a 4000 caracteres).")
+    # Campos legados opcionais: preservar dados antigos sem exigir novos.
+    if len(pcm) > 120 or len(warehouse) > 120 or len(evidence) > 4000:
+        raise ValueError("Os campos opcionais ultrapassaram o limite permitido.")
     try:
         quantity = float(quantity)
     except (ValueError, TypeError, OverflowError) as exc:

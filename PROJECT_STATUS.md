@@ -580,3 +580,13 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Gap investigativo projetado = max(0, déficit original − quantidades declaradas disponíveis e NOT_INCLUDED). O cenário original não é alterado, e não ocorre movimento SAP.
 - PCM e Almoxarifado não possuem autenticação de identidade no MVP, os nomes são declarações fornecidas pelo usuário.
 - A etapa 4.2 e Data Lake não são implementados por esta entrega.
+
+
+### Ajustes de usabilidade de Divergência de Estoque (2026-10-13)
+
+- Título visual atualizado para "Divergência de Estoque" (a referência interna à etapa 4.1 permanece na documentação técnica).
+- A resposta da consulta agora é persistida junto ao estado processado do workspace no IndexedDB e vinculada à assinatura do pacote e ao identificador/cálculo do Cenário ORION. Navegar, atualizar a página e restaurar os arquivos não exigem clicar novamente. Mudança do cálculo REAL do mesmo pacote desencadeia atualização automática da consulta; substituição/limpeza de arquivos invalida a consulta.
+- O seletor do pacote passa a substituir planilhas reconhecidas da mesma categoria (ou DPP do mesmo mês) em vez de manter a versão antiga como primeiro arquivo e acrescentar duplicatas.
+- Ao clicar em Validar/Revisar, a página rola até o formulário com respeito a prefers-reduced-motion.
+- PCM, Almoxarifado e evidência deixaram de ser campos obrigatórios no formulário e na API. Históricos antigos preservam esses campos, quando existentes; novos registros podem guardá-los vazios sem atribuição fictícia de identidade.
+- Permanecem obrigatórios apenas resultado e, se disponível, quantidade e estado de contabilização. Gap projetado segue isolado e não substitui SALDO do DPP.

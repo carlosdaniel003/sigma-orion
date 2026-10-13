@@ -89,6 +89,7 @@ async function writePersistedProcessedState({
   testSignature,
   finalDppAnalysis,
   finalDppSignature,
+  stockInvestigation,
 }) {
   await writeStoredValue(PROCESSED_STATE_KEY, {
     generatedScenario,
@@ -97,6 +98,7 @@ async function writePersistedProcessedState({
     testSignature,
     finalDppAnalysis,
     finalDppSignature,
+    stockInvestigation,
     updatedAt: Date.now(),
   })
 }
@@ -138,6 +140,7 @@ export function DppWorkspaceProvider({ children }) {
   const [testResult, setTestResult] = useState(null)
   const [finalDppAnalysis, setFinalDppAnalysis] = useState(null)
   const [finalDppSignature, setFinalDppSignature] = useState('')
+  const [stockInvestigation, setStockInvestigation] = useState(null)
   const [workspaceReady, setWorkspaceReady] = useState(false)
 
   useEffect(() => {
@@ -167,6 +170,7 @@ export function DppWorkspaceProvider({ children }) {
         setTestResult(persistedState?.testResult || null)
         setFinalDppAnalysis(persistedState?.finalDppAnalysis || null)
         setFinalDppSignature(persistedState?.finalDppSignature || '')
+        setStockInvestigation(persistedState?.stockInvestigation || null)
 
         if (navigator.storage?.persist) {
           navigator.storage.persist().catch(() => {})
@@ -200,6 +204,7 @@ export function DppWorkspaceProvider({ children }) {
       testSignature,
       finalDppAnalysis,
       finalDppSignature,
+      stockInvestigation,
     }).catch((error) => {
       console.warn('Não foi possível persistir o estado processado do DPP:', error)
     })
@@ -210,6 +215,7 @@ export function DppWorkspaceProvider({ children }) {
     testSignature,
     finalDppAnalysis,
     finalDppSignature,
+    stockInvestigation,
     workspaceReady,
   ])
 
@@ -284,6 +290,8 @@ export function DppWorkspaceProvider({ children }) {
     setFinalDppAnalysis,
     finalDppSignature,
     setFinalDppSignature,
+    stockInvestigation,
+    setStockInvestigation,
     workspaceReady,
     dppState,
   }), [
@@ -295,6 +303,7 @@ export function DppWorkspaceProvider({ children }) {
     testResult,
     finalDppAnalysis,
     finalDppSignature,
+    stockInvestigation,
     workspaceReady,
     dppState,
   ])

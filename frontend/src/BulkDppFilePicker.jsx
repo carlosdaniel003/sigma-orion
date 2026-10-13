@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import InfoHint from './InfoHint'
 import ModuleInfoHint from './ModuleInfoHint'
-import { classifyDppBundle, FILE_LABELS } from './dpp-file-bundle'
+import { classifyDppBundle, FILE_LABELS, kindFromFilename, fileMonthReference } from './dpp-file-bundle'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './bulk-file-picker.css'
 
@@ -13,13 +13,23 @@ function fileIdentity(file) {
 
 function mergeFiles(currentFiles, newFiles) {
   const merged = [...currentFiles]
-  const known = new Set(currentFiles.map(fileIdentity))
 
   for (const file of newFiles) {
-    const identity = fileIdentity(file)
-    if (known.has(identity)) continue
-    known.add(identity)
-    merged.push(file)
+    const kind = kindFromFilename(file)
+    const month = kind === 'dpp' ? fileMonthReference(file.name) : null
+    // Substitui a mesma fonte em vez de acumular arquivos duplicados que impedem
+    // o reconhecimento do novo STK/PGD/WIU no pacote compartilhado.
+    const existingIndex = merged.findIndex((old) => {
+      if (kind === 'unknown') return fileIdentity(old) === fileIdentity(file)
+      if (kindFromFilename(old) !== kind) return false
+      if (kind === 'dpp') {
+        const previousMonth = fileMonthReference(old.name)
+        return month && previousMonth ? month === previousMonth : old.name === file.name
+      }
+      return true
+    })
+    if (existingIndex >= 0) merged[existingIndex] = file
+    else merged.push(file)
   }
 
   return merged
@@ -45,6 +55,7 @@ function BulkDppFilePicker({
     setGeneratedScenario,
     setTestSignature,
     setTestResult,
+    setStockInvestigation,
   } = useDppWorkspace()
   const onBundleRef = useRef(onBundle)
   const effectiveReferenceMonth = referenceMonth || sharedReferenceMonth
@@ -72,6 +83,7 @@ function BulkDppFilePicker({
     if (!incomingFiles.length || processing) return
 
     setFiles((current) => mergeFiles(current, incomingFiles))
+    setStockInvestigation(null)
     event.target.value = ''
   }
 
@@ -83,6 +95,7 @@ function BulkDppFilePicker({
     setGeneratedScenario(null)
     setTestSignature('')
     setTestResult(null)
+    setStockInvestigation(null)
   }
 
   const missingLabels = report.missing.map((key) => FILE_LABELS[key])

@@ -55,7 +55,8 @@
   background: var(--orion-surface); color: var(--orion-text); border: 1px solid var(--orion-border);
   border-radius: 0; padding: var(--space-2, 8px); font: inherit;
 }
-.orion-stock-review-evidence { margin-block: var(--space-3, 12px); }
 .orion-stock-review-form details { margin-top: var(--space-3, 12px); font-size: 12px; }
 .orion-stock-review-form li { margin-block: var(--space-2, 8px); }
 .orion-stock-projection h4 { margin: 0; font-size: 14px; }
+
+.orion-stock-review-anchor { scroll-margin-top: 96px; }

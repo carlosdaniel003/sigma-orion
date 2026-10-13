@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
 import StockDepotReviewForm from './StockDepotReviewForm'
+import { useDppWorkspace } from './DppWorkspaceContext'
+import { fileIdentity, scenarioValidationIdentity } from './dpp-workspace-state'
 import './stock-divergence-investigation.css'
 
 function formatQuantity(value) {
@@ -9,33 +11,43 @@ function formatQuantity(value) {
 }
 
 function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
-  const [result, setResult] = useState(null)
+  const { stockInvestigation, setStockInvestigation, workspaceReady, dppState } = useDppWorkspace()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const controllerRef = useRef(null)
+  const scrollRef = useRef(null)
+  const refreshRef = useRef('')
 
-  useEffect(() => {
-    controllerRef.current?.abort()
-    setResult(null)
-    setError('')
-    setConfirmation('')
-    setSelectedId('')
-    setLoading(false)
-    return () => controllerRef.current?.abort()
-  }, [scenario, stockFile])
+  // A identidade depende do pacote e dos valores REAL, não da referência do
+  // objeto React. Navegação e restauração de File do IndexedDB preservam a consulta.
+  const packageKey = useMemo(
+    () => workspaceReady && stockFile && dppState.bundle.signature
+      ? `${dppState.bundle.signature}|${fileIdentity(stockFile)}`
+      : '',
+    [workspaceReady, stockFile, dppState.bundle.signature],
+  )
+  const reportKey = useMemo(
+    () => packageKey && scenario?.scenario_id
+      ? `${packageKey}|${scenarioValidationIdentity(scenario)}`
+      : '',
+    [packageKey, scenario],
+  )
+  const cachedForPackage = Boolean(packageKey && stockInvestigation?.packageKey === packageKey)
+  const result = cachedForPackage && stockInvestigation?.reportKey === reportKey
+    ? stockInvestigation.result : null
 
-  async function investigate() {
-    if (!scenario?.scenario_id || !stockFile || loading) return
-    controllerRef.current?.abort()
+  const fetchReport = useCallback(async ({ automatic = false } = {}) => {
+    if (!scenario?.scenario_id || !stockFile || !reportKey || !packageKey || controllerRef.current) return
     const controller = new AbortController()
     controllerRef.current = controller
     setLoading(true)
     setError('')
-    setResult(null)
-    setSelectedId('')
-    setConfirmation('')
+    if (!automatic) {
+      setConfirmation('')
+      setSelectedId('')
+    }
 
     const form = new FormData()
     form.append('scenario_id', scenario.scenario_id)
@@ -49,7 +61,9 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.detail || 'Falha ao consultar depósitos.')
-      if (!controller.signal.aborted) setResult(payload)
+      if (!controller.signal.aborted) {
+        setStockInvestigation({ packageKey, reportKey, result: payload })
+      }
     } catch (failure) {
       if (failure.name !== 'AbortError' && !controller.signal.aborted) {
         setError(failure.message || 'Não foi possível investigar o estoque.')
@@ -60,6 +74,37 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
         setLoading(false)
       }
     }
+  }, [scenario, stockFile, reportKey, packageKey, apiUrl, setStockInvestigation])
+
+  useEffect(() => {
+    controllerRef.current?.abort()
+    controllerRef.current = null
+    setError('')
+    setConfirmation('')
+    setSelectedId('')
+    setLoading(false)
+    refreshRef.current = ''
+  }, [packageKey])
+
+  useEffect(() => {
+    if (!cachedForPackage || !reportKey || result || loading || refreshRef.current === reportKey) return
+    refreshRef.current = reportKey
+    fetchReport({ automatic: true })
+  }, [cachedForPackage, reportKey, result, loading, fetchReport])
+
+  useEffect(() => () => controllerRef.current?.abort(), [])
+
+  useEffect(() => {
+    if (!selectedId || !scrollRef.current) return
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    scrollRef.current.scrollIntoView({
+      behavior: reducedMotion ? 'instant' : 'smooth',
+      block: 'start',
+    })
+  }, [selectedId])
+
+  function investigate() {
+    if (!loading) fetchReport()
   }
 
   const rows = (result?.materials || []).flatMap((material) =>
@@ -69,11 +114,11 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
   const selected = rows.find(({ candidate }) => candidate.candidate_id === selectedId)
 
   return (
-    <section className="orion-stock-investigation" aria-label="Investigação 4.1 — Divergência de estoque">
+    <section className="orion-stock-investigation" aria-label="Divergência de Estoque">
       <div className="orion-stock-investigation-header">
         <div>
           <div className="module-heading-with-info">
-            <h3>4.1 — Divergência de estoque</h3>
+            <h3>Divergência de Estoque</h3>
             <ModuleInfoHint moduleKey="dashboard.stock_divergence" />
           </div>
           <p>Conferir PNs críticos nos depósitos M221, P277 e G702 da aba ORIGINAL do STK SAP.</p>
@@ -132,6 +177,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
             </div>
           ) : <p>Nenhum PN crítico foi encontrado nos depósitos da investigação.</p>}
           {selected && (
+            <div ref={scrollRef} className="orion-stock-review-anchor">
             <StockDepotReviewForm
               key={selected.candidate.candidate_id}
               scenario={scenario}
@@ -141,11 +187,12 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
               apiUrl={apiUrl}
               onCancel={() => setSelectedId('')}
               onSaved={(payload) => {
-                setResult(payload)
+                setStockInvestigation({ packageKey, reportKey, result: payload })
                 setSelectedId('')
-                setConfirmation('Confirmação registrada no SQLite local. Nenhum SALDO oficial foi alterado.')
+                setConfirmation('Validação registrada no SQLite local. Nenhum SALDO oficial foi alterado.')
               }}
             />
+            </div>
           )}
           {result.materials.some((material) => material.candidates.some((candidate) => candidate.validation)) && (
             <div className="orion-stock-projection">

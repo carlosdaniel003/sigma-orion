@@ -261,7 +261,7 @@ def test_pcm_review_rejects_invalid_and_foreign_candidates(monkeypatch):
         assert validate(client, "invalid_candidate").status_code == 400
         assert validate(client, identifier, confirmed_quantity="5.01").status_code == 400
         assert validate(client, identifier, confirmed_quantity="nan").status_code in (400, 422)
-        assert validate(client, identifier, evidence="sem prova").status_code == 400
+        assert validate(client, identifier, evidence="x" * 4001).status_code == 400
         assert validate(client, identifier, accounting="INVALID").status_code == 400
         assert validate(client, identifier, decision="UNAVAILABLE",
                         accounting="NOT_INCLUDED", confirmed_quantity="1").status_code == 400
@@ -272,3 +272,42 @@ def test_pcm_review_rejects_invalid_and_foreign_candidates(monkeypatch):
             files={"stock": ("STK JULHO.xlsx", stock, MIME)},
         ).json()
         assert report["summary"]["candidates_reviewed"] == 0
+
+
+def test_review_accepts_only_operational_fields_without_identity_or_evidence(monkeypatch):
+    from uuid import uuid4
+
+    current = scenario()
+    current["scenario_id"] = uuid4().hex
+    stock = stock_bytes(example_rows())
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    with TestClient(app) as client:
+        result = client.post(
+            "/api/dpp/investigations/stock-divergence",
+            data={"scenario_id": current["scenario_id"]},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+        assert result.status_code == 200
+        identifier = result.json()["materials"][0]["candidates"][0]["candidate_id"]
+
+        review = client.post(
+            "/api/dpp/investigations/stock-divergence/review",
+            data={
+                "scenario_id": current["scenario_id"],
+                "candidate_id": identifier,
+                "decision": "AVAILABLE",
+                "accounting": "NOT_INCLUDED",
+                "confirmed_quantity": "3",
+            },
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+        assert review.status_code == 200
+        material = review.json()["materials"][0]
+        assert material["projected_gap_remaining"] == 7
+        recorded = material["candidates"][0]["validation"]
+        assert recorded["pcm"] == ""
+        assert recorded["warehouse"] == ""
+        assert recorded["evidence"] == ""
+        assert review.json()["changes_dpp"] is False

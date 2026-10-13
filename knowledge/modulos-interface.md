@@ -70,13 +70,13 @@
 
 **Finalidade:** Indicar se existe base mínima para confiar na leitura do cenário antes de investigar resultados. Serve como contexto operacional para o analista; não substitui os testes de reconstrução nem é, por si só, um veredito do Agente ORION.
 
-## dashboard.stock_divergence — Investigação 4.1: divergência de estoque
+## dashboard.stock_divergence — Divergência de Estoque
 
-**O que mostra:** PNs críticos do Cenário ORION com registros M221, P277 ou G702 na aba ORIGINAL do STK SAP; quantidade, centro e linha. Permite registrar declaração do PCM/Almoxarifado por depósito, com histórico de revisões.
+**O que mostra:** PNs críticos do Cenário ORION com registros M221, P277 ou G702 na aba ORIGINAL do STK SAP; quantidade, centro e linha. Permite registrar validação manual por depósito, sem exigir identificação de responsáveis ou texto de justificativa, com histórico de revisões.
 
-**Origem:** STK do pacote, Cenário ORION e registros históricos locais em SQLite. A aba CONSOLIDADO continua sendo a fonte do cálculo determinístico do DPP.
+**Origem:** STK do pacote, Cenário ORION e histórico local de validações em SQLite. O resultado da consulta permanece no workspace IndexedDB até o pacote ser substituído ou limpo. A aba CONSOLIDADO continua sendo a fonte do cálculo determinístico do DPP.
 
-**Finalidade:** Registrar disponibilidade/baixa e verificar se quantidade está contabilizada. Só AVAILABLE + NOT_INCLUDED entra na projeção separada de gap, que não altera NEC, STK TTL, SALDO, REAL nem Excel do DPP. PCM e Almoxarifado são identificados por declaração, sem autenticação corporativa. Estes registros ainda não integram os fatos runtime do Agente ORION; não executa a etapa 4.2.
+**Finalidade:** Registrar disponibilidade/baixa e verificar se quantidade está contabilizada. Só AVAILABLE + NOT_INCLUDED entra na projeção separada de gap, que não altera NEC, STK TTL, SALDO, REAL nem Excel do DPP. Não há identificação obrigatória de responsáveis nem autenticação corporativa. Estes registros ainda não integram os fatos runtime do Agente ORION; não executa a etapa 4.2.
 
 
 ## dashboard.guide — Como ler o cenário inicial

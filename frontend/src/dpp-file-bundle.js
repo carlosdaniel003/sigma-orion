@@ -75,7 +75,7 @@ export function fileMonthReference(filename) {
   return null
 }
 
-function kindFromFilename(file) {
+export function kindFromFilename(file) {
   const name = normalize(file?.name)
   if (!name) return 'unknown'
   if (name.includes('WIU')) return 'wiu'
