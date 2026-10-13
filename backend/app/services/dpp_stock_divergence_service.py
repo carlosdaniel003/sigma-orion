@@ -153,6 +153,20 @@ def investigate_stock_divergence(
         })
     items.sort(key=lambda item: (-item["negative_balance"], str(item["material"])))
 
+    # A investigação também deve encaminhar PNs sem registros nesses depósitos.
+    # A ausência de registro não prova inexistência de estoque em outros locais.
+    unmatched_materials = [
+        {
+            "material": material.get("material") or material_key,
+            "description": material.get("description"),
+            "unit": material.get("um"),
+            "negative_balance": max(-(_number(material.get("balance"), 0.0) or 0.0), 0.0),
+        }
+        for material_key, material in critical.items()
+        if material_key not in by_material
+    ]
+    unmatched_materials.sort(key=lambda item: (-item["negative_balance"], str(item["material"])))
+
     return {
         "scenario_id": scenario.get("scenario_id"),
         "reference_month": scenario.get("reference_month"),
@@ -172,6 +186,7 @@ def investigate_stock_divergence(
             "ignored_records": dict(ignored),
         },
         "materials": items,
+        "unmatched_materials": unmatched_materials,
         "requires_human_validation": True,
         "changes_dpp": False,
         "note": (

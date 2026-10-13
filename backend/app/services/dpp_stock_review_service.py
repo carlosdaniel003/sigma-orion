@@ -34,6 +34,14 @@ def _view(record: StockDepotReview) -> dict:
 
 
 def add_reviews(report: dict, session: Session, digest: str) -> dict:
+    """Explain only proven quantity and derive a routing suggestion, never a SAP write.
+
+    A later human correction replaces the *effective* validation without deleting
+    history. Available and unavailable quantities have distinct meanings:
+    * AVAILABLE + NOT_INCLUDED reduces the investigative stock gap.
+    * UNAVAILABLE + a written justification explains a known unavailable amount.
+      It does not increase available stock or reduce the official DPP SALDO.
+    """
     rows = (
         session.query(StockDepotReview)
         .filter_by(scenario_id=report["scenario_id"], stock_sha256=digest)
@@ -46,8 +54,12 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
 
     reviewed = 0
     projected = 0
+    routing = {"FINISHED": [], "QUALITY_4_2": [], "AWAITING_VALIDATION": []}
+
     for material in report["materials"]:
-        increment = 0.0
+        recovered = 0.0
+        justified_unavailable = 0.0
+        reviewed_candidates = 0
         for candidate in material["candidates"]:
             identifier = candidate_id(report, material, candidate, digest)
             versions = by_candidate.get(identifier, [])
@@ -55,25 +67,104 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
             candidate["candidate_id"] = identifier
             candidate["validation_history"] = versions
             candidate["validation"] = current
+            candidate["recovered_quantity"] = 0.0
+            candidate["justified_unavailable_quantity"] = 0.0
             if current:
                 reviewed += 1
-                candidate["validation_status"] = ("CONFIRMADO_DISPONIVEL" if current["decision"] == "AVAILABLE" else "CONFIRMADO_INDISPONIVEL")
+                reviewed_candidates += 1
+                candidate["validation_status"] = (
+                    "CONFIRMADO_DISPONIVEL" if current["decision"] == "AVAILABLE"
+                    else "CONFIRMADO_INDISPONIVEL"
+                )
                 if current["decision"] == "AVAILABLE" and current["accounting"] == "NOT_INCLUDED":
-                    increment += current["confirmed_quantity"]
-        gap = material["negative_balance"]
-        material["confirmed_increment_outside_dpp"] = increment
-        material["gap_reduction_projected"] = min(gap, increment)
-        material["projected_gap_remaining"] = max(0.0, gap - increment)
-        if increment > 0:
+                    candidate["recovered_quantity"] = current["confirmed_quantity"]
+                    recovered += current["confirmed_quantity"]
+                elif current["decision"] == "UNAVAILABLE" and current["confirmed_quantity"] > 0 and current["evidence"].strip():
+                    candidate["justified_unavailable_quantity"] = current["confirmed_quantity"]
+                    justified_unavailable += current["confirmed_quantity"]
+
+        deficit = material["negative_balance"]
+        remaining_gap = max(0.0, deficit - recovered)
+        # A justification explains a loss but never makes it physically available.
+        unexplained = max(0.0, remaining_gap - justified_unavailable)
+        if remaining_gap <= TOLERANCE:
+            remaining_gap = 0.0
+        if unexplained <= TOLERANCE:
+            unexplained = 0.0
+
+        material["confirmed_increment_outside_dpp"] = recovered
+        material["justified_unavailable_quantity"] = justified_unavailable
+        material["gap_reduction_projected"] = min(deficit, recovered)
+        material["projected_gap_remaining"] = remaining_gap
+        material["unexplained_quantity"] = unexplained
+        material["explained_quantity"] = min(deficit, recovered + justified_unavailable)
+        material["reviewed_candidates"] = reviewed_candidates
+        material["total_candidates"] = len(material["candidates"])
+
+        if unexplained == 0:
+            status = "FINISHED"
+            next_step = "Análise do item finalizada"
+        elif reviewed_candidates > 0:
+            # If other deposit records are still unreviewed, the referral remains
+            # provisional: further 4.1 validations can still finish the item.
+            status = "QUALITY_4_2"
+            next_step = "Encaminhar saldo não explicado à análise de Qualidade 4.2"
+        else:
+            status = "AWAITING_VALIDATION"
+            next_step = "Aguardar validação PCM/Almoxarifado"
+
+        if recovered > 0:
             projected += 1
+        material["workflow_status"] = status
+        material["next_step"] = next_step
+        routing[status].append({
+            "material": material["material"],
+            "description": material.get("description"),
+            "unit": material["unit"],
+            "initial_deficit": deficit,
+            "recovered_quantity": recovered,
+            "justified_unavailable_quantity": justified_unavailable,
+            "remaining_gap_after_recovery": remaining_gap,
+            "unexplained_quantity": unexplained,
+            "pending_reviews": len(material["candidates"]) - reviewed_candidates,
+            "next_step": next_step,
+        })
+
+    for material in report.get("unmatched_materials") or []:
+        routing["QUALITY_4_2"].append({
+            "material": material["material"],
+            "description": material.get("description"),
+            "unit": material["unit"],
+            "initial_deficit": material["negative_balance"],
+            "recovered_quantity": 0.0,
+            "justified_unavailable_quantity": 0.0,
+            "remaining_gap_after_recovery": material["negative_balance"],
+            "unexplained_quantity": material["negative_balance"],
+            "pending_reviews": 0,
+            "next_step": "Sem registros nos depósitos investigados; encaminhar à Qualidade 4.2",
+        })
+
+    report["workflow"] = {
+        "status": "STOCK_4_1_ROUTING",
+        "quality_analysis_implemented": False,
+        "finished": routing["FINISHED"],
+        "forward_to_quality": routing["QUALITY_4_2"],
+        "awaiting_validation": routing["AWAITING_VALIDATION"],
+    }
     report["summary"]["candidates_reviewed"] = reviewed
     report["summary"]["materials_with_projection"] = projected
+    report["summary"]["items_finished"] = len(routing["FINISHED"])
+    report["summary"]["items_to_quality"] = len(routing["QUALITY_4_2"])
+    report["summary"]["items_awaiting_validation"] = len(routing["AWAITING_VALIDATION"])
     report["gap_projection_is_official"] = False
     report["changes_dpp"] = False
     report["note"] = (
-        "Gap projetado somente para quantidades declaradas disponíveis e ainda não "
-        "contabilizadas no DPP. Esta projeção não altera STK TTL, NEC, SALDO ou REAL. "
-        "A validação é um registro manual sem identificação obrigatória e sem autenticação."
+        "O gap após recuperação considera somente materiais declarados disponíveis "
+        "e não contabilizados no DPP. Quantidade indisponível com justificativa "
+        "explica parte da falta, mas não recupera estoque. Se ainda houver quantidade "
+        "sem explicação após a validação, o item é sinalizado para Qualidade 4.2 "
+        "(encaminhamento lógico; a análise 4.2 não foi implementada). "
+        "Nenhuma movimentação SAP, SALDO, NEC, STK TTL ou REAL é alterado."
     )
     return report
 
@@ -99,8 +190,10 @@ def register_review(
     if not math.isfinite(quantity) or quantity < 0:
         raise ValueError("Quantidade precisa ser finita e não negativa.")
     if decision == "UNAVAILABLE":
-        if quantity != 0 or accounting != "UNKNOWN":
-            raise ValueError("Indisponibilidade exige quantidade zero e contabilização desconhecida.")
+        if accounting != "UNKNOWN":
+            raise ValueError("Material indisponível exige contabilização desconhecida.")
+        if quantity > 0 and not evidence:
+            raise ValueError("Informe a justificativa para contabilizar a quantidade indisponível como explicada.")
     elif quantity <= 0:
         raise ValueError("Informe quantidade positiva para material disponível.")
 
@@ -116,7 +209,7 @@ def register_review(
         raise ValueError("Registro não encontrado para o cenário e snapshot de estoque.")
     material, candidate = selected
     if quantity > candidate["quantity"] + TOLERANCE:
-        raise ValueError("Quantidade confirmada supera o estoque sob verificação nesse depósito.")
+        raise ValueError("A quantidade informada supera o registro desse PN no depósito.")
     quantity = min(quantity, candidate["quantity"])
 
     previous = (
