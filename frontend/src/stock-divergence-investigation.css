@@ -60,3 +60,7 @@
 .orion-stock-projection h4 { margin: 0; font-size: 14px; }
 
 .orion-stock-review-anchor { scroll-margin-top: 96px; }
+
+.orion-stock-review-justification {
+  margin-block: var(--space-3, 12px);
+}

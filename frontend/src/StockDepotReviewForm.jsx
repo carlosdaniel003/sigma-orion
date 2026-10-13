@@ -4,6 +4,7 @@ const options = {
   decision: 'AVAILABLE',
   accounting: 'UNKNOWN',
   quantity: '',
+  justification: '',
 }
 
 function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSaved, onCancel, apiUrl = '' }) {
@@ -12,6 +13,7 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
     decision: previous.decision,
     accounting: previous.accounting,
     quantity: previous.decision === 'AVAILABLE' ? String(previous.confirmed_quantity) : '',
+    justification: previous.evidence || '',
   } : options)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -32,6 +34,8 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
     form.append('decision', values.decision)
     form.append('accounting', values.decision === 'UNAVAILABLE' ? 'UNKNOWN' : values.accounting)
     form.append('confirmed_quantity', values.decision === 'UNAVAILABLE' ? '0' : values.quantity)
+    // Reaproveita o campo persistido no SQLite sem migração de schema.
+    form.append('evidence', values.justification)
     try {
       const response = await fetch(apiUrl + '/api/dpp/investigations/stock-divergence/review', {
         method: 'POST',
@@ -78,6 +82,12 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
         )}
 
       </div>
+      <label className="orion-stock-review-justification">
+        Justificativa (opcional)
+        <textarea rows={3} maxLength={4000} value={values.justification}
+          placeholder="Ex.: 14.325 peças P000 — divergência entre sistemas/SAP, aguardando confirmação."
+          onChange={(event) => update('justification', event.target.value)} disabled={saving} />
+      </label>
       {error && <p role="alert">{error}</p>}
       <button className="primary-button" type="submit" disabled={saving}>
         {saving ? 'Salvando...' : 'Registrar confirmação'}
@@ -89,7 +99,7 @@ function StockDepotReviewForm({ scenario, stockFile, candidate, material, onSave
             <li key={entry.id}>
               {entry.created_at || 'Sem data'} · {entry.decision === 'AVAILABLE' ? 'Disponível' : 'Indisponível'}
               · {entry.confirmed_quantity} {candidate.unit} · {entry.accounting}.
-              {entry.evidence && <div>{entry.evidence}</div>}
+              {entry.evidence && <div>Justificativa: {entry.evidence}</div>}
             </li>
           ))}</ul>
         </details>

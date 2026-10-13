@@ -590,3 +590,9 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Ao clicar em Validar/Revisar, a página rola até o formulário com respeito a prefers-reduced-motion.
 - PCM, Almoxarifado e evidência deixaram de ser campos obrigatórios no formulário e na API. Históricos antigos preservam esses campos, quando existentes; novos registros podem guardá-los vazios sem atribuição fictícia de identidade.
 - Permanecem obrigatórios apenas resultado e, se disponível, quantidade e estado de contabilização. Gap projetado segue isolado e não substitui SALDO do DPP.
+
+### Campo Justificativa restaurado em Divergência de Estoque (2026-10-13)
+
+- O formulário Validar/Revisar volta a oferecer **Justificativa (opcional)**, sem restaurar responsável PCM, contato do Almoxarifado ou um campo separado de evidências.
+- A justificativa é persistida no campo SQLite `evidence` já existente, recuperada ao revisar o registro e exibida no histórico. A API não mudou e continua aceitando registros sem justificativa, preservando retrocompatibilidade.
+- Sem impacto em estoque oficial, SALDO, REAL ou projeção do gap.

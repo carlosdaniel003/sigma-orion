@@ -311,3 +311,48 @@ def test_review_accepts_only_operational_fields_without_identity_or_evidence(mon
         assert recorded["warehouse"] == ""
         assert recorded["evidence"] == ""
         assert review.json()["changes_dpp"] is False
+
+
+def test_review_can_save_justification_without_pcm_or_warehouse(monkeypatch):
+    from uuid import uuid4
+
+    current = scenario()
+    current["scenario_id"] = uuid4().hex
+    stock = stock_bytes(example_rows())
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    with TestClient(app) as client:
+        initial = client.post(
+            "/api/dpp/investigations/stock-divergence",
+            data={"scenario_id": current["scenario_id"]},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+        assert initial.status_code == 200
+        identifier = initial.json()["materials"][0]["candidates"][0]["candidate_id"]
+        saved = client.post(
+            "/api/dpp/investigations/stock-divergence/review",
+            data={
+                "scenario_id": current["scenario_id"],
+                "candidate_id": identifier,
+                "decision": "AVAILABLE",
+                "accounting": "UNKNOWN",
+                "confirmed_quantity": "3",
+                "evidence": "Divergência sistema/SAP a confirmar no P000.",
+            },
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+        assert saved.status_code == 200
+        review = saved.json()["materials"][0]["candidates"][0]["validation"]
+        assert review["evidence"] == "Divergência sistema/SAP a confirmar no P000."
+        assert review["pcm"] == ""
+        assert review["warehouse"] == ""
+        assert saved.json()["materials"][0]["projected_gap_remaining"] == 10
+
+        reread = client.post(
+            "/api/dpp/investigations/stock-divergence",
+            data={"scenario_id": current["scenario_id"]},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+        assert reread.status_code == 200
+        assert reread.json()["materials"][0]["candidates"][0]["validation"]["evidence"] == "Divergência sistema/SAP a confirmar no P000."
