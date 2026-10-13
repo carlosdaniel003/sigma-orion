@@ -70,6 +70,15 @@
 
 **Finalidade:** Indicar se existe base mínima para confiar na leitura do cenário antes de investigar resultados. Serve como contexto operacional para o analista; não substitui os testes de reconstrução nem é, por si só, um veredito do Agente ORION.
 
+## dashboard.stock_divergence — Investigação 4.1: divergência de estoque
+
+**O que mostra:** Consulta manual, por solicitação do usuário, os registros de PNs críticos do Cenário ORION nos depósitos M221, P277 e G702 presentes na aba ORIGINAL do STK SAP. Agrupa quantidades da coluna Utilização livre por PN, depósito, centro e unidade, com referência às linhas de origem.
+
+**Origem:** Cenário ORION calculado pelo motor Python e arquivo STK SAP do pacote compartilhado, aba ORIGINAL. A aba CONSOLIDADO continua sendo a única fonte de STK SAP para o cálculo do DPP; os dados de investigação não são reincorporados ao SALDO.
+
+**Finalidade:** Preparar evidências para o PCM confirmar com Almoxarifado se a quantidade será localizada/disponibilizada ou baixada. Não conclui disponibilidade física, não atribui causa definitiva, não altera NEC, STK TTL, SALDO nem REAL e não executa a etapa 4.2 de Qualidade. Registros com unidade divergente ou quantidade inválida não são somados.
+
+
 ## dashboard.guide — Como ler o cenário inicial
 
 **O que mostra:** Organiza a leitura do Dashboard em três perguntas: referência de produção, REAL planejado e restrições materiais.

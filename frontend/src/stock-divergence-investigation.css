@@ -1,0 +1,44 @@
+.orion-stock-investigation {
+  margin-block: var(--space-5, 24px);
+  padding: var(--space-4, 16px);
+  background: var(--orion-surface);
+  color: var(--orion-text);
+  border: 1px solid var(--orion-border);
+}
+
+.orion-stock-investigation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-4, 16px);
+}
+
+.orion-stock-investigation-header h3 { margin: 0; }
+.orion-stock-investigation-header p { margin: 8px 0 4px; }
+.orion-stock-investigation-header small,
+.orion-stock-investigation-note { color: var(--orion-text-secondary); }
+
+.orion-stock-investigation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-block: 16px;
+  font-size: 12px;
+}
+
+.orion-stock-investigation-scroll { overflow-x: auto; margin-block: 12px; }
+.orion-stock-investigation table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.orion-stock-investigation th, .orion-stock-investigation td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--orion-border);
+  text-align: left;
+  vertical-align: top;
+}
+.orion-stock-investigation th { white-space: nowrap; font-weight: 600; }
+.orion-stock-investigation .orion-stock-number {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.orion-stock-investigation-note { font-size: 12px; margin-bottom: 0; }

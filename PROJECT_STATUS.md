@@ -554,3 +554,18 @@ Os arquivos persistidos em IndexedDB permanecem somente no navegador/origem loca
 ## Atualização visual de 2026-09-28
 
 Navegação lateral fixa e recolhível, organizada por áreas com rótulos visíveis, substitui o dock flutuante. O cabeçalho mostra o contexto atual e mantém a busca do conhecimento. O chat prioriza a conversa e oferece evidências/inspeção sob demanda. Controles de ícone são quadrados; painéis, inputs e tabelas usam tokens de radius zero. Mantidos os dois temas, o Dashboard inicial, o pacote compartilhado, endpoints e cálculos determinísticos.
+
+
+## Etapa 4.1 — investigação de divergência de estoque (2026-10-13)
+
+Primeira entrega somente investigativa, correspondente ao fluxo da reunião:
+- consulta sob demanda da aba ORIGINAL do mesmo arquivo STK SAP do cenário;
+- cruza materiais classificados como INVESTIGAR com M221, P277 e G702;
+- agrupa quantidades da coluna Utilização livre por PN, depósito, centro e unidade e apresenta linhas de origem;
+- não soma registros com unidade divergente, quantidade inválida ou não positiva;
+- informa depósitos sem registros (ausência no arquivo não prova estoque igual a zero);
+- PCM/Almoxarifado permanecem responsáveis por confirmar localização, baixa e disponibilidade;
+- não altera NEC, STK TTL, SALDO, REAL, cenário, nem expõe disponibilidade confirmada sem validação;
+- a API é POST /api/dpp/investigations/stock-divergence e o Dashboard oferece consulta manual.
+
+Etapa 4.2 (Qualidade), scrap, movimento de inventário, recebimento, opcionais, retrabalho e Data Lake **não** fazem parte desta entrega. A automação de decisão e recálculo de gap ficam pendentes de definição e validação do processo.
