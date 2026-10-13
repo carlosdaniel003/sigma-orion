@@ -571,3 +571,12 @@ Primeira entrega somente investigativa, correspondente ao fluxo da reunião:
 Etapa 4.2 (Qualidade), scrap, movimento de inventário, recebimento, opcionais, retrabalho e Data Lake **não** fazem parte desta entrega. A automação de decisão e recálculo de gap ficam pendentes de definição e validação do processo.
 
 O STK do cenário mensal novo registra fingerprint SHA-256; a investigação compara o conteúdo recebido com esse fingerprint para impedir o cruzamento silencioso de snapshots diferentes mesmo com nomes de arquivo iguais. Cenários antigos sem fingerprint preservam temporariamente a validação por nome.
+
+### Etapa 4.1 — Confirmação declarada e projeção local (2026-10-13)
+
+- O botão Validar/Revisar abre formulário para resultado (disponível/indisponível), quantidade confirmada, indicação de contabilização no DPP, responsável PCM declarado, contato do Almoxarifado declarado e evidência.
+- Registros são persistidos no SQLite (stock_depot_reviews), com histórico append-only por candidato e fingerprint SHA-256 do STK; mesmo envio repetido é idempotente.
+- Quantidade confirmada deve ser positiva e menor ou igual à quantidade do depósito. Em material indisponível, zero. Disponível já contabilizado ou de contabilização desconhecida NÃO reduz o gap.
+- Gap investigativo projetado = max(0, déficit original − quantidades declaradas disponíveis e NOT_INCLUDED). O cenário original não é alterado, e não ocorre movimento SAP.
+- PCM e Almoxarifado não possuem autenticação de identidade no MVP, os nomes são declarações fornecidas pelo usuário.
+- A etapa 4.2 e Data Lake não são implementados por esta entrega.

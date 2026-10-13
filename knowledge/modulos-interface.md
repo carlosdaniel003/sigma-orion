@@ -72,11 +72,11 @@
 
 ## dashboard.stock_divergence — Investigação 4.1: divergência de estoque
 
-**O que mostra:** Consulta manual, por solicitação do usuário, os registros de PNs críticos do Cenário ORION nos depósitos M221, P277 e G702 presentes na aba ORIGINAL do STK SAP. Agrupa quantidades da coluna Utilização livre por PN, depósito, centro e unidade, com referência às linhas de origem.
+**O que mostra:** PNs críticos do Cenário ORION com registros M221, P277 ou G702 na aba ORIGINAL do STK SAP; quantidade, centro e linha. Permite registrar declaração do PCM/Almoxarifado por depósito, com histórico de revisões.
 
-**Origem:** Cenário ORION calculado pelo motor Python e arquivo STK SAP do pacote compartilhado, aba ORIGINAL. A aba CONSOLIDADO continua sendo a única fonte de STK SAP para o cálculo do DPP; os dados de investigação não são reincorporados ao SALDO.
+**Origem:** STK do pacote, Cenário ORION e registros históricos locais em SQLite. A aba CONSOLIDADO continua sendo a fonte do cálculo determinístico do DPP.
 
-**Finalidade:** Preparar evidências para o PCM confirmar com Almoxarifado se a quantidade será localizada/disponibilizada ou baixada. Não conclui disponibilidade física, não atribui causa definitiva, não altera NEC, STK TTL, SALDO nem REAL e não executa a etapa 4.2 de Qualidade. Registros com unidade divergente ou quantidade inválida não são somados.
+**Finalidade:** Registrar disponibilidade/baixa e verificar se quantidade está contabilizada. Só AVAILABLE + NOT_INCLUDED entra na projeção separada de gap, que não altera NEC, STK TTL, SALDO, REAL nem Excel do DPP. PCM e Almoxarifado são identificados por declaração, sem autenticação corporativa. Estes registros ainda não integram os fatos runtime do Agente ORION; não executa a etapa 4.2.
 
 
 ## dashboard.guide — Como ler o cenário inicial
