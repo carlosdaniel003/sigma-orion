@@ -356,3 +356,159 @@ def test_review_can_save_justification_without_pcm_or_warehouse(monkeypatch):
         )
         assert reread.status_code == 200
         assert reread.json()["materials"][0]["candidates"][0]["validation"]["evidence"] == "Divergência sistema/SAP a confirmar no P000."
+
+
+def test_41_without_depot_records_is_forwarded_to_quality_without_starting_42(monkeypatch):
+    from uuid import uuid4
+
+    current = scenario()
+    current["scenario_id"] = uuid4().hex
+    stock = stock_bytes([["MAT-NEG", "Sem saldo em depósito", 3, "Q239", 0, 0, "UN", "1063"]])
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    with TestClient(app) as client:
+        reply = client.post("/api/dpp/investigations/stock-divergence",
+                            data={"scenario_id": current["scenario_id"]},
+                            files={"stock": ("STK JULHO.xlsx", stock, MIME)})
+        assert reply.status_code == 200
+        data = reply.json()
+        assert data["materials"] == []
+        assert data["summary"]["items_to_quality"] == 1
+        assert data["summary"]["items_finished"] == 0
+        assert data["workflow"]["quality_analysis_implemented"] is False
+        referral = data["workflow"]["forward_to_quality"][0]
+        assert referral["material"] == "MAT-NEG"
+        assert referral["initial_deficit"] == 10
+        assert referral["unexplained_quantity"] == 10
+        assert "Sem registros" in referral["next_step"]
+
+
+def test_41_available_and_unavailable_explanations_finish_without_stock_double_count(monkeypatch):
+    from uuid import uuid4
+    current = scenario()
+    current["scenario_id"] = uuid4().hex
+    current["materials"][0]["balance"] = -8
+    original = deepcopy(current)
+    stock = stock_bytes(example_rows())
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    def investigate(client):
+        return client.post("/api/dpp/investigations/stock-divergence",
+                           data={"scenario_id": current["scenario_id"]},
+                           files={"stock": ("STK JULHO.xlsx", stock, MIME)})
+
+    def save(client, identifier, decision, accounting, quantity, evidence):
+        return client.post(
+            "/api/dpp/investigations/stock-divergence/review",
+            data={
+                "scenario_id": current["scenario_id"],
+                "candidate_id": identifier,
+                "decision": decision, "accounting": accounting,
+                "confirmed_quantity": str(quantity), "evidence": evidence,
+            },
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+
+    with TestClient(app) as client:
+        report = investigate(client)
+        assert report.status_code == 200
+        initial = report.json()
+        assert initial["summary"]["items_awaiting_validation"] == 1
+        assert initial["summary"]["items_to_quality"] == 0
+        material = initial["materials"][0]
+        first, second = (c["candidate_id"] for c in material["candidates"])
+
+        # A partial recovery triggers a provisional Quality referral.
+        partly = save(client, first, "AVAILABLE", "NOT_INCLUDED", 5, "")
+        assert partly.status_code == 200
+        partial = partly.json()
+        line = partial["materials"][0]
+        assert line["confirmed_increment_outside_dpp"] == 5
+        assert line["projected_gap_remaining"] == 3
+        assert line["unexplained_quantity"] == 3
+        assert line["workflow_status"] == "QUALITY_4_2"
+        assert partial["summary"]["items_to_quality"] == 1
+        assert partial["workflow"]["forward_to_quality"][0]["pending_reviews"] == 1
+
+        # A justified unavailable amount explains, but does not make stock available.
+        completed = save(client, second, "UNAVAILABLE", "UNKNOWN", 3,
+                         "Três peças confirmadas como indisponíveis para o plano.")
+        assert completed.status_code == 200
+        result = completed.json()
+        line = result["materials"][0]
+        assert line["confirmed_increment_outside_dpp"] == 5
+        assert line["justified_unavailable_quantity"] == 3
+        assert line["projected_gap_remaining"] == 3
+        assert line["unexplained_quantity"] == 0
+        assert line["workflow_status"] == "FINISHED"
+        assert result["summary"]["items_finished"] == 1
+        assert result["summary"]["items_to_quality"] == 0
+        assert result["workflow"]["finished"][0]["remaining_gap_after_recovery"] == 3
+        assert result["changes_dpp"] is False
+        assert current == original
+
+        # Repeating an identical review leaves audit history unchanged.
+        duplicate = save(client, second, "UNAVAILABLE", "UNKNOWN", 3,
+                         "Três peças confirmadas como indisponíveis para o plano.")
+        assert duplicate.status_code == 200
+        assert len(duplicate.json()["materials"][0]["candidates"][1]["validation_history"]) == 1
+
+        # A correction reopens the incomplete cause; old versions remain auditable.
+        correction = save(client, second, "UNAVAILABLE", "UNKNOWN", 0,
+                          "O apontamento foi retificado: quantidade sem confirmação.")
+        assert correction.status_code == 200
+        result = correction.json()
+        assert result["materials"][0]["unexplained_quantity"] == 3
+        assert result["materials"][0]["workflow_status"] == "QUALITY_4_2"
+        assert len(result["materials"][0]["candidates"][1]["validation_history"]) == 2
+
+        persisted = investigate(client)
+        assert persisted.status_code == 200
+        assert persisted.json()["summary"]["items_to_quality"] == 1
+        assert current == original
+
+
+def test_41_unavailable_amount_requires_explanation_and_cannot_exceed_depot(monkeypatch):
+    from uuid import uuid4
+
+    current = scenario()
+    current["scenario_id"] = uuid4().hex
+    stock = stock_bytes(example_rows())
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    with TestClient(app) as client:
+        initial = client.post(
+            "/api/dpp/investigations/stock-divergence",
+            data={"scenario_id": current["scenario_id"]},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        ).json()
+        identifier = initial["materials"][0]["candidates"][0]["candidate_id"]
+
+        def save(quantity, evidence):
+            return client.post(
+                "/api/dpp/investigations/stock-divergence/review",
+                data={
+                    "scenario_id": current["scenario_id"],
+                    "candidate_id": identifier,
+                    "decision": "UNAVAILABLE",
+                    "accounting": "UNKNOWN",
+                    "confirmed_quantity": str(quantity),
+                    "evidence": evidence,
+                },
+                files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+            )
+
+        assert save(2, "").status_code == 400
+        assert save(6, "Peças não estão disponíveis na contagem física.").status_code == 400
+        assert save(2, "Quantidade não localizada após verificação.").status_code == 200
+
+        latest = client.post("/api/dpp/investigations/stock-divergence",
+                             data={"scenario_id": current["scenario_id"]},
+                             files={"stock": ("STK JULHO.xlsx", stock, MIME)}).json()
+        line = latest["materials"][0]
+        assert line["justified_unavailable_quantity"] == 2
+        assert line["projected_gap_remaining"] == 10
+        assert line["unexplained_quantity"] == 8
