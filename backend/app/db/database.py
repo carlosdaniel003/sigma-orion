@@ -18,5 +18,6 @@ def init_db() -> None:
     from app.models.analysis_run import AnalysisRun  # noqa: F401
     from app.models.feedback import Feedback  # noqa: F401
     from app.models.stock_depot_review import StockDepotReview  # noqa: F401
+    from app.models.quality_depot_review import QualityDepotReview  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

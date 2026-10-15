@@ -32,6 +32,7 @@ from app.services.dpp_progress_service import get_monthly_generation_job, start_
 from app.services.dpp_scenario_service import get_latest_monthly_scenario, get_monthly_scenario, recalculate_monthly_scenario
 from app.services.dpp_stock_divergence_service import investigate_stock_divergence
 from app.services.dpp_stock_review_service import add_reviews, register_review
+from app.services.dpp_quality_service import quality_report, register_quality_review
 from app.services.dpp_service import analyze_dpp_file
 from app.services.dpp_test_service import test_monthly_dpp_reconstruction
 from app.services.excel_service import inspect_uploaded_file
@@ -286,6 +287,59 @@ async def review_stock_divergence_route(
                 pcm=pcm, warehouse=warehouse, evidence=evidence,
             )
             return add_reviews(report, session, digest)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/dpp/investigations/quality")
+async def investigate_quality_route(
+    scenario_id: str = Form(...),
+    stock: UploadFile = File(...),
+) -> dict:
+    """Run quality 4.2 using authoritative 4.1 state, Q239/Q273 from same STK."""
+    scenario = get_monthly_scenario(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail="Cenário não encontrado ou expirado. Gere o DPP novamente.")
+    content = await stock.read()
+    try:
+        with SessionLocal() as session:
+            return quality_report(
+                scenario=scenario, stock_content=content,
+                stock_filename=stock.filename or "", session=session,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/dpp/investigations/quality/review")
+async def review_quality_route(
+    scenario_id: str = Form(...),
+    stock: UploadFile = File(...),
+    candidate_id: str = Form(...),
+    decision: str = Form(...),
+    accounting: str = Form("UNKNOWN"),
+    confirmed_quantity: float = Form(0),
+    justification: str = Form(""),
+) -> dict:
+    scenario = get_monthly_scenario(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail="Cenário não encontrado ou expirado. Gere o DPP novamente.")
+    content = await stock.read()
+    try:
+        with SessionLocal() as session:
+            report = quality_report(
+                scenario=scenario, stock_content=content,
+                stock_filename=stock.filename or "", session=session,
+            )
+            register_quality_review(
+                session, report=report, stock_digest=sha256(content).hexdigest(),
+                candidate_id=candidate_id, decision=decision, accounting=accounting,
+                quantity=confirmed_quantity, justification=justification,
+            )
+            return quality_report(
+                scenario=scenario, stock_content=content,
+                stock_filename=stock.filename or "", session=session,
+            )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
