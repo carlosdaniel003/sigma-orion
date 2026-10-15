@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
 import QualityReviewForm from './QualityReviewForm'
+import { downloadInvestigationExcel } from './investigation-excel'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import { fileIdentity } from './dpp-workspace-state'
 import './stock-divergence-investigation.css'
@@ -17,6 +18,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     qualityInvestigation, setQualityInvestigation,
   } = useDppWorkspace()
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [selectedId, setSelectedId] = useState('')
@@ -86,6 +88,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     setError('')
     setMessage('')
     setLoading(false)
+    setExporting(false)
   }, [reportKey])
 
   // Consulta automaticamente quando a etapa 4.1 encaminha PNs ao CQ.
@@ -103,6 +106,22 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     formRef.current.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
   }, [selectedId])
 
+  async function exportExcel() {
+    if (!report || exporting) return
+    setExporting(true)
+    setError('')
+    try {
+      await downloadInvestigationExcel({
+        apiUrl, endpoint: '/api/dpp/investigations/quality/export',
+        scenario, stockFile,
+      })
+    } catch (failure) {
+      setError(failure.message || 'Não foi possível exportar a análise de Qualidade.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const selected = (report?.materials || []).flatMap((material) =>
     material.candidates.map((candidate) => ({ material, candidate })),
   ).find(({ candidate }) => candidate.candidate_id === selectedId)
@@ -119,10 +138,18 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
           <small>Apenas PNs encaminhados por Divergência de Estoque. Não altera SALDO, NEC ou REAL.</small>
         </div>
         {canRun && (
-          <button type="button" className="secondary-button" disabled={loading} aria-busy={loading}
-            onClick={() => { attemptedRef.current = reportKey; fetchReport() }}>
-            {loading ? 'Consultando Qualidade...' : report ? 'Consultar novamente' : 'Consultar Qualidade'}
-          </button>
+          <div className="orion-investigation-actions">
+            <button type="button" className="secondary-button" disabled={loading || exporting} aria-busy={loading}
+              onClick={() => { attemptedRef.current = reportKey; fetchReport() }}>
+              {loading ? 'Consultando Qualidade...' : report ? 'Consultar novamente' : 'Consultar Qualidade'}
+            </button>
+            {report && (
+              <button type="button" className="secondary-button" onClick={exportExcel}
+                disabled={loading || exporting} aria-busy={exporting}>
+                {exporting ? 'Gerando Excel...' : 'Baixar Excel'}
+              </button>
+            )}
+          </div>
         )}
       </div>
 

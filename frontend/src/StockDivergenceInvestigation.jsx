@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
+import { downloadInvestigationExcel } from './investigation-excel'
 import StockDepotReviewForm from './StockDepotReviewForm'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import { fileIdentity, scenarioValidationIdentity } from './dpp-workspace-state'
@@ -13,6 +14,7 @@ function formatQuantity(value) {
 function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
   const { stockInvestigation, setStockInvestigation, workspaceReady, dppState } = useDppWorkspace()
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [selectedId, setSelectedId] = useState('')
@@ -83,6 +85,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
     setConfirmation('')
     setSelectedId('')
     setLoading(false)
+    setExporting(false)
     refreshRef.current = ''
   }, [packageKey])
 
@@ -107,6 +110,22 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
     if (!loading) fetchReport()
   }
 
+  async function exportExcel() {
+    if (!result || exporting) return
+    setExporting(true)
+    setError('')
+    try {
+      await downloadInvestigationExcel({
+        apiUrl, endpoint: '/api/dpp/investigations/stock-divergence/export',
+        scenario, stockFile,
+      })
+    } catch (failure) {
+      setError(failure.message || 'Não foi possível exportar a investigação de estoque.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const rows = (result?.materials || []).flatMap((material) =>
     material.candidates.map((candidate) => ({ material, candidate })),
   )
@@ -124,10 +143,18 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
           <p>Conferir PNs críticos nos depósitos M221, P277 e G702 da aba ORIGINAL do STK SAP.</p>
           <small>Consulta para validação do PCM com Almoxarifado. Não altera estoque, REAL ou SALDO.</small>
         </div>
-        <button type="button" className="secondary-button" onClick={investigate}
-          disabled={!scenario?.scenario_id || !stockFile || loading} aria-busy={loading}>
-          {loading ? 'Consultando depósitos...' : result ? 'Consultar novamente' : 'Investigar depósitos'}
-        </button>
+        <div className="orion-investigation-actions">
+          <button type="button" className="secondary-button" onClick={investigate}
+            disabled={!scenario?.scenario_id || !stockFile || loading || exporting} aria-busy={loading}>
+            {loading ? 'Consultando depósitos...' : result ? 'Consultar novamente' : 'Investigar depósitos'}
+          </button>
+          {result && (
+            <button type="button" className="secondary-button" onClick={exportExcel}
+              disabled={loading || exporting || !stockFile} aria-busy={exporting}>
+              {exporting ? 'Gerando Excel...' : 'Baixar Excel'}
+            </button>
+          )}
+        </div>
       </div>
 
       {!stockFile && <p role="status">Adicione o arquivo STK SAP ao pacote para consultar os depósitos.</p>}
