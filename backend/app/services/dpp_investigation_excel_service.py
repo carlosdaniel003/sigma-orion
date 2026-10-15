@@ -13,7 +13,6 @@ from math import isfinite
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.dimensions import ColumnDimension
 
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 DARK = "172A40"
@@ -108,7 +107,8 @@ def _header(sheet, title, subtitle, columns, widths, *, note=None):
     sheet.sheet_properties.pageSetUpPr.fitToPage = True
     sheet.page_setup.orientation = "landscape"
     sheet.page_setup.paperSize = sheet.PAPERSIZE_A3
-    sheet.page_setup.fitToWidth = 1
+    # Não comprimir 14-18 colunas numa única página ilegível.
+    sheet.page_setup.fitToWidth = 3 if count >= 14 else 2 if count >= 11 else 1
     sheet.page_setup.fitToHeight = 0
     sheet.sheet_properties.outlinePr.summaryBelow = True
     sheet.oddFooter.center.text = "ORION · Investigação / NÃO ALTERA O DPP"
@@ -178,6 +178,7 @@ def _summary(workbook, *, report, scenario, kind):
         ("Registros validados", "candidates_reviewed"),
         ("Itens finalizados", "items_finished"),
         ("Encaminhados para Scrap 4.3", "items_to_scrap"),
+        ("Encaminhamentos provisórios", "provisional_handoffs"),
         ("Aguardando validação do CQ", "items_awaiting_quality"),
     ] if quality else [
         ("PNs críticos no cenário", "critical_materials"),
@@ -186,6 +187,7 @@ def _summary(workbook, *, report, scenario, kind):
         ("Registros validados", "candidates_reviewed"),
         ("Itens finalizados", "items_finished"),
         ("Encaminhados para Qualidade 4.2", "items_to_quality"),
+        ("Encaminhamentos provisórios", "provisional_handoffs"),
         ("Aguardando validação de Estoque", "items_awaiting_validation"),
     ])
     records = information + [("INDICADORES", "")] + [
@@ -193,18 +195,49 @@ def _summary(workbook, *, report, scenario, kind):
     ] + [
         ("INTERPRETAÇÃO", ""),
         ("Quantidade encontrada", "Registro no STK ORIGINAL; não implica disponibilidade física ou liberação automática."),
-        ("Disponível adicional", "Quantidade validada e declarada fora do DPP; apenas reduz o gap projetado."),
+        ("Quantidade bruta", "Quantidade registrada no STK ORIGINAL, nunca automaticamente recuperada."),
+        ("Cobertura potencial", "Máximo teórico de cobertura do déficit individual por PN, sem validação de disponibilidade."),
+        ("Confirmado vs aplicado", "Confirmado = declaração bruta; aplicado = parte limitada ao déficit ainda sem causa."),
+        ("Disponível adicional", "Quantidade validada e declarada fora do DPP; apenas a parte aplicada reduz o gap projetado."),
         ("Indisponível / rejeitado / refugo", "Quantidade validada e justificada; explica a causa, mas não aumenta estoque."),
         ("Falta sem justificativa", "Gap que permanece sem causa validada após a etapa exibida."),
+        ("Encaminhamento provisório", "Há revisões de depósitos ou da etapa anterior pendentes; o próximo passo pode mudar."),
+        ("Sem registro nos depósitos", "Não equivale a ausência de estoque em todos os depósitos nem comprova scrap."),
         ("Status de encaminhamento", "Indicação da próxima etapa; não significa que a etapa seguinte foi executada."),
         ("DPP oficial", "SALDO, NEC, STK TTL e REAL permanecem inalterados."),
     ]
+    # Indicadores por unidade: jamais somar quantidades de UN, KG, M etc.
+    per_unit = {}
+    for material in report.get("materials") or []:
+        unit = str(material.get("unit") or "SEM UM")
+        bucket = per_unit.setdefault(unit, {"deficit": 0.0, "raw": 0.0, "potential": 0.0, "applied": 0.0})
+        deficit = float(material.get("negative_balance") if not quality else material.get("gap_from_41") or 0.0)
+        raw = float(material.get("candidate_quantity") if not quality else sum(
+            float(candidate.get("quantity") or 0.0) for candidate in material.get("candidates") or []
+        ) or 0.0)
+        potential = min(deficit, raw)
+        applied = float(
+            (material.get("recovered_quantity_applied") or 0.0)
+            if not quality else (material.get("quality_released_applied") or 0.0)
+        )
+        bucket["deficit"] += deficit
+        bucket["raw"] += raw
+        bucket["potential"] += potential
+        bucket["applied"] += applied
+    records += [("COBERTURA TEÓRICA POR UM (não confirmada)", "")]
+    for unit, sums in sorted(per_unit.items()):
+        records.extend([
+            (f"{unit} · Falta considerada", round(sums["deficit"], 3)),
+            (f"{unit} · Depósitos (bruto)", round(sums["raw"], 3)),
+            (f"{unit} · Potencial limitado ao déficit", round(sums["potential"], 3)),
+            (f"{unit} · Recuperação aplicada validada", round(sums["applied"], 3)),
+        ])
     _rows(sheet, ["Campo", "Informação / valor"], [42, 100], records, title=caption,
         subtitle="Relatório de investigação do cenário ORION em construção — não é o DPP Final já validado.",
         note="Valores de depósitos são evidências para investigação. Nenhuma linha deste Excel representa movimentação SAP nem altera o DPP oficial.")
     for row in range(1, sheet.max_row + 1):
         value = sheet.cell(row, 1).value
-        if value in {"INDICADORES", "INTERPRETAÇÃO"}:
+        if value in {"INDICADORES", "INTERPRETAÇÃO", "COBERTURA TEÓRICA POR UM (não confirmada)"}:
             for col in (1, 2):
                 cell = sheet.cell(row, col)
                 cell.fill = PatternFill("solid", fgColor=MID)
@@ -213,7 +246,6 @@ def _summary(workbook, *, report, scenario, kind):
 
 
 def _stock_materials(report):
-    matched = {item["material"]: item for item in report.get("materials") or []}
     routing = report.get("workflow") or {}
     routes = {
         entry["material"]: (status, entry)
@@ -230,10 +262,15 @@ def _stock_materials(report):
         result.append([
             material["material"], material.get("description"), material.get("unit"),
             material.get("balance"), material.get("negative_balance"),
-            material.get("candidate_quantity"), material.get("confirmed_increment_outside_dpp"),
-            material.get("projected_gap_remaining"), material.get("justified_unavailable_quantity"),
+            material.get("candidate_quantity"), material.get("recovered_quantity_applied"),
+            material.get("projected_gap_remaining"), material.get("justified_unavailable_applied"),
             material.get("unexplained_quantity"), status,
             state.get("next_step") or material.get("next_step"),
+            material.get("theoretical_coverage_limit"),
+            material.get("confirmed_increment_outside_dpp"),
+            material.get("justified_unavailable_quantity"),
+            material.get("confirmed_excess_not_attributed"),
+            "Sim" if material.get("routing_provisional") else "Não",
         ])
     for material in report.get("unmatched_materials") or []:
         status, state = routes.get(material["material"], ("QUALITY_4_2", {}))
@@ -243,6 +280,7 @@ def _stock_materials(report):
             material.get("negative_balance"), 0, 0,
             material.get("negative_balance"), 0, material.get("negative_balance"),
             status, state.get("next_step") or "Sem registros; encaminhar à Qualidade 4.2",
+            0, 0, 0, 0, "Não",
         ])
     return sorted(result, key=lambda row: (-float(row[4] or 0), str(row[0])))
 
@@ -259,7 +297,7 @@ def _stock_candidates(report):
                 validation.get("decision") or "AGUARDANDO",
                 validation.get("accounting") or "UNKNOWN",
                 validation.get("confirmed_quantity"),
-                candidate.get("recovered_quantity"), candidate.get("justified_unavailable_quantity"),
+                candidate.get("recovered_applied", 0), candidate.get("justified_unavailable_applied", 0),
                 validation.get("evidence") or "",
                 validation.get("created_at") or "",
                 material.get("workflow_status"), material.get("next_step"),
@@ -280,11 +318,15 @@ def _quality_materials(report):
         material.get("material"), material.get("description"), material.get("unit"),
         material.get("active_depot") or "SEM REGISTRO",
         material.get("gap_from_41"), material.get("physical_gap_from_41"),
-        material.get("quality_released"), material.get("quality_rejected_justified"),
-        material.get("quality_scrap_justified"), material.get("physical_gap_after_quality"),
+        material.get("quality_released_applied"), material.get("quality_rejected_applied"),
+        material.get("quality_scrap_applied"), material.get("physical_gap_after_quality"),
         material.get("unexplained_after_quality"),
         material.get("q273_records_skipped_due_q239"), material.get("workflow_status"),
         material.get("next_step"),
+        material.get("theoretical_coverage_limit"),
+        material.get("quality_released"), material.get("quality_rejected_justified"),
+        material.get("quality_scrap_justified"), material.get("confirmed_excess_not_attributed"),
+        "Sim" if material.get("routing_provisional") else "Não",
     ] for material in report.get("materials") or []]
 
 
@@ -302,6 +344,8 @@ def _quality_candidates(report):
                 validation.get("confirmed_quantity"), validation.get("justification") or "",
                 validation.get("created_at") or "",
                 material.get("workflow_status"), material.get("next_step"),
+                candidate.get("release_applied", 0), candidate.get("rejection_applied", 0),
+                candidate.get("scrap_applied", 0),
             ])
             for revision in candidate.get("validation_history") or []:
                 history.append([
@@ -339,18 +383,20 @@ def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tu
     stamp = (report.get("reference_month") or scenario.get("reference_month") or "SEM_MES").replace("-", "_")
     if kind == "stock":
         _rows(book.create_sheet("PNs investigados"),
-            ["PN", "Descrição", "UM", "SALDO DPP", "Falta inicial", "Qtd. nos depósitos",
-             "Adicional disponível", "Gap após recuperação", "Indisponível justificada",
-             "Sem justificativa", "Status 4.1", "Próxima etapa"],
-            [25, 42, 9, 17, 16, 20, 21, 22, 23, 20, 24, 51],
+            ["PN", "Descrição", "UM", "SALDO Cenário ORION", "Falta inicial", "Qtd. bruta nos depósitos",
+             "Disponível aplicado ao gap", "Gap após recuperação", "Indisponível aplicada",
+             "Sem justificativa", "Status 4.1", "Próxima etapa",
+             "Cobertura potencial (teto)", "Disponível confirmado (bruto)",
+             "Indisponível confirmada (bruto)", "Confirmado não atribuído", "Provisório?"],
+            [25, 42, 9, 23, 16, 24, 26, 22, 25, 20, 24, 58, 27, 28, 31, 28, 15],
             _stock_materials(report), title="DIVERGÊNCIA DE ESTOQUE · PNs",
             subtitle="Todos os PNs críticos, inclusive sem registros M221/P277/G702. Valores não alteram o DPP.",
             status_column=11)
         entries, history = _stock_candidates(report)
         _rows(book.create_sheet("Registros depósitos"),
             ["PN", "Descrição", "Depósito", "Centro", "UM", "Qtd. STK ORIGINAL",
-             "Linhas na fonte", "Decisão", "Já no DPP?", "Qtd. confirmada",
-             "Disponível adicional", "Indisponível justificada", "Justificativa",
+             "Linhas na fonte", "Decisão", "Já no Cenário?", "Qtd. confirmada (bruta)",
+             "Disponível aplicado", "Indisponível aplicada", "Justificativa",
              "Data registro", "Status PN", "Encaminhamento"],
             [25, 42, 13, 12, 9, 20, 30, 25, 17, 21, 23, 26, 54, 25, 24, 50],
             entries, title="DIVERGÊNCIA DE ESTOQUE · REGISTROS",
@@ -360,10 +406,14 @@ def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tu
     else:
         _rows(book.create_sheet("PNs investigados"),
             ["PN", "Descrição", "UM", "Depósito investigado", "Sem explicação da 4.1",
-             "Gap físico após 4.1", "Liberado adicional CQ", "Reprovado justificado",
-             "Refugo justificado", "Gap físico após CQ", "Sem explicação após CQ",
-             "Q273 não investigado", "Status 4.2", "Próxima etapa"],
-            [25, 42, 10, 23, 23, 20, 22, 22, 20, 22, 23, 24, 23, 55],
+             "Gap físico após 4.1", "Liberado CQ aplicado", "Reprovado aplicado",
+             "Refugo aplicado", "Gap físico após CQ", "Sem explicação após CQ",
+             "Q273 não investigado", "Status 4.2", "Próxima etapa",
+             "Cobertura potencial (teto)", "Liberado confirmado (bruto)",
+             "Reprovado confirmado (bruto)", "Refugo confirmado (bruto)",
+             "Confirmado não atribuído", "Provisório?"],
+            [25, 42, 10, 23, 23, 20, 22, 22, 20, 22, 23, 24, 23, 55,
+             28, 28, 28, 27, 26, 15],
             _quality_materials(report), title="QUALIDADE · PNs INVESTIGADOS",
             subtitle="Todos os PNs recebidos da etapa 4.1, incluindo casos sem Q239/Q273.",
             note="Se Q239 possui quantidade, Q273 não é o caminho ativo do fluxograma. A coluna de Q273 registra os casos não investigados.",
@@ -371,9 +421,11 @@ def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tu
         entries, history = _quality_candidates(report)
         _rows(book.create_sheet("Registros depósitos"),
             ["PN", "Descrição", "Depósito", "Centro", "UM", "Qtd. STK ORIGINAL",
-             "Linhas na fonte", "Decisão CQ", "Já no DPP?", "Qtd. confirmada",
-             "Justificativa", "Data registro", "Status PN", "Encaminhamento"],
-            [25, 42, 14, 12, 10, 22, 30, 26, 18, 21, 55, 26, 24, 55],
+             "Linhas na fonte", "Decisão CQ", "Já no Cenário?", "Qtd. confirmada (bruta)",
+             "Justificativa", "Data registro", "Status PN", "Encaminhamento",
+             "Liberado aplicado", "Reprovado aplicado", "Refugo aplicado"],
+            [25, 42, 14, 12, 10, 22, 30, 26, 18, 23, 55, 26, 24, 55,
+             25, 25, 22],
             entries, title="QUALIDADE · REGISTROS Q239 / Q273",
             subtitle="Depósito Q239 tem prioridade; Q273 é consultado quando Q239 não apresenta quantidade.",
             note="Q239/Q273 são registros de investigação. Refugo ou reprovação não viram estoque disponível.",
