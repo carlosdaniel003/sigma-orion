@@ -629,3 +629,14 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A construção do cenário **2026-07** continua usando DPP **2026-06** como base e as demais fontes de julho (STK SAP, Explosão, WIU, PGD de geração, OPEN opcional). DPP Final de julho só serve como referência de comparação e validação, não para alterar o cenário nem os relatórios das investigações.
 - Nenhuma exportação altera SALDO, STK TTL, NEC, REAL, decisões de aprovação, arquivo-base ou SAP; relatórios são snapshots informativos do estado operacional no momento do download.
 - API: `POST /api/dpp/investigations/stock-divergence/export` e `POST /api/dpp/investigations/quality/export` (multipart `scenario_id` e `stock`).
+
+### Revisão quantitativa e de legibilidade das investigações (2026-10-15)
+
+- Auditoria dos Excel exportados identificou necessidade de distinguir saldos de depósitos (evidências), declarações de validação, e quantidade de fato atribuível à falta por PN.
+- Agora a alocação de quantidade por PN é limitada: na etapa 4.1, confirmações disponíveis fora do DPP são atribuídas primeiro; justificativas de indisponibilidade só podem explicar a falta restante. Na etapa 4.2, liberações são limitadas à falta ainda não explicada da etapa anterior, seguidas de reprovação ou refugo justificado.
+- Cada relatório e o Dashboard preservam **quantidade confirmada bruta** e mostram separadamente **quantidade aplicada ao gap**. Excedentes de quantidade confirmada não contam como nova recuperação ou justificativa do déficit. Causas e unidades não são somadas entre PNs diferentes.
+- A cobertura potencial teórica por PN é limitada à falta individual e explicitamente identificada como **não validada**. O resumo do Excel agrega indicadores somente por unidade de medida e inclui PNs sem registro em M221/P277/G702 no denominador de falta.
+- Quando ainda há validações pendentes em qualquer depósito da etapa 4.1 ou da Qualidade, o encaminhamento/conclusão é rotulado **provisório**; etapas posteriores não são executadas automaticamente pelo simples status.
+- O relatório Excel identifica o saldo como **SALDO Cenário ORION**, jamais o DPP Final já preenchido. Nas abas detalhadas mantém-se a fonte exata de cada quantidade (STK ORIGINAL), os IDs e histórico das revisões.
+- Para impressão, planilhas largas não são mais comprimidas em uma única página A3: a configuração distribui o número de colunas em até duas ou três larguras, preservando legibilidade.
+- Esses ajustes não introduzem o Data Lake, movimentação SAP, edição do DPP oficial, nem análise de Scrap 4.3.
