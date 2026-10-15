@@ -1,0 +1,374 @@
+"""Readable, auditable Excel exports for ORION stock and quality investigations.
+
+Reports are snapshots of the generated ORION scenario and human investigation
+history, not the finished DPP validation workbook and not an SAP movement.
+All records are recalculated by the server before export.
+"""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from io import BytesIO
+from math import isfinite
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.dimensions import ColumnDimension
+
+XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+DARK = "172A40"
+MID = "264664"
+ACCENT = "147B90"
+PALE = "EDF4F8"
+WHITE = "FFFFFF"
+TEXT = "263849"
+MUTED = "5D6E80"
+GREEN = "E3F2E8"
+YELLOW = "FFF3D5"
+RED = "FCE9E7"
+BLUE = "E4EFF8"
+BORDER = "D8E2EA"
+NUMFMT = '#,##0.###;[Red](#,##0.###);–'
+MARKER_COLORS = {
+    "FINISHED": GREEN,
+    "QUALITY_4_2": YELLOW,
+    "SCRAP_4_3": YELLOW,
+    "AWAITING_VALIDATION": BLUE,
+    "AWAITING_QUALITY": BLUE,
+}
+
+
+def _safe(value):
+    """Prevent spreadsheet formula injection from uploaded cells/user comments."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "Sim" if value else "Não"
+    if isinstance(value, (float, int)):
+        return value if isfinite(value) else ""
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n")
+    if text and text.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + text
+    if text.startswith(("\t", "\r", "\n")):
+        return "'" + text
+    return text
+
+
+def _num(value):
+    if value is None or value == "":
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if isfinite(number) else None
+
+
+def _source(scenario, source_id):
+    source = next((item for item in scenario.get("sources") or [] if item.get("id") == source_id), None)
+    return (source or {}).get("filename") or "Não identificado no cenário"
+
+
+def _header(sheet, title, subtitle, columns, widths, *, note=None):
+    count = len(columns)
+    last = get_column_letter(count)
+    sheet.sheet_view.showGridLines = False
+    sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=count)
+    title_cell = sheet.cell(1, 1, _safe(title))
+    title_cell.fill = PatternFill("solid", fgColor=DARK)
+    title_cell.font = Font(name="Aptos Display", bold=True, size=17, color=WHITE)
+    title_cell.alignment = Alignment(vertical="center", indent=1)
+    for cells in sheet.iter_rows(min_row=1, max_row=1, min_col=1, max_col=count):
+        for cell in cells:
+            cell.fill = PatternFill("solid", fgColor=DARK)
+    sheet.row_dimensions[1].height = 38
+    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=count)
+    sub = sheet.cell(2, 1, _safe(subtitle))
+    sub.font = Font(name="Aptos", size=10, color=MUTED)
+    sub.alignment = Alignment(wrap_text=True, vertical="center", indent=1)
+    sheet.row_dimensions[2].height = 38 if len(subtitle) > 115 else 28
+    if note:
+        sheet.merge_cells(start_row=3, start_column=1, end_row=3, end_column=count)
+        warning = sheet.cell(3, 1, _safe(note))
+        warning.font = Font(name="Aptos", size=10, color=MID, italic=True)
+        warning.fill = PatternFill("solid", fgColor=BLUE)
+        warning.alignment = Alignment(vertical="center", wrap_text=True, indent=1)
+        sheet.row_dimensions[3].height = 40
+    header_row = 5 if note else 4
+    sheet.row_dimensions[header_row].height = 32
+    for index, (label, width) in enumerate(zip(columns, widths), start=1):
+        cell = sheet.cell(header_row, index, label)
+        cell.font = Font(name="Aptos", bold=True, size=10, color=WHITE)
+        cell.fill = PatternFill("solid", fgColor=MID)
+        cell.alignment = Alignment(vertical="center", wrap_text=True)
+        cell.border = Border(bottom=Side(style="thin", color=ACCENT))
+        sheet.column_dimensions[get_column_letter(index)].width = width
+    sheet.freeze_panes = f"C{header_row + 1}" if count >= 3 else f"A{header_row + 1}"
+    sheet.print_title_rows = f"1:{header_row}"
+    sheet.sheet_properties.pageSetUpPr.fitToPage = True
+    sheet.page_setup.orientation = "landscape"
+    sheet.page_setup.paperSize = sheet.PAPERSIZE_A3
+    sheet.page_setup.fitToWidth = 1
+    sheet.page_setup.fitToHeight = 0
+    sheet.sheet_properties.outlinePr.summaryBelow = True
+    sheet.oddFooter.center.text = "ORION · Investigação / NÃO ALTERA O DPP"
+    sheet.oddFooter.right.text = "Página &P de &N"
+    return header_row
+
+
+def _rows(sheet, headings, widths, rows, *, title, subtitle, note=None, status_column=None):
+    header_row = _header(sheet, title, subtitle, headings, widths, note=note)
+    number_cols = set()
+    for index, row in enumerate(rows, start=header_row + 1):
+        height = 26
+        for col, raw in enumerate(row, start=1):
+            val = _safe(raw)
+            cell = sheet.cell(index, col, val)
+            cell.fill = PatternFill("solid", fgColor=WHITE if (index - header_row) % 2 else PALE)
+            cell.font = Font(name="Aptos", size=10, color=TEXT)
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+            cell.border = Border(bottom=Side(style="hair", color=BORDER))
+            if isinstance(val, (float, int)):
+                cell.number_format = NUMFMT
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+                number_cols.add(col)
+            if status_column and col == status_column:
+                marker = str(raw or "")
+                if marker in MARKER_COLORS:
+                    cell.fill = PatternFill("solid", fgColor=MARKER_COLORS[marker])
+                    cell.font = Font(name="Aptos", size=10, color=TEXT, bold=True)
+            if isinstance(val, str) and "\n" in val:
+                height = max(height, min(62, 15 * (val.count("\n") + 1)))
+        sheet.row_dimensions[index].height = height
+    if not rows:
+        cell = sheet.cell(header_row + 1, 1, "Nenhum registro para os critérios desta investigação.")
+        cell.font = Font(name="Aptos", italic=True, color=MUTED)
+        sheet.row_dimensions[header_row + 1].height = 28
+    bottom = max(sheet.max_row, header_row + 1)
+    sheet.auto_filter.ref = f"A{header_row}:{get_column_letter(len(headings))}{bottom}"
+    sheet.print_options.horizontalCentered = True
+
+
+def _summary(workbook, *, report, scenario, kind):
+    summary = report.get("summary") or {}
+    quality = kind == "quality"
+    caption = "ANÁLISE DE QUALIDADE · Q239 / Q273" if quality else "DIVERGÊNCIA DE ESTOQUE · M221 / P277 / G702"
+    sheet = workbook.create_sheet("Resumo")
+    current = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
+    information = [
+        ("Relatório", caption),
+        ("Mês do cenário ORION", report.get("reference_month") or scenario.get("reference_month") or ""),
+        ("Cenário", report.get("scenario_id") or scenario.get("scenario_id") or ""),
+        ("Gerado em", current),
+        ("Fonte dos depósitos", report.get("source", {}).get("filename") or ""),
+        ("Aba de origem", report.get("source", {}).get("sheet") or "ORIGINAL"),
+        ("DPP anterior (base)", _source(scenario, "base_dpp")),
+        ("STK SAP", _source(scenario, "stock")),
+        ("Explosão de Placas", _source(scenario, "explosion")),
+        ("PGD", _source(scenario, "pgd")),
+        ("WIU", _source(scenario, "wiu")),
+        ("OPEN (opcional)", _source(scenario, "open")),
+        ("DPP final do mês", "Somente comparação/validação, não utilizado na construção da investigação"),
+    ]
+    metric_labels = ([
+        ("PNs recebidos da etapa 4.1", "items_received_from_41"),
+        ("PNs com Q239", "materials_with_q239"),
+        ("PNs com Q273", "materials_with_q273"),
+        ("PNs sem registro Q239/Q273", "materials_without_quality_records"),
+        ("Registros validados", "candidates_reviewed"),
+        ("Itens finalizados", "items_finished"),
+        ("Encaminhados para Scrap 4.3", "items_to_scrap"),
+        ("Aguardando validação do CQ", "items_awaiting_quality"),
+    ] if quality else [
+        ("PNs críticos no cenário", "critical_materials"),
+        ("PNs com registros M221/P277/G702", "materials_with_candidates"),
+        ("PNs sem registros nesses depósitos", "materials_without_candidates"),
+        ("Registros validados", "candidates_reviewed"),
+        ("Itens finalizados", "items_finished"),
+        ("Encaminhados para Qualidade 4.2", "items_to_quality"),
+        ("Aguardando validação de Estoque", "items_awaiting_validation"),
+    ])
+    records = information + [("INDICADORES", "")] + [
+        (label, summary.get(field, 0)) for label, field in metric_labels
+    ] + [
+        ("INTERPRETAÇÃO", ""),
+        ("Quantidade encontrada", "Registro no STK ORIGINAL; não implica disponibilidade física ou liberação automática."),
+        ("Disponível adicional", "Quantidade validada e declarada fora do DPP; apenas reduz o gap projetado."),
+        ("Indisponível / rejeitado / refugo", "Quantidade validada e justificada; explica a causa, mas não aumenta estoque."),
+        ("Falta sem justificativa", "Gap que permanece sem causa validada após a etapa exibida."),
+        ("Status de encaminhamento", "Indicação da próxima etapa; não significa que a etapa seguinte foi executada."),
+        ("DPP oficial", "SALDO, NEC, STK TTL e REAL permanecem inalterados."),
+    ]
+    _rows(sheet, ["Campo", "Informação / valor"], [42, 100], records, title=caption,
+        subtitle="Relatório de investigação do cenário ORION em construção — não é o DPP Final já validado.",
+        note="Valores de depósitos são evidências para investigação. Nenhuma linha deste Excel representa movimentação SAP nem altera o DPP oficial.")
+    for row in range(1, sheet.max_row + 1):
+        value = sheet.cell(row, 1).value
+        if value in {"INDICADORES", "INTERPRETAÇÃO"}:
+            for col in (1, 2):
+                cell = sheet.cell(row, col)
+                cell.fill = PatternFill("solid", fgColor=MID)
+                cell.font = Font(name="Aptos", size=10, color=WHITE, bold=True)
+    return sheet
+
+
+def _stock_materials(report):
+    matched = {item["material"]: item for item in report.get("materials") or []}
+    routing = report.get("workflow") or {}
+    routes = {
+        entry["material"]: (status, entry)
+        for status, key in (
+            ("FINISHED", "finished"),
+            ("QUALITY_4_2", "forward_to_quality"),
+            ("AWAITING_VALIDATION", "awaiting_validation"),
+        )
+        for entry in routing.get(key) or []
+    }
+    result = []
+    for material in report.get("materials") or []:
+        status, state = routes.get(material["material"], ("", {}))
+        result.append([
+            material["material"], material.get("description"), material.get("unit"),
+            material.get("balance"), material.get("negative_balance"),
+            material.get("candidate_quantity"), material.get("confirmed_increment_outside_dpp"),
+            material.get("projected_gap_remaining"), material.get("justified_unavailable_quantity"),
+            material.get("unexplained_quantity"), status,
+            state.get("next_step") or material.get("next_step"),
+        ])
+    for material in report.get("unmatched_materials") or []:
+        status, state = routes.get(material["material"], ("QUALITY_4_2", {}))
+        result.append([
+            material["material"], material.get("description"), material.get("unit"),
+            -float(material.get("negative_balance") or 0),
+            material.get("negative_balance"), 0, 0,
+            material.get("negative_balance"), 0, material.get("negative_balance"),
+            status, state.get("next_step") or "Sem registros; encaminhar à Qualidade 4.2",
+        ])
+    return sorted(result, key=lambda row: (-float(row[4] or 0), str(row[0])))
+
+
+def _stock_candidates(report):
+    detail, history = [], []
+    for material in report.get("materials") or []:
+        for candidate in material.get("candidates") or []:
+            validation = candidate.get("validation") or {}
+            detail.append([
+                material["material"], material.get("description"), candidate.get("depot"),
+                candidate.get("center"), candidate.get("unit"), candidate.get("quantity"),
+                "ORIGINAL: " + ", ".join(str(r) for r in candidate.get("source_rows") or []),
+                validation.get("decision") or "AGUARDANDO",
+                validation.get("accounting") or "UNKNOWN",
+                validation.get("confirmed_quantity"),
+                candidate.get("recovered_quantity"), candidate.get("justified_unavailable_quantity"),
+                validation.get("evidence") or "",
+                validation.get("created_at") or "",
+                material.get("workflow_status"), material.get("next_step"),
+            ])
+            for revision in candidate.get("validation_history") or []:
+                history.append([
+                    material["material"], candidate.get("depot"), candidate.get("center"),
+                    candidate.get("unit"), revision.get("id"), revision.get("created_at"),
+                    revision.get("decision"), revision.get("accounting"),
+                    revision.get("confirmed_quantity"), revision.get("evidence"),
+                    "ORIGINAL: " + ", ".join(str(r) for r in candidate.get("source_rows") or []),
+                ])
+    return detail, history
+
+
+def _quality_materials(report):
+    return [[
+        material.get("material"), material.get("description"), material.get("unit"),
+        material.get("active_depot") or "SEM REGISTRO",
+        material.get("gap_from_41"), material.get("physical_gap_from_41"),
+        material.get("quality_released"), material.get("quality_rejected_justified"),
+        material.get("quality_scrap_justified"), material.get("physical_gap_after_quality"),
+        material.get("unexplained_after_quality"),
+        material.get("q273_records_skipped_due_q239"), material.get("workflow_status"),
+        material.get("next_step"),
+    ] for material in report.get("materials") or []]
+
+
+def _quality_candidates(report):
+    detail, history = [], []
+    for material in report.get("materials") or []:
+        for candidate in material.get("candidates") or []:
+            validation = candidate.get("validation") or {}
+            decision = validation.get("decision") or "AGUARDANDO"
+            detail.append([
+                material.get("material"), material.get("description"), candidate.get("depot"),
+                candidate.get("center"), candidate.get("unit"), candidate.get("quantity"),
+                "ORIGINAL: " + ", ".join(str(r) for r in candidate.get("source_rows") or []),
+                decision, validation.get("accounting") or "UNKNOWN",
+                validation.get("confirmed_quantity"), validation.get("justification") or "",
+                validation.get("created_at") or "",
+                material.get("workflow_status"), material.get("next_step"),
+            ])
+            for revision in candidate.get("validation_history") or []:
+                history.append([
+                    material.get("material"), candidate.get("depot"), candidate.get("center"),
+                    candidate.get("unit"), revision.get("id"), revision.get("created_at"),
+                    revision.get("decision"), revision.get("accounting"),
+                    revision.get("confirmed_quantity"), revision.get("justification"),
+                    "ORIGINAL: " + ", ".join(str(r) for r in candidate.get("source_rows") or []),
+                ])
+    return detail, history
+
+
+def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tuple[bytes, str, str]:
+    if kind not in {"stock", "quality"}:
+        raise ValueError("Tipo de investigação inválido.")
+    book = Workbook()
+    book.remove(book.active)
+    _summary(book, report=report, scenario=scenario, kind=kind)
+    label = "Qualidade" if kind == "quality" else "Estoque"
+    stamp = (report.get("reference_month") or scenario.get("reference_month") or "SEM_MES").replace("-", "_")
+    if kind == "stock":
+        _rows(book.create_sheet("PNs investigados"),
+            ["PN", "Descrição", "UM", "SALDO DPP", "Falta inicial", "Qtd. nos depósitos",
+             "Adicional disponível", "Gap após recuperação", "Indisponível justificada",
+             "Sem justificativa", "Status 4.1", "Próxima etapa"],
+            [25, 42, 9, 17, 16, 20, 21, 22, 23, 20, 24, 51],
+            _stock_materials(report), title="DIVERGÊNCIA DE ESTOQUE · PNs",
+            subtitle="Todos os PNs críticos, inclusive sem registros M221/P277/G702. Valores não alteram o DPP.",
+            status_column=11)
+        entries, history = _stock_candidates(report)
+        _rows(book.create_sheet("Registros depósitos"),
+            ["PN", "Descrição", "Depósito", "Centro", "UM", "Qtd. STK ORIGINAL",
+             "Linhas na fonte", "Decisão", "Já no DPP?", "Qtd. confirmada",
+             "Disponível adicional", "Indisponível justificada", "Justificativa",
+             "Data registro", "Status PN", "Encaminhamento"],
+            [25, 42, 13, 12, 9, 20, 30, 25, 17, 21, 23, 26, 54, 25, 24, 50],
+            entries, title="DIVERGÊNCIA DE ESTOQUE · REGISTROS",
+            subtitle="Registros por depósito, quantidade bruta e validação humana. Não somar quantidades automaticamente.",
+            note="Registros M221/P277/G702 vêm da aba ORIGINAL. Disponível adicional depende de confirmação de não contabilização.",
+            status_column=15)
+    else:
+        _rows(book.create_sheet("PNs investigados"),
+            ["PN", "Descrição", "UM", "Depósito investigado", "Sem explicação da 4.1",
+             "Gap físico após 4.1", "Liberado adicional CQ", "Reprovado justificado",
+             "Refugo justificado", "Gap físico após CQ", "Sem explicação após CQ",
+             "Q273 não investigado", "Status 4.2", "Próxima etapa"],
+            [25, 42, 10, 23, 23, 20, 22, 22, 20, 22, 23, 24, 23, 55],
+            _quality_materials(report), title="QUALIDADE · PNs INVESTIGADOS",
+            subtitle="Todos os PNs recebidos da etapa 4.1, incluindo casos sem Q239/Q273.",
+            note="Se Q239 possui quantidade, Q273 não é o caminho ativo do fluxograma. A coluna de Q273 registra os casos não investigados.",
+            status_column=13)
+        entries, history = _quality_candidates(report)
+        _rows(book.create_sheet("Registros depósitos"),
+            ["PN", "Descrição", "Depósito", "Centro", "UM", "Qtd. STK ORIGINAL",
+             "Linhas na fonte", "Decisão CQ", "Já no DPP?", "Qtd. confirmada",
+             "Justificativa", "Data registro", "Status PN", "Encaminhamento"],
+            [25, 42, 14, 12, 10, 22, 30, 26, 18, 21, 55, 26, 24, 55],
+            entries, title="QUALIDADE · REGISTROS Q239 / Q273",
+            subtitle="Depósito Q239 tem prioridade; Q273 é consultado quando Q239 não apresenta quantidade.",
+            note="Q239/Q273 são registros de investigação. Refugo ou reprovação não viram estoque disponível.",
+            status_column=13)
+    _rows(book.create_sheet("Histórico validações"),
+        ["PN", "Depósito", "Centro", "UM", "ID", "Data UTC", "Decisão",
+         "Já no DPP?", "Qtd. confirmada", "Justificativa", "Linhas de origem"],
+        [25, 14, 12, 9, 11, 26, 25, 18, 22, 62, 32], history,
+        title=label.upper() + " · HISTÓRICO DE VALIDAÇÕES",
+        subtitle="Revisões cronológicas registradas no SQLite. O último registro de cada candidato determina a situação atual.")
+    output = BytesIO()
+    book.save(output)
+    return output.getvalue(), f"ORION_{label}_Investigacao_{stamp}.xlsx", XLSX_MIME
