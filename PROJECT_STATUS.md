@@ -606,3 +606,14 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Sem falta não explicada: `FINISHED`. Restando falta após alguma validação: `QUALITY_4_2`, sinalização lógica, reavaliável após cada revisão humana. Havendo registros sem qualquer validação: `AWAITING_VALIDATION`. Sem registros M221/P277/G702: encaminhamento direto para 4.2.
 - A lista de encaminhamento abrange também PNs sem registros em depósito. A interface apresenta o valor de cada componente e não executa a etapa de Qualidade.
 - A identidade dos dados persistidos na interface recebe versão da regra para recalcular consultas antigas do navegador; SALDO oficial permanece intacto.
+
+### Etapa 4.2 — Análise de Qualidade (2026-10-15)
+
+- Inicia após o encaminhamento lógico de 4.1 (estado REAL/depósitos/revisões recalculados no backend; não aceita lista de PNs atribuída pelo navegador).
+- Consulta Q239 e, **somente quando não há registros do PN em Q239**, consulta Q273. O saldo bruto nesses depósitos é evidência para investigação, nunca confirmação automática de liberação ou refugo.
+- Q239 permite confirmar liberação, reprovação ou ausência de evidência. Liberação só reduz o gap físico projetado se comprovadamente fora do DPP. Reprovação justificada explica a falta, sem aumentar estoque.
+- Q273 permite confirmar refugo ou falta de evidência; refugo comprovado e justificado só explica a causa, sem somar estoque.
+- Mantém duas grandezas separadas: gap físico após liberações = max(0, gap físico vindo de 4.1 − liberação adicional CQ); falta ainda sem justificativa = max(0, falta não explicada da 4.1 − liberação adicional − reprovação justificada − refugo comprovado).
+- Resultado por PN: finalizado; aguardando CQ; ou encaminhamento **lógico** para Scrap 4.3. Não executa Scrap, Data Lake nem escreve SAP/DPP.
+- Confirmações em SQLite (quality_depot_reviews) com histórico imutável, identidade de cenário, snapshot de STK e linhas da origem. A interface mantém o resultado do pacote e atualiza quando mudam revisões 4.1.
+- Interface e botão contextual seguem as regras de DESIGN_SYSTEM.md e knowledge/modulos-interface.md.

@@ -56,6 +56,7 @@ function BulkDppFilePicker({
     setTestSignature,
     setTestResult,
     setStockInvestigation,
+    setQualityInvestigation,
   } = useDppWorkspace()
   const onBundleRef = useRef(onBundle)
   const effectiveReferenceMonth = referenceMonth || sharedReferenceMonth
@@ -95,7 +96,10 @@ function BulkDppFilePicker({
       })
     })
     setFiles((current) => mergeFiles(current, incomingFiles))
-    if (replacing) setStockInvestigation(null)
+    if (replacing) {
+      setStockInvestigation(null)
+      setQualityInvestigation(null)
+    }
     event.target.value = ''
   }
 
@@ -108,6 +112,7 @@ function BulkDppFilePicker({
     setTestSignature('')
     setTestResult(null)
     setStockInvestigation(null)
+    setQualityInvestigation(null)
   }
 
   const missingLabels = report.missing.map((key) => FILE_LABELS[key])

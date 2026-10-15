@@ -90,6 +90,7 @@ async function writePersistedProcessedState({
   finalDppAnalysis,
   finalDppSignature,
   stockInvestigation,
+  qualityInvestigation,
 }) {
   await writeStoredValue(PROCESSED_STATE_KEY, {
     generatedScenario,
@@ -99,6 +100,7 @@ async function writePersistedProcessedState({
     finalDppAnalysis,
     finalDppSignature,
     stockInvestigation,
+    qualityInvestigation,
     updatedAt: Date.now(),
   })
 }
@@ -141,6 +143,7 @@ export function DppWorkspaceProvider({ children }) {
   const [finalDppAnalysis, setFinalDppAnalysis] = useState(null)
   const [finalDppSignature, setFinalDppSignature] = useState('')
   const [stockInvestigation, setStockInvestigation] = useState(null)
+  const [qualityInvestigation, setQualityInvestigation] = useState(null)
   const [workspaceReady, setWorkspaceReady] = useState(false)
 
   useEffect(() => {
@@ -171,6 +174,7 @@ export function DppWorkspaceProvider({ children }) {
         setFinalDppAnalysis(persistedState?.finalDppAnalysis || null)
         setFinalDppSignature(persistedState?.finalDppSignature || '')
         setStockInvestigation(persistedState?.stockInvestigation || null)
+        setQualityInvestigation(persistedState?.qualityInvestigation || null)
 
         if (navigator.storage?.persist) {
           navigator.storage.persist().catch(() => {})
@@ -205,6 +209,7 @@ export function DppWorkspaceProvider({ children }) {
       finalDppAnalysis,
       finalDppSignature,
       stockInvestigation,
+      qualityInvestigation,
     }).catch((error) => {
       console.warn('Não foi possível persistir o estado processado do DPP:', error)
     })
@@ -216,6 +221,7 @@ export function DppWorkspaceProvider({ children }) {
     finalDppAnalysis,
     finalDppSignature,
     stockInvestigation,
+    qualityInvestigation,
     workspaceReady,
   ])
 
@@ -292,6 +298,8 @@ export function DppWorkspaceProvider({ children }) {
     setFinalDppSignature,
     stockInvestigation,
     setStockInvestigation,
+    qualityInvestigation,
+    setQualityInvestigation,
     workspaceReady,
     dppState,
   }), [
@@ -304,6 +312,7 @@ export function DppWorkspaceProvider({ children }) {
     finalDppAnalysis,
     finalDppSignature,
     stockInvestigation,
+    qualityInvestigation,
     workspaceReady,
     dppState,
   ])

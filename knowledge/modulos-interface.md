@@ -79,6 +79,15 @@
 **Finalidade:** Executar a decisão de encerramento do fluxo 4.1: quantidade comprovadamente disponibilizada fora do DPP diminui somente o gap projetado; quantidade indisponível com justificativa explica parte do déficit mas não aumenta estoque. Se a falta estiver totalmente explicada, o item é marcado como finalizado; caso persista falta sem justificativa após alguma validação, é sinalizado para a próxima etapa 4.2; materiais sem registros seguem diretamente para a mesma sinalização. Itens sem decisões seguem aguardando validação. A análise 4.2 em si não foi implementada. Nenhum SALDO, NEC, STK TTL, REAL ou SAP é alterado, e os dados ainda não são sincronizados como fatos runtime do Agente ORION.
 
 
+## dashboard.quality_investigation — Análise de Qualidade
+
+**O que mostra:** PNs que chegaram de Divergência de Estoque 4.1 com falta ainda não explicada, com registros dos depósitos Q239 (material em análise no CQ) e, quando Q239 não tiver saldo, Q273 (material com indicação de refugo). Exibe linhas do STK SAP, decisões humanas, justificativas, quantidade explicada e a próxima etapa de cada material.
+
+**Origem:** Aba ORIGINAL do mesmo STK SAP usado no cenário, decisões atuais da etapa 4.1 recalculadas no backend e histórico local das confirmações de Qualidade em SQLite. O resultado da investigação fica no workspace/IndexedDB do navegador. A coluna "Controle qualidade" do relatório não substitui o código do depósito, nem indica liberação física.
+
+**Finalidade:** Permitir registrar liberação ou reprovação confirmada pelo PCM/CQ em Q239 e refugo comprovado em Q273, sem somar estoques automaticamente. Apenas uma liberação comprovadamente fora do DPP reduz o gap físico projetado; reprovação/refugo com justificativa apenas explica a causa. Se a falta não explicada chegar a zero, finalizar o item; caso permaneça após avaliação ou não haja dados nos dois depósitos, sinalizar encaminhamento para Scrap 4.3. Sem validação, aguardar CQ. Não executar Scrap 4.3, SAP, alterações de NEC/STK TTL/SALDO/REAL nem sincronizar decisões ao Agente ORION como fatos runtime.
+
+
 ## dashboard.guide — Como ler o cenário inicial
 
 **O que mostra:** Organiza a leitura do Dashboard em três perguntas: referência de produção, REAL planejado e restrições materiais.
