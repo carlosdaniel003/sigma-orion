@@ -47,8 +47,9 @@ def investigate_stock_divergence(
     stock_content: bytes,
     stock_filename: str,
     scenario: dict,
+    depots: tuple[str, ...] = TARGET_DEPOTS,
 ) -> dict:
-    """Cruza PNs críticos do cenário com M221/P277/G702 na aba ORIGINAL.
+    """Cruza PNs críticos do cenário com depósitos selecionados na aba ORIGINAL.
 
     Não altera cenário, estoque, NEC, SALDO, REAL nem gap. O resultado é uma
     evidência preliminar para validação física/humana, não uma liberação.
@@ -73,7 +74,7 @@ def investigate_stock_divergence(
         if material.get("status") == "INVESTIGAR"
         if (key := _material_key(material.get("material") or material.get("material_key")))
     }
-    counts = {depot: 0 for depot in TARGET_DEPOTS}
+    counts = {depot: 0 for depot in depots}
     grouped: dict[tuple[str, str, str, str], dict] = {}
     ignored = defaultdict(int)
 
