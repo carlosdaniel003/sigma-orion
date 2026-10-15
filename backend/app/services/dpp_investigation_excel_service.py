@@ -208,7 +208,10 @@ def _summary(workbook, *, report, scenario, kind):
     ]
     # Indicadores por unidade: jamais somar quantidades de UN, KG, M etc.
     per_unit = {}
-    for material in report.get("materials") or []:
+    all_materials = list(report.get("materials") or [])
+    if not quality:
+        all_materials.extend(report.get("unmatched_materials") or [])
+    for material in all_materials:
         unit = str(material.get("unit") or "SEM UM")
         bucket = per_unit.setdefault(unit, {"deficit": 0.0, "raw": 0.0, "potential": 0.0, "applied": 0.0})
         deficit = float(material.get("negative_balance") if not quality else material.get("gap_from_41") or 0.0)
