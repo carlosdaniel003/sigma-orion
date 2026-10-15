@@ -33,6 +33,7 @@ from app.services.dpp_scenario_service import get_latest_monthly_scenario, get_m
 from app.services.dpp_stock_divergence_service import investigate_stock_divergence
 from app.services.dpp_stock_review_service import add_reviews, register_review
 from app.services.dpp_quality_service import quality_report, register_quality_review
+from app.services.dpp_investigation_excel_service import export_investigation_excel
 from app.services.dpp_service import analyze_dpp_file
 from app.services.dpp_test_service import test_monthly_dpp_reconstruction
 from app.services.excel_service import inspect_uploaded_file
@@ -342,6 +343,60 @@ async def review_quality_route(
             )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/dpp/investigations/stock-divergence/export")
+async def export_stock_investigation_route(
+    scenario_id: str = Form(...),
+    stock: UploadFile = File(...),
+) -> Response:
+    """Download an authoritative Excel snapshot of investigation 4.1."""
+    scenario = get_monthly_scenario(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail="Cenário não encontrado ou expirado. Gere o DPP novamente.")
+    content = await stock.read()
+    try:
+        original = investigate_stock_divergence(
+            stock_content=content,
+            stock_filename=stock.filename or "",
+            scenario=scenario,
+        )
+        with SessionLocal() as session:
+            report = add_reviews(original, session, sha256(content).hexdigest())
+        data, filename, media_type = export_investigation_excel("stock", report=report, scenario=scenario)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(
+        content=data, media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/dpp/investigations/quality/export")
+async def export_quality_investigation_route(
+    scenario_id: str = Form(...),
+    stock: UploadFile = File(...),
+) -> Response:
+    """Download an authoritative Excel snapshot of investigation 4.2."""
+    scenario = get_monthly_scenario(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail="Cenário não encontrado ou expirado. Gere o DPP novamente.")
+    content = await stock.read()
+    try:
+        with SessionLocal() as session:
+            report = quality_report(
+                scenario=scenario,
+                stock_content=content,
+                stock_filename=stock.filename or "",
+                session=session,
+            )
+        data, filename, media_type = export_investigation_excel("quality", report=report, scenario=scenario)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(
+        content=data, media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/dpp/monthly/export")
