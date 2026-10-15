@@ -617,3 +617,15 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Resultado por PN: finalizado; aguardando CQ; ou encaminhamento **lógico** para Scrap 4.3. Não executa Scrap, Data Lake nem escreve SAP/DPP.
 - Confirmações em SQLite (quality_depot_reviews) com histórico imutável, identidade de cenário, snapshot de STK e linhas da origem. A interface mantém o resultado do pacote e atualiza quando mudam revisões 4.1.
 - Interface e botão contextual seguem as regras de DESIGN_SYSTEM.md e knowledge/modulos-interface.md.
+
+
+### Exportação das investigações de Estoque e Qualidade (2026-10-15)
+
+- Após consultar **Divergência de Estoque** ou **Análise de Qualidade**, cada seção apresenta o botão contextual **Baixar Excel**.
+- O arquivo é regenerado pelo backend a cada download a partir do cenário ORION identificado pelo `scenario_id`, do **mesmo STK SAP** validado por nome e fingerprint SHA-256 e do histórico SQLite mais recente. O navegador não envia nem determina as quantidades calculadas.
+- Estoque: abas **Resumo**, **PNs investigados**, **Registros depósitos** e **Histórico validações**. Todos os PNs críticos aparecem, inclusive os não localizados em M221/P277/G702. Depósitos, centros, unidades, origem (aba ORIGINAL, linhas), justificativas, decisões, gap físico projetado, falta sem explicação e encaminhamentos são preservados.
+- Qualidade: abas **Resumo**, **PNs investigados**, **Registros depósitos**, **Q273 não investigado** e **Histórico validações**. Esta última aba informativa de Q273 documenta registros não utilizados quando há Q239 para o mesmo PN; não modifica a prioridade nem soma esses valores à recuperação de estoque.
+- As abas possuem títulos, resumo de fontes e cenário, cabeçalhos legíveis, larguras limitadas, filtros, cabeçalhos congelados, números formatados e cores para os estados. Textos livres e descrições são escapados contra fórmulas no Excel.
+- A construção do cenário **2026-07** continua usando DPP **2026-06** como base e as demais fontes de julho (STK SAP, Explosão, WIU, PGD de geração, OPEN opcional). DPP Final de julho só serve como referência de comparação e validação, não para alterar o cenário nem os relatórios das investigações.
+- Nenhuma exportação altera SALDO, STK TTL, NEC, REAL, decisões de aprovação, arquivo-base ou SAP; relatórios são snapshots informativos do estado operacional no momento do download.
+- API: `POST /api/dpp/investigations/stock-divergence/export` e `POST /api/dpp/investigations/quality/export` (multipart `scenario_id` e `stock`).

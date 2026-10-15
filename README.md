@@ -67,6 +67,10 @@ resposta auditada no SQLite
 
 Consultas factuais simples podem responder diretamente por SQL/Python para reduzir latência. Perguntas explicativas, causais ou contextuais podem usar o Qwen local depois que os fatos já foram recuperados. Se a LLM estiver desligada, o fluxo retorna automaticamente ao modo SQL + RAG.
 
+## Relatórios Excel das investigações
+
+Após as consultas de **Divergência de Estoque (4.1)** e **Análise de Qualidade (4.2)** no Dashboard, os botões contextuais **Baixar Excel** exportam o estado atual dos PNs críticos, depósitos, valores, validações e encaminhamentos. São relatórios derivados do cenário ORION em construção e do STK SAP do mesmo pacote, não do DPP Final já consolidado. Os downloads são apenas leitura e não fazem lançamentos no SAP nem alteram o DPP.
+
 ## Fluxo mensal atual
 
 ```text
