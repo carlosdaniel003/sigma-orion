@@ -314,6 +314,21 @@ def _quality_candidates(report):
     return detail, history
 
 
+def _quality_nonactive_q273(report):
+    """All Q273 rows held for reference while Q239 is the active workflow path."""
+    records = []
+    for material in report.get("materials") or []:
+        for candidate in material.get("additional_q273_evidence") or []:
+            records.append([
+                material.get("material"), material.get("description"),
+                candidate.get("depot"), candidate.get("center"), candidate.get("unit"),
+                candidate.get("quantity"),
+                "ORIGINAL: " + ", ".join(str(r) for r in candidate.get("source_rows") or []),
+                "Não validado neste fluxo; Q239 tem prioridade.",
+            ])
+    return records
+
+
 def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tuple[bytes, str, str]:
     if kind not in {"stock", "quality"}:
         raise ValueError("Tipo de investigação inválido.")
@@ -363,6 +378,14 @@ def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tu
             subtitle="Depósito Q239 tem prioridade; Q273 é consultado quando Q239 não apresenta quantidade.",
             note="Q239/Q273 são registros de investigação. Refugo ou reprovação não viram estoque disponível.",
             status_column=13)
+        _rows(book.create_sheet("Q273 não investigado"),
+            ["PN", "Descrição", "Depósito", "Centro", "UM", "Qtd. STK ORIGINAL",
+             "Linhas na fonte", "Motivo de não utilizar"],
+            [25, 42, 16, 13, 10, 25, 32, 58],
+            _quality_nonactive_q273(report),
+            title="Q273 · REGISTROS FORA DO CAMINHO ATIVO",
+            subtitle="Referência de Q273 para PNs com registros em Q239. Não utilizada na soma de quantidade nem na decisão da etapa 4.2.",
+            note="Estes registros são exibidos por transparência. Como há saldo em Q239, o fluxograma prioriza o CQ; nenhuma decisão foi presumida.")
     _rows(book.create_sheet("Histórico validações"),
         ["PN", "Depósito", "Centro", "UM", "ID", "Data UTC", "Decisão",
          "Já no DPP?", "Qtd. confirmada", "Justificativa", "Linhas de origem"],

@@ -100,7 +100,8 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
             client, "/api/dpp/investigations/quality/export", current, stock,
         ))
         assert book.sheetnames == [
-            "Resumo", "PNs investigados", "Registros depósitos", "Histórico validações",
+            "Resumo", "PNs investigados", "Registros depósitos",
+            "Q273 não investigado", "Histórico validações",
         ]
         items = list(book["PNs investigados"].iter_rows(min_row=6, values_only=True))
         by_pn = {row[0]: row for row in items if row[0]}
@@ -132,6 +133,9 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         cq = next(row for row in items if row[0] == "PN-CQ")
         assert cq[3] == "Q239"
         assert cq[11] == 1  # A Q273 record is intentionally outside the active branch.
+        nonactive = list(book["Q273 não investigado"].iter_rows(min_row=6, values_only=True))
+        assert any(row[0] == "PN-CQ" and row[2] == "Q273"
+                   and row[5] == 3 and "ORIGINAL: 4" in row[6] for row in nonactive)
         details = list(book["Registros depósitos"].iter_rows(min_row=6, values_only=True))
         assert any(row[0] == "PN-CQ" and row[2] == "Q239"
                    and row[5] == 7 and "ORIGINAL: 3" in row[6] for row in details)

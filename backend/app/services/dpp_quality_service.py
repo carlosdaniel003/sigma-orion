@@ -147,6 +147,9 @@ def quality_report(
             "unexplained_after_quality": remaining_unexplained,
             "active_depot": active_depot,
             "q273_records_skipped_due_q239": len(q273) if q239 else 0,
+            # Transparency: expose Q273 rows not used in calculations when Q239
+            # has priority. These are evidence only, not automatic extra stock.
+            "additional_q273_evidence": [dict(c) for c in q273] if q239 else [],
             "candidates": reviewed_candidates,
             "reviewed_candidates": confirmations,
             "workflow_status": status,
