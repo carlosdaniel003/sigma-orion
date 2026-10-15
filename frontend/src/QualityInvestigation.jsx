@@ -42,7 +42,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     ).join(';')
     : '', [stockReport])
   const reportKey = stockReady
-    ? stockInvestigation.reportKey + '|quality-4.2-v1|' + reviewRevision
+    ? stockInvestigation.reportKey + '|quality-4.2-v2|' + reviewRevision
     : ''
   const report = reportKey && qualityInvestigation?.reportKey === reportKey
     ? qualityInvestigation.result
@@ -166,6 +166,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <span>Sem registros: <strong>{report.summary.materials_without_quality_records}</strong></span>
             <span>Finalizados: <strong>{report.summary.items_finished}</strong></span>
             <span>Encaminhar a Scrap: <strong>{report.summary.items_to_scrap}</strong></span>
+            <span>Encaminhamentos provisórios: <strong>{report.summary.provisional_handoffs ?? 0}</strong></span>
             <span>Aguardando CQ: <strong>{report.summary.items_awaiting_quality}</strong></span>
           </div>
           {report.materials.some((item) => item.candidates.length > 0) && (
@@ -219,12 +220,12 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
           )}
           <section className="orion-stock-projection">
             <h4>Consolidação e próxima etapa</h4>
-            <p>Justificativas explicam causas; somente liberação adicional reduz o gap físico projetado. O encaminhamento a Scrap 4.3 ainda não executa essa análise.</p>
+            <p>Exibimos somente a parcela comprovada e atribuída à falta de cada PN. A confirmação bruta e a origem permanecem no Excel. Encaminhar para Scrap não comprova refugo nem executa a etapa 4.3.</p>
             <div className="orion-stock-investigation-scroll">
               <table>
                 <thead><tr>
-                  <th>PN</th><th>Falta recebida de 4.1</th><th>Liberado adicional</th>
-                  <th>Reprovado justificado</th><th>Refugo justificado</th>
+                  <th>PN</th><th>Falta recebida de 4.1</th><th>Potencial teórico</th>
+                  <th>Liberado aplicado</th><th>Reprovado aplicado</th><th>Refugo aplicado</th>
                   <th>Gap físico após Qualidade</th><th>Sem explicação</th><th>Próxima etapa</th>
                 </tr></thead>
                 <tbody>
@@ -232,9 +233,10 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                     <tr key={material.material}>
                       <td>{material.material}</td>
                       <td className="orion-stock-number">{fmt(material.gap_from_41)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.quality_released)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.quality_rejected_justified)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.quality_scrap_justified)} {material.unit}</td>
+                      <td className="orion-stock-number">{fmt(material.theoretical_coverage_limit)} {material.unit}</td>
+                      <td className="orion-stock-number">{fmt(material.quality_released_applied)} {material.unit}</td>
+                      <td className="orion-stock-number">{fmt(material.quality_rejected_applied)} {material.unit}</td>
+                      <td className="orion-stock-number">{fmt(material.quality_scrap_applied)} {material.unit}</td>
                       <td className="orion-stock-number">{fmt(material.physical_gap_after_quality)} {material.unit}</td>
                       <td className="orion-stock-number">{fmt(material.unexplained_after_quality)} {material.unit}</td>
                       <td>{material.next_step}</td>

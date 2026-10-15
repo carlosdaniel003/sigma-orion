@@ -32,7 +32,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
   )
   const reportKey = useMemo(
     () => packageKey && scenario?.scenario_id
-      ? `${packageKey}|${scenarioValidationIdentity(scenario)}|stock-routing-v2`
+      ? `${packageKey}|${scenarioValidationIdentity(scenario)}|stock-routing-v3`
       : '',
     [packageKey, scenario],
   )
@@ -168,6 +168,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <span>Depósitos validados: <strong>{result.summary.candidates_reviewed}</strong></span>
             <span>Itens finalizados: <strong>{result.summary.items_finished ?? 0}</strong></span>
             <span>Encaminhar à Qualidade: <strong>{result.summary.items_to_quality ?? 0}</strong></span>
+            <span>Encaminhamentos provisórios: <strong>{result.summary.provisional_handoffs ?? 0}</strong></span>
             <span>Aguardando validação: <strong>{result.summary.items_awaiting_validation ?? 0}</strong></span>
             <span>Sem registros para esses PNs: <strong>{result.summary.materials_without_candidates}</strong></span>
             <span>Depósitos sem registros no arquivo: <strong>{result.summary.depots_without_records.join(', ') || 'nenhum'}</strong></span>
@@ -177,7 +178,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Material</th><th>Descrição</th><th>SALDO</th><th>Depósito</th><th>Centro</th>
+                    <th>Material</th><th>Descrição</th><th>SALDO Cenário ORION</th><th>Depósito</th><th>Centro</th>
                     <th>Qtd. sob verificação</th><th>Origem no Excel</th><th>Situação</th><th>Próxima etapa</th><th>Ação</th>
                   </tr>
                 </thead>
@@ -229,14 +230,14 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
           {result.workflow && (
             <div className="orion-stock-projection">
               <h4>Resultado da investigação de estoque</h4>
-              <p>Gap após recuperação: só disponibilidade fora do DPP. Quantidade indisponível justificada explica a falta, mas não cria estoque. O encaminhamento para Qualidade ainda não executa a análise 4.2.</p>
+              <p>A quantidade encontrada é evidência, não estoque liberado. A cobertura potencial limita-se ao déficit de cada PN; apenas a quantidade validada e atribuída reduz o gap. Encaminhamentos podem ser provisórios quando restam validações.</p>
               <div className="orion-stock-investigation-scroll">
                 <table>
                   <thead>
                     <tr>
-                      <th>PN</th><th>Falta inicial</th><th>Disponível adicional</th>
-                      <th>Gap após recuperação</th><th>Indisponível justificada</th>
-                      <th>Sem justificativa</th><th>Resultado</th>
+                      <th>PN</th><th>Falta inicial</th><th>Potencial teórico</th>
+                      <th>Disponível aplicado</th><th>Gap após recuperação</th>
+                      <th>Indisponível aplicada</th><th>Sem justificativa</th><th>Resultado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -246,13 +247,17 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
                         <tr key={item.material}>
                           <td>{item.material}</td>
                           <td className="orion-stock-number">{formatQuantity(item.initial_deficit)} {item.unit}</td>
+                          <td className="orion-stock-number">{formatQuantity(
+                            Math.min(item.initial_deficit,
+                              (result.materials.find((m) => m.material === item.material)?.candidate_quantity) || 0),
+                          )} {item.unit}</td>
                           <td className="orion-stock-number">{formatQuantity(item.recovered_quantity)} {item.unit}</td>
                           <td className="orion-stock-number">{formatQuantity(item.remaining_gap_after_recovery)} {item.unit}</td>
                           <td className="orion-stock-number">{formatQuantity(item.justified_unavailable_quantity)} {item.unit}</td>
                           <td className="orion-stock-number">{formatQuantity(item.unexplained_quantity)} {item.unit}</td>
                           <td>
                             {item.next_step}
-                            {item.pending_reviews > 0 && item.next_step.includes('Qualidade') && (
+                            {item.pending_reviews > 0 && (
                               <small> · {item.pending_reviews} registro(s) ainda sem validação</small>
                             )}
                           </td>
