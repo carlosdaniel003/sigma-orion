@@ -215,9 +215,14 @@ def _summary(workbook, *, report, scenario, kind):
         unit = str(material.get("unit") or "SEM UM")
         bucket = per_unit.setdefault(unit, {"deficit": 0.0, "raw": 0.0, "potential": 0.0, "applied": 0.0})
         deficit = float(material.get("negative_balance") if not quality else material.get("gap_from_41") or 0.0)
-        raw = float(material.get("candidate_quantity") if not quality else sum(
-            float(candidate.get("quantity") or 0.0) for candidate in material.get("candidates") or []
-        ) or 0.0)
+        raw_value = (
+            (material.get("candidate_quantity") or 0.0)
+            if not quality else sum(
+                float(candidate.get("quantity") or 0.0)
+                for candidate in material.get("candidates") or []
+            )
+        )
+        raw = float(raw_value)
         potential = min(deficit, raw)
         applied = float(
             (material.get("recovered_quantity_applied") or 0.0)
