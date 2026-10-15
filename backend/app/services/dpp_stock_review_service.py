@@ -11,6 +11,7 @@ import math
 from sqlalchemy.orm import Session
 
 from app.models.stock_depot_review import StockDepotReview
+from app.services.dpp_investigation_allocation import allocate_cause
 
 TOLERANCE = 1e-4
 
@@ -84,31 +85,56 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
                     justified_unavailable += current["confirmed_quantity"]
 
         deficit = material["negative_balance"]
-        remaining_gap = max(0.0, deficit - recovered)
-        # A justification explains a loss but never makes it physically available.
-        unexplained = max(0.0, remaining_gap - justified_unavailable)
+        # Creditar primeiro a recuperação e só depois justificar a falta restante.
+        # As quantidades originais continuam rastreáveis sem virar estoque adicional.
+        _, recovered_applied = allocate_cause(
+            material["candidates"], deficit,
+            confirmed_field="recovered_quantity",
+            applied_field="recovered_applied",
+        )
+        remaining_gap = max(0.0, deficit - recovered_applied)
+        _, justified_applied = allocate_cause(
+            material["candidates"], remaining_gap,
+            confirmed_field="justified_unavailable_quantity",
+            applied_field="justified_unavailable_applied",
+        )
+        unexplained = max(0.0, remaining_gap - justified_applied)
         if remaining_gap <= TOLERANCE:
             remaining_gap = 0.0
         if unexplained <= TOLERANCE:
             unexplained = 0.0
 
         material["confirmed_increment_outside_dpp"] = recovered
+        material["recovered_quantity_applied"] = recovered_applied
         material["justified_unavailable_quantity"] = justified_unavailable
-        material["gap_reduction_projected"] = min(deficit, recovered)
+        material["justified_unavailable_applied"] = justified_applied
+        material["confirmed_excess_not_attributed"] = max(
+            0.0, recovered + justified_unavailable - recovered_applied - justified_applied
+        )
+        material["theoretical_coverage_limit"] = min(
+            deficit, float(material.get("candidate_quantity") or 0.0)
+        )
+        material["gap_reduction_projected"] = recovered_applied
         material["projected_gap_remaining"] = remaining_gap
         material["unexplained_quantity"] = unexplained
-        material["explained_quantity"] = min(deficit, recovered + justified_unavailable)
+        material["explained_quantity"] = recovered_applied + justified_applied
         material["reviewed_candidates"] = reviewed_candidates
         material["total_candidates"] = len(material["candidates"])
 
+        pending_reviews = len(material["candidates"]) - reviewed_candidates
+        provisional = pending_reviews > 0
         if unexplained == 0:
             status = "FINISHED"
-            next_step = "Análise do item finalizada"
+            next_step = (
+                "Falta explicada; conclusão provisória (há depósitos sem validação)"
+                if provisional else "Análise do item finalizada"
+            )
         elif reviewed_candidates > 0:
-            # If other deposit records are still unreviewed, the referral remains
-            # provisional: further 4.1 validations can still finish the item.
             status = "QUALITY_4_2"
-            next_step = "Encaminhar saldo não explicado à análise de Qualidade 4.2"
+            next_step = (
+                "Encaminhamento provisório à Qualidade 4.2; validações de Estoque pendentes"
+                if provisional else "Encaminhar saldo não explicado à análise de Qualidade 4.2"
+            )
         else:
             status = "AWAITING_VALIDATION"
             next_step = "Aguardar validação PCM/Almoxarifado"
@@ -116,17 +142,22 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
         if recovered > 0:
             projected += 1
         material["workflow_status"] = status
+        material["routing_provisional"] = provisional
         material["next_step"] = next_step
         routing[status].append({
             "material": material["material"],
             "description": material.get("description"),
             "unit": material["unit"],
             "initial_deficit": deficit,
-            "recovered_quantity": recovered,
-            "justified_unavailable_quantity": justified_unavailable,
+            "recovered_quantity": recovered_applied,
+            "recovered_quantity_confirmed": recovered,
+            "justified_unavailable_quantity": justified_applied,
+            "justified_unavailable_confirmed": justified_unavailable,
+            "confirmed_excess_not_attributed": material["confirmed_excess_not_attributed"],
             "remaining_gap_after_recovery": remaining_gap,
             "unexplained_quantity": unexplained,
-            "pending_reviews": len(material["candidates"]) - reviewed_candidates,
+            "pending_reviews": pending_reviews,
+            "routing_provisional": provisional,
             "next_step": next_step,
         })
 
@@ -141,6 +172,7 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
             "remaining_gap_after_recovery": material["negative_balance"],
             "unexplained_quantity": material["negative_balance"],
             "pending_reviews": 0,
+            "routing_provisional": False,
             "next_step": "Sem registros nos depósitos investigados; encaminhar à Qualidade 4.2",
         })
 
@@ -155,15 +187,18 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
     report["summary"]["materials_with_projection"] = projected
     report["summary"]["items_finished"] = len(routing["FINISHED"])
     report["summary"]["items_to_quality"] = len(routing["QUALITY_4_2"])
+    report["summary"]["provisional_handoffs"] = sum(
+        bool(item.get("routing_provisional")) for item in routing["QUALITY_4_2"]
+    )
     report["summary"]["items_awaiting_validation"] = len(routing["AWAITING_VALIDATION"])
     report["gap_projection_is_official"] = False
     report["changes_dpp"] = False
     report["note"] = (
-        "O gap após recuperação considera somente materiais declarados disponíveis "
-        "e não contabilizados no DPP. Quantidade indisponível com justificativa "
-        "explica parte da falta, mas não recupera estoque. Se ainda houver quantidade "
-        "sem explicação após a validação, o item é sinalizado para Qualidade 4.2 "
-        "(encaminhamento lógico; a análise 4.2 não foi implementada). "
+        "Quantidade confirmada é a evidência bruta. Apenas a parcela aplicada "
+        "ao déficit do PN explica a falta; o excedente não é atribuído duas vezes. "
+        "Quantidade indisponível justificada não recupera estoque. Há encaminhamentos "
+        "provisórios quando restam validações de depósitos. Encaminhamento não é "
+        "liberação nem execução automática de Qualidade. "
         "Nenhuma movimentação SAP, SALDO, NEC, STK TTL ou REAL é alterado."
     )
     return report

@@ -16,6 +16,7 @@ from app.models.quality_depot_review import QualityDepotReview
 from app.services.dpp_consolidation_service import _material_key
 from app.services.dpp_stock_divergence_service import investigate_stock_divergence
 from app.services.dpp_stock_review_service import add_reviews
+from app.services.dpp_investigation_allocation import allocate_cause
 
 QUALITY_DEPOTS = ("Q239", "Q273")
 TOLERANCE = 1e-4
@@ -102,6 +103,9 @@ def quality_report(
             candidate["validation_history"] = versions
             candidate["validation"] = current
             candidate["validation_status"] = "PENDENTE_CQ" if active_depot == "Q239" else "PENDENTE_REFUGO"
+            candidate["raw_release"] = 0.0
+            candidate["raw_rejection"] = 0.0
+            candidate["raw_scrap"] = 0.0
             if current:
                 reviewed += 1
                 confirmations += 1
@@ -109,28 +113,58 @@ def quality_report(
                 quantity = current["confirmed_quantity"]
                 if current["decision"] == "RELEASED" and current["accounting"] == "NOT_INCLUDED":
                     released += quantity
+                    candidate["raw_release"] = quantity
                 if current["decision"] == "REJECTED" and current["justification"]:
                     rejected += quantity
+                    candidate["raw_rejection"] = quantity
                 if current["decision"] == "SCRAP_CONFIRMED" and current["justification"]:
                     scrap += quantity
+                    candidate["raw_scrap"] = quantity
             reviewed_candidates.append(candidate)
 
         incoming_unexplained = max(float(origin["unexplained_quantity"]), 0.0)
         incoming_physical_gap = max(float(origin["remaining_gap_after_recovery"]), 0.0)
-        remaining_physical = max(0.0, incoming_physical_gap - released)
-        # Justified rejected/refugo material explains a cause, but NEVER becomes stock.
-        remaining_unexplained = max(0.0, incoming_unexplained - released - rejected - scrap)
+        # A etapa 4.1 já explicou parte do déficit. Na etapa 4.2, nenhuma
+        # quantidade pode ser atribuída à falta anteriormente explicada.
+        release_raw, release_applied = allocate_cause(
+            reviewed_candidates, min(incoming_physical_gap, incoming_unexplained),
+            confirmed_field="raw_release", applied_field="release_applied",
+        )
+        remaining_physical = max(0.0, incoming_physical_gap - release_applied)
+        free_to_explain = max(0.0, incoming_unexplained - release_applied)
+        rejected_raw, rejection_applied = allocate_cause(
+            reviewed_candidates, free_to_explain,
+            confirmed_field="raw_rejection", applied_field="rejection_applied",
+        )
+        free_to_explain = max(0.0, free_to_explain - rejection_applied)
+        scrap_raw, scrap_applied = allocate_cause(
+            reviewed_candidates, free_to_explain,
+            confirmed_field="raw_scrap", applied_field="scrap_applied",
+        )
+        remaining_unexplained = max(0.0, free_to_explain - scrap_applied)
         if remaining_physical <= TOLERANCE:
             remaining_physical = 0.0
         if remaining_unexplained <= TOLERANCE:
             remaining_unexplained = 0.0
 
+        pending_reviews = len(selected) - confirmations
+        upstream_pending = int(origin.get("pending_reviews") or 0)
+        provisional = (pending_reviews + upstream_pending) > 0
         if remaining_unexplained == 0:
-            status, next_step = "FINISHED", "Análise do item finalizada"
+            status = "FINISHED"
+            next_step = (
+                "Falta explicada; conclusão provisória (revisões pendentes)"
+                if provisional else "Análise do item finalizada"
+            )
         elif not selected:
             status, next_step = "SCRAP_4_3", "Sem registros em Q239 ou Q273; encaminhar a Scrap 4.3"
+            provisional = upstream_pending > 0
         elif confirmations > 0:
-            status, next_step = "SCRAP_4_3", "Falta ainda sem explicação; encaminhar a Scrap 4.3"
+            status = "SCRAP_4_3"
+            next_step = (
+                "Encaminhamento provisório a Scrap 4.3; revisões pendentes"
+                if provisional else "Falta ainda sem explicação; encaminhar a Scrap 4.3"
+            )
         else:
             status, next_step = "AWAITING_QUALITY", "Aguardar validação da Qualidade/CQ"
 
@@ -140,9 +174,19 @@ def quality_report(
             "unit": origin["unit"],
             "gap_from_41": incoming_unexplained,
             "physical_gap_from_41": incoming_physical_gap,
-            "quality_released": released,
-            "quality_rejected_justified": rejected,
-            "quality_scrap_justified": scrap,
+            "quality_released": release_raw,
+            "quality_released_applied": release_applied,
+            "quality_rejected_justified": rejected_raw,
+            "quality_rejected_applied": rejection_applied,
+            "quality_scrap_justified": scrap_raw,
+            "quality_scrap_applied": scrap_applied,
+            "confirmed_excess_not_attributed": max(
+                0.0, release_raw + rejected_raw + scrap_raw
+                - release_applied - rejection_applied - scrap_applied
+            ),
+            "theoretical_coverage_limit": min(
+                incoming_unexplained, sum(float(c["quantity"]) for c in selected)
+            ),
             "physical_gap_after_quality": remaining_physical,
             "unexplained_after_quality": remaining_unexplained,
             "active_depot": active_depot,
@@ -154,7 +198,9 @@ def quality_report(
             "reviewed_candidates": confirmations,
             "workflow_status": status,
             "next_step": next_step,
-            "pending_reviews": len(selected) - confirmations,
+            "pending_reviews": pending_reviews,
+            "pending_stock_reviews": upstream_pending,
+            "routing_provisional": provisional,
         }
         materials.append(row)
         routing[status].append({
@@ -162,6 +208,7 @@ def quality_report(
             "unit": row["unit"],
             "unexplained_quantity": remaining_unexplained,
             "physical_gap_after_quality": remaining_physical,
+            "routing_provisional": provisional,
             "next_step": next_step,
         })
 
@@ -178,6 +225,7 @@ def quality_report(
             "candidates_reviewed": reviewed,
             "items_finished": len(routing["FINISHED"]),
             "items_to_scrap": len(routing["SCRAP_4_3"]),
+            "provisional_handoffs": sum(bool(x.get("routing_provisional")) for x in routing["SCRAP_4_3"]),
             "items_awaiting_quality": len(routing["AWAITING_QUALITY"]),
         },
         "materials": materials,
@@ -194,7 +242,9 @@ def quality_report(
             "reprovação ou refugo já comprovados. A confirmação humana é necessária; "
             "quantidades liberadas só entram na projeção se não contabilizadas no DPP. "
             "Reprovação/refugo justificado explica a causa, mas não acrescenta estoque. "
-            "O encaminhamento a Scrap 4.3 é apenas indicação da próxima etapa."
+            "Somente a quantidade atribuída à falta ainda não explicada é creditada. "
+            "Encaminhamentos com validações pendentes são provisórios e não "
+            "significam que Scrap 4.3 foi executado."
         ),
     }
 
