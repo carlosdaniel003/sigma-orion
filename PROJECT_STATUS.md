@@ -640,3 +640,12 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O relatório Excel identifica o saldo como **SALDO Cenário ORION**, jamais o DPP Final já preenchido. Nas abas detalhadas mantém-se a fonte exata de cada quantidade (STK ORIGINAL), os IDs e histórico das revisões.
 - Para impressão, planilhas largas não são mais comprimidas em uma única página A3: a configuração distribui o número de colunas em até duas ou três larguras, preservando legibilidade.
 - Esses ajustes não introduzem o Data Lake, movimentação SAP, edição do DPP oficial, nem análise de Scrap 4.3.
+
+
+### Paginação das investigações de Estoque e Qualidade (2026-10-16)
+
+- As tabelas de registros por depósito e de resultados/consolidação por PN das etapas 4.1 e 4.2 possuem paginação local compartilhada, com 10 linhas por página (opções 25 e 50).
+- Cada tabela tem paginação independente com faixa exibida, quantidade total, página atual e controles Primeira/Anterior/Próxima/Última.
+- Trocar pacote ou cenário reinicia a paginação; a revisão de um candidato não apaga a página corrente. Navegar entre páginas de registros fecha o formulário de validação aberto para não manter um formulário de um registro fora da página visível.
+- Indicadores gerais, decisões salvas e download Excel continuam referentes a **todos** os PNs e depósitos da investigação. Nenhum dado é removido, filtrado do backend ou alterado no DPP.
+- Testes de paginação executam no frontend CI com Node antes do build Vite.

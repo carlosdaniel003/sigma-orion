@@ -32,4 +32,5 @@ jobs:
         with:
           node-version: '20'
       - run: npm install
+      - run: npm run test:pagination
       - run: npm run build

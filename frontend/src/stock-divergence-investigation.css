@@ -68,3 +68,50 @@
 .orion-stock-projection td small { display: block; margin-top: var(--space-1, 4px); color: var(--orion-text-secondary); }
 
 .orion-investigation-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2, 8px); }
+
+
+/* Paginação compacta e reutilizada nas investigações. */
+.orion-investigation-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+  padding-block: var(--space-2, 8px);
+  border-top: 1px solid var(--orion-border);
+  color: var(--orion-text-secondary);
+  font-size: 12px;
+}
+.orion-investigation-range strong {
+  color: var(--orion-text);
+  font-variant-numeric: tabular-nums;
+}
+.orion-investigation-per-page {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  white-space: nowrap;
+}
+.orion-investigation-per-page select {
+  padding: var(--space-2, 8px);
+  border: 1px solid var(--orion-border);
+  border-radius: 0;
+  background: var(--orion-surface);
+  color: var(--orion-text);
+  font: inherit;
+}
+.orion-investigation-page-buttons {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+.orion-investigation-page-buttons .secondary-button { font-size: 12px; }
+.orion-investigation-page-buttons .secondary-button:disabled { opacity: .45; cursor: default; }
+.orion-investigation-page-status {
+  color: var(--orion-text);
+  min-width: 94px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
