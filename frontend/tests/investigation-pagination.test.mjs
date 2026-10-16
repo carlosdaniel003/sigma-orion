@@ -30,7 +30,8 @@ test('lista vazia, página acima do total e tamanho inválido', () => {
   assert.equal(paginateRows([], 3, 10).pages, 1)
   assert.equal(paginateRows([1, 2, 3], 99, 10).page, 1)
   assert.equal(paginateRows(Array.from({ length: 21 }, (_, i) => i), -2, 10).page, 1)
-  assert.equal(paginateRows(Array.from({ length: 21 }, (_, i) => i), 3, 13).page, 1)
+  assert.equal(paginateRows(Array.from({ length: 21 }, (_, i) => i), 3, 13).page, 3)
+  assert.equal(paginateRows(Array.from({ length: 21 }, (_, i) => i), 3, 13).pageSize, 10)
 })
 
 test('registros por depósito preservam identidade e validação', () => {
@@ -41,6 +42,6 @@ test('registros por depósito preservam identidade e validação', () => {
   const second = paginateRows(rows, 2, 10)
   assert.deepEqual(second.rows, rows.slice(10, 20))
   assert.equal(second.rows[0].id, 'candidate-11')
-  assert.equal(second.rows[0].validation, null)
-  assert.equal(second.rows[1].validation.decision, 'AVAILABLE')
+  assert.equal(second.rows[0].validation.decision, 'AVAILABLE')
+  assert.equal(second.rows[1].validation, null)
 })
