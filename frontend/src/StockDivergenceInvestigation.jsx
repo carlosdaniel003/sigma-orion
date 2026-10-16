@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
 import { downloadInvestigationExcel } from './investigation-excel'
 import StockDepotReviewForm from './StockDepotReviewForm'
+import InvestigationPagination, { useInvestigationPagination } from './InvestigationPagination'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import { fileIdentity, scenarioValidationIdentity } from './dpp-workspace-state'
 import './stock-divergence-investigation.css'
@@ -126,10 +127,16 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
     }
   }
 
-  const rows = (result?.materials || []).flatMap((material) =>
+  const rows = useMemo(() => (result?.materials || []).flatMap((material) =>
     material.candidates.map((candidate) => ({ material, candidate })),
-  )
-
+  ), [result])
+  const summaryRows = useMemo(() => result?.workflow
+    ? [...result.workflow.finished, ...result.workflow.forward_to_quality,
+      ...result.workflow.awaiting_validation]
+      .sort((a, b) => b.initial_deficit - a.initial_deficit || a.material.localeCompare(b.material))
+    : [], [result])
+  const detailPagination = useInvestigationPagination(rows, reportKey)
+  const summaryPagination = useInvestigationPagination(summaryRows, reportKey)
   const selected = rows.find(({ candidate }) => candidate.candidate_id === selectedId)
 
   return (
@@ -183,7 +190,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ material, candidate }) => (
+                  {detailPagination.rows.map(({ material, candidate }) => (
                     <tr key={[material.material, candidate.depot, candidate.center || '', candidate.unit].join('|')}>
                       <td>{material.material}</td>
                       <td>{material.description || '—'}</td>
@@ -207,6 +214,8 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
                   ))}
                 </tbody>
               </table>
+              <InvestigationPagination value={detailPagination} label="Registros por depósito — Estoque"
+                onNavigate={() => setSelectedId('')} />
             </div>
           ) : <p>Nenhum PN crítico foi encontrado nos depósitos da investigação. O fluxo indica encaminhamento dos itens à análise de Qualidade 4.2.</p>}
           {selected && (
@@ -241,9 +250,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...result.workflow.finished, ...result.workflow.forward_to_quality, ...result.workflow.awaiting_validation]
-                      .sort((a, b) => b.initial_deficit - a.initial_deficit || a.material.localeCompare(b.material))
-                      .map((item) => (
+                    {summaryPagination.rows.map((item) => (
                         <tr key={item.material}>
                           <td>{item.material}</td>
                           <td className="orion-stock-number">{formatQuantity(item.initial_deficit)} {item.unit}</td>
@@ -265,6 +272,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
                       ))}
                   </tbody>
                 </table>
+                <InvestigationPagination value={summaryPagination} label="Resultado por PN — Estoque" />
               </div>
             </div>
           )}

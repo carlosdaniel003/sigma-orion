@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
 import QualityReviewForm from './QualityReviewForm'
+import InvestigationPagination, { useInvestigationPagination } from './InvestigationPagination'
 import { downloadInvestigationExcel } from './investigation-excel'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import { fileIdentity } from './dpp-workspace-state'
@@ -122,9 +123,13 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     }
   }
 
-  const selected = (report?.materials || []).flatMap((material) =>
+  const rows = useMemo(() => (report?.materials || []).flatMap((material) =>
     material.candidates.map((candidate) => ({ material, candidate })),
-  ).find(({ candidate }) => candidate.candidate_id === selectedId)
+  ), [report])
+  const summaryRows = report?.materials || []
+  const detailPagination = useInvestigationPagination(rows, reportKey)
+  const summaryPagination = useInvestigationPagination(summaryRows, reportKey)
+  const selected = rows.find(({ candidate }) => candidate.candidate_id === selectedId)
 
   return (
     <section className="orion-stock-investigation orion-quality-investigation" aria-label="Análise de Qualidade">
@@ -169,7 +174,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <span>Encaminhamentos provisórios: <strong>{report.summary.provisional_handoffs ?? 0}</strong></span>
             <span>Aguardando CQ: <strong>{report.summary.items_awaiting_quality}</strong></span>
           </div>
-          {report.materials.some((item) => item.candidates.length > 0) && (
+          {rows.length > 0 && (
             <div className="orion-stock-investigation-scroll">
               <table>
                 <thead><tr>
@@ -177,8 +182,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                   <th>Origem</th><th>Resultado</th><th>Ação</th>
                 </tr></thead>
                 <tbody>
-                  {report.materials.filter((item) => item.candidates.length > 0).flatMap((material) =>
-                    material.candidates.map((candidate) => (
+                  {detailPagination.rows.map(({ material, candidate }) => (
                       <tr key={candidate.candidate_id}>
                         <td>{material.material}</td>
                         <td>{material.description || '—'}</td>
@@ -199,10 +203,11 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                           {candidate.validation ? 'Revisar' : 'Validar'}
                         </button></td>
                       </tr>
-                    )),
-                  )}
+                  ))}
                 </tbody>
               </table>
+              <InvestigationPagination value={detailPagination} label="Registros por depósito — Qualidade"
+                onNavigate={() => setSelectedId('')} />
             </div>
           )}
           {selected && (
@@ -229,7 +234,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                   <th>Gap físico após Qualidade</th><th>Sem explicação</th><th>Próxima etapa</th>
                 </tr></thead>
                 <tbody>
-                  {report.materials.map((material) => (
+                  {summaryPagination.rows.map((material) => (
                     <tr key={material.material}>
                       <td>{material.material}</td>
                       <td className="orion-stock-number">{fmt(material.gap_from_41)} {material.unit}</td>
@@ -244,6 +249,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                   ))}
                 </tbody>
               </table>
+              <InvestigationPagination value={summaryPagination} label="Consolidação por PN — Qualidade" />
             </div>
           </section>
           <p className="orion-stock-investigation-note">{report.note}</p>
