@@ -193,6 +193,14 @@ def test_full_month_application_requires_human_confirmations_and_two_phase_previ
 
             audited = finalize_and_audit_dpp_formulas(content, new_scenario)
             assert audited
+
+            scenarios._SCENARIOS.clear()
+            assert scenarios.restore_persisted_monthly_scenario() is True
+            assert scenarios.get_latest_monthly_scenario()["scenario_id"] == new_sid
+            restored_original = scenarios.get_monthly_scenario(sid)
+            assert restored_original is not None
+            assert {r["material"]: r for r in restored_original["materials"]}["PN-A"]["balance"] == -10
+            assert {r["material"]: r for r in scenarios.get_monthly_scenario(new_sid)["materials"]}["PN-A"]["balance"] == -4
     finally:
         scenarios._SCENARIOS.clear()
 
