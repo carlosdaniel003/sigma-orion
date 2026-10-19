@@ -363,7 +363,14 @@ async def export_stock_investigation_route(
         )
         with SessionLocal() as session:
             report = add_reviews(original, session, sha256(content).hexdigest())
-        data, filename, media_type = export_investigation_excel("stock", report=report, scenario=scenario)
+            quality = quality_report(
+                scenario=scenario, stock_content=content,
+                stock_filename=stock.filename or "", session=session,
+            )
+        data, filename, media_type = export_investigation_excel(
+            "stock", report=report, scenario=scenario,
+            stock_report=report, quality_report=quality,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return Response(
@@ -390,7 +397,15 @@ async def export_quality_investigation_route(
                 stock_filename=stock.filename or "",
                 session=session,
             )
-        data, filename, media_type = export_investigation_excel("quality", report=report, scenario=scenario)
+            original = investigate_stock_divergence(
+                stock_content=content, stock_filename=stock.filename or "",
+                scenario=scenario,
+            )
+            stock_report = add_reviews(original, session, sha256(content).hexdigest())
+        data, filename, media_type = export_investigation_excel(
+            "quality", report=report, scenario=scenario,
+            stock_report=stock_report, quality_report=report,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return Response(
