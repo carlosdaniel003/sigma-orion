@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
 import QualityReviewForm from './QualityReviewForm'
 import InvestigationPagination, { useInvestigationPagination } from './InvestigationPagination'
+import { qualityFound, pendingRecords, filterFound } from './investigation-view-model'
+import './investigation-cards.css'
 import { downloadInvestigationExcel } from './investigation-excel'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import { fileIdentity, buildStockInvestigationReportKey } from './dpp-workspace-state'
@@ -23,6 +25,8 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [selectedId, setSelectedId] = useState('')
+  const [search, setSearch] = useState('')
+  const [view, setView] = useState('all')
   const controllerRef = useRef(null)
   const attemptedRef = useRef('')
   const formRef = useRef(null)
@@ -124,140 +128,163 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     }
   }
 
-  const rows = useMemo(() => (report?.materials || []).flatMap((material) =>
-    material.candidates.map((candidate) => ({ material, candidate })),
-  ), [report])
-  const summaryRows = report?.materials || []
-  const detailPagination = useInvestigationPagination(rows, reportKey)
-  const summaryPagination = useInvestigationPagination(summaryRows, reportKey)
-  const selected = rows.find(({ candidate }) => candidate.candidate_id === selectedId)
+  const found = useMemo(() => qualityFound(report), [report])
+  const pending = useMemo(() => pendingRecords(found), [found])
+  const filtered = useMemo(() => filterFound(found, search, view), [found, search, view])
+  const listPage = useInvestigationPagination(filtered, reportKey + '|' + view + '|' + search)
+  const queuePage = useInvestigationPagination(pending, reportKey + '|queue')
+  const selected = found.flatMap(material => material.candidates.map(candidate => ({ material, candidate })))
+    .find(({ candidate }) => candidate.candidate_id === selectedId)
+  const pnPending = new Set(pending.map(item => item.material.material)).size
+  const qty = (value, unit) => fmt(value) + (unit ? ' ' + unit : '')
+  const validationStatus = candidate => {
+    if (!candidate.validation) return 'Aguardando Qualidade / CQ'
+    const decision = candidate.validation.decision
+    if (decision === 'RELEASED') return candidate.validation.accounting === 'NOT_INCLUDED'
+      ? 'Liberado · adicional ao cenário' : 'Liberado · adicional não comprovado'
+    if (decision === 'REJECTED') return 'Reprovado pelo CQ'
+    if (decision === 'SCRAP_CONFIRMED') return 'Refugo confirmado'
+    return 'Sem confirmação'
+  }
 
   return (
-    <section className="orion-stock-investigation orion-quality-investigation" aria-label="Análise de Qualidade">
+    <section className="orion-stock-investigation orion-quality-investigation orion-investigation-ui"
+      id="orion-quality-investigation" aria-label="Análise de Qualidade">
       <div className="orion-stock-investigation-header">
         <div>
           <div className="module-heading-with-info">
             <h3>Análise de Qualidade</h3>
             <ModuleInfoHint moduleKey="dashboard.quality_investigation" />
           </div>
-          <p>Consultar Q239 (em análise no CQ) e, se não houver registro em Q239, Q273 (refugo).</p>
-          <small>Apenas PNs encaminhados por Divergência de Estoque. Não altera SALDO, NEC ou REAL.</small>
+          <p>PNs encaminhados pelo Estoque, encontrados em Q239 ou Q273 do STK ORIGINAL.</p>
+          <small>A confirmação da Qualidade/CQ não altera SALDO, NEC ou REAL.</small>
         </div>
-        {canRun && (
-          <div className="orion-investigation-actions">
-            <button type="button" className="secondary-button" disabled={loading || exporting} aria-busy={loading}
-              onClick={() => { attemptedRef.current = reportKey; fetchReport() }}>
-              {loading ? 'Consultando Qualidade...' : report ? 'Consultar novamente' : 'Consultar Qualidade'}
-            </button>
-            {report && (
-              <button type="button" className="secondary-button" onClick={exportExcel}
-                disabled={loading || exporting} aria-busy={exporting}>
-                {exporting ? 'Gerando Excel...' : 'Baixar Excel'}
-              </button>
-            )}
-          </div>
-        )}
+        {canRun && <div className="orion-investigation-actions">
+          <button type="button" className="secondary-button" disabled={loading || exporting} aria-busy={loading}
+            onClick={() => { attemptedRef.current = reportKey; fetchReport() }}>
+            {loading ? 'Consultando...' : report ? 'Consultar novamente' : 'Consultar Qualidade'}
+          </button>
+          {report && <button type="button" className="secondary-button" onClick={exportExcel}
+            disabled={loading || exporting} aria-busy={exporting}>
+            {exporting ? 'Gerando Excel...' : 'Baixar Excel'}
+          </button>}
+        </div>}
       </div>
-
-      {!stockReady && <p role="status">Execute primeiro a investigação de Divergência de Estoque para identificar os PNs encaminhados.</p>}
-      {stockReady && !canRun && <p role="status">Nenhum PN foi encaminhado à Qualidade pela etapa anterior.</p>}
+      {!stockReady && <p role="status">Execute primeiro Divergência de Estoque para identificar os PNs encaminhados.</p>}
+      {stockReady && !canRun && <p role="status">Nenhum PN foi encaminhado à Qualidade.</p>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      {report && (
-        <>
-          <div className="orion-stock-investigation-summary" aria-live="polite">
-            <span>PNs recebidos: <strong>{report.summary.items_received_from_41}</strong></span>
-            <span>PNs em Q239: <strong>{report.summary.materials_with_q239}</strong></span>
-            <span>PNs em Q273: <strong>{report.summary.materials_with_q273}</strong></span>
-            <span>Sem registros: <strong>{report.summary.materials_without_quality_records}</strong></span>
-            <span>Finalizados: <strong>{report.summary.items_finished}</strong></span>
-            <span>Encaminhar a Scrap: <strong>{report.summary.items_to_scrap}</strong></span>
-            <span>Encaminhamentos provisórios: <strong>{report.summary.provisional_handoffs ?? 0}</strong></span>
-            <span>Aguardando CQ: <strong>{report.summary.items_awaiting_quality}</strong></span>
-          </div>
-          <h4 className="orion-investigation-section-title">Confirmar com área</h4>
-          <p className="orion-investigation-section-description">PNs encontrados em Q239/Q273. O analista deve solicitar confirmação à Qualidade/CQ antes de contabilizar qualquer explicação.</p>
-          {rows.length > 0 && (
-            <div className="orion-stock-investigation-scroll">
-              <table>
-                <thead><tr>
-                  <th>PN</th><th>Descrição</th><th>Depósito</th><th>Centro</th><th>Qtd. sob verificação</th>
-                  <th>Origem</th><th>Resultado</th><th>Ação</th>
-                </tr></thead>
-                <tbody>
-                  {detailPagination.rows.map(({ material, candidate }) => (
-                      <tr key={candidate.candidate_id}>
-                        <td>{material.material}</td>
-                        <td>{material.description || '—'}</td>
-                        <td>{candidate.depot}</td>
-                        <td>{candidate.center || '—'}</td>
-                        <td className="orion-stock-number">{fmt(candidate.quantity)} {candidate.unit}</td>
-                        <td>ORIGINAL · linhas {candidate.source_rows.join(', ')}</td>
-                        <td>{candidate.validation
-                          ? candidate.validation.decision === 'RELEASED'
-                            ? (candidate.validation.accounting === 'NOT_INCLUDED'
-                              ? 'Liberado · adicional ao DPP' : 'Liberado · adicional não comprovado')
-                            : candidate.validation.decision === 'REJECTED' ? 'Reprovado'
-                              : candidate.validation.decision === 'SCRAP_CONFIRMED' ? 'Refugo confirmado'
-                                : 'Sem confirmação'
-                          : 'Aguardando CQ'}</td>
-                        <td><button type="button" className="secondary-button"
-                          onClick={() => setSelectedId(candidate.candidate_id)}>
-                          {candidate.validation ? 'Revisar' : 'Validar'}
-                        </button></td>
-                      </tr>
-                  ))}
-                </tbody>
-              </table>
-              <InvestigationPagination value={detailPagination} label="Registros por depósito — Qualidade"
-                onNavigate={() => setSelectedId('')} />
+
+      {report && <>
+        <div className="orion-investigation-local-summary" aria-label="Indicadores da Qualidade">
+          <div><span>PNs recebidos</span><strong>{fmt(report.summary.items_received_from_41)}</strong></div>
+          <div><span>Encontrados Q239</span><strong>{fmt(report.summary.materials_with_q239)}</strong></div>
+          <div><span>Encontrados Q273</span><strong>{fmt(report.summary.materials_with_q273)}</strong></div>
+          <div><span>Aguardando CQ</span><strong>{fmt(pnPending)}</strong></div>
+          <div><span>Sem registros nesses depósitos</span><strong>{fmt(report.summary.materials_without_quality_records)}</strong></div>
+        </div>
+        <section className="orion-investigation-queue" id="orion-quality-actions">
+          <h4>Confirmar com Qualidade / CQ</h4>
+          <p className="orion-investigation-section-description">
+            {pending.length ? 'O analista deve solicitar a decisão do CQ para cada registro e confirmar a quantidade efetiva antes de justificar a falta ou recalcular o gap.'
+              : 'Nenhum registro encontrado aguarda confirmação da Qualidade.'}
+          </p>
+          {pending.length > 0 && <>
+            <ul className="orion-investigation-queue-list">
+              {queuePage.rows.map(({ material, candidate }) => (
+                <li key={candidate.candidate_id}>
+                  <div className="orion-investigation-queue-description">
+                    <strong>PN {material.material} · {candidate.depot}</strong>
+                    <span>{material.description || 'Sem descrição'}</span>
+                    <span>Encontrado: {qty(candidate.quantity, candidate.unit)} · Falta recebida: {qty(material.gap_from_41, material.unit)} · Gap físico: {qty(material.physical_gap_after_quality, material.unit)}</span>
+                  </div>
+                  <button type="button" className="secondary-button"
+                    onClick={() => setSelectedId(candidate.candidate_id)}>Confirmar com área</button>
+                </li>
+              ))}
+            </ul>
+            <InvestigationPagination value={queuePage} label="Pendências da Qualidade" />
+          </>}
+        </section>
+
+        {selected && <div ref={formRef} className="orion-stock-review-anchor">
+          <QualityReviewForm key={selected.candidate.candidate_id}
+            scenario={scenario} stockFile={stockFile} candidate={selected.candidate}
+            material={selected.material} apiUrl={apiUrl} onCancel={() => setSelectedId('')}
+            onSaved={updated => {
+              setQualityInvestigation({ reportKey, result: updated })
+              setSelectedId('')
+              setMessage('Validação da Qualidade registrada. SALDO oficial inalterado.')
+            }} />
+        </div>}
+
+        <section className="orion-investigation-card-section" aria-label="PNs encontrados no CQ">
+          <h4>PNs encontrados em Qualidade</h4>
+          <p className="orion-investigation-section-description">
+            {found.length} PN(s) encontrados em Q239/Q273. Os {report.summary.materials_without_quality_records} PNs sem registros permanecem no resumo e no Excel, sem serem classificados como refugo confirmado.
+          </p>
+          {found.length ? <>
+            <div className="orion-investigation-found-tools">
+              <input type="search" aria-label="Buscar PN encontrado em Qualidade"
+                placeholder="Buscar PN, descrição ou depósito"
+                value={search} onChange={event => setSearch(event.target.value)} />
+              <label>Mostrar
+                <select value={view} onChange={event => setView(event.target.value)}>
+                  <option value="all">Todos os encontrados</option>
+                  <option value="pending">Validações pendentes</option>
+                  <option value="reviewed">Sem pendências</option>
+                </select>
+              </label>
             </div>
-          )}
-          {selected && (
-            <div ref={formRef} className="orion-stock-review-anchor">
-              <QualityReviewForm key={selected.candidate.candidate_id} scenario={scenario}
-                stockFile={stockFile} candidate={selected.candidate} material={selected.material}
-                apiUrl={apiUrl} onCancel={() => setSelectedId('')}
-                onSaved={(updated) => {
-                  setQualityInvestigation({ reportKey, result: updated })
-                  setSelectedId('')
-                  setMessage('Validação da Qualidade registrada. O SALDO oficial permanece inalterado.')
-                }}
-              />
+            <div className="orion-investigation-found-grid">
+              {listPage.rows.map(material => (
+                <details key={material.material} className="orion-investigation-pn-card">
+                  <summary>
+                    <div className="orion-investigation-pn-heading">
+                      <strong>PN {material.material}</strong>
+                      <span>{material.active_depot || 'Depósito CQ'}</span>
+                    </div>
+                    <span className="orion-investigation-pn-description">{material.description || 'Sem descrição'}</span>
+                    <dl className="orion-investigation-pn-facts">
+                      <div><dt>Falta recebida</dt><dd>{qty(material.gap_from_41, material.unit)}</dd></div>
+                      <div><dt>Encontrado no CQ</dt><dd>{qty(material.candidates.reduce((acc,c) => acc + Number(c.quantity || 0),0), material.unit)}</dd></div>
+                      <div><dt>Gap após CQ</dt><dd>{qty(material.physical_gap_after_quality, material.unit)}</dd></div>
+                    </dl>
+                  </summary>
+                  <div className="orion-investigation-card-body">
+                    <dl className="orion-investigation-detail-facts">
+                      <div><dt>Potencial teórico (não validado)</dt><dd>{qty(material.theoretical_coverage_limit, material.unit)}</dd></div>
+                      <div><dt>Liberação aplicada ao gap</dt><dd>{qty(material.quality_released_applied, material.unit)}</dd></div>
+                      <div><dt>Reprovação justificada</dt><dd>{qty(material.quality_rejected_applied, material.unit)}</dd></div>
+                      <div><dt>Refugo justificado</dt><dd>{qty(material.quality_scrap_applied, material.unit)}</dd></div>
+                      <div><dt>Falta sem explicação</dt><dd>{qty(material.unexplained_after_quality, material.unit)}</dd></div>
+                    </dl>
+                    <p className="orion-investigation-card-next">{material.next_step}</p>
+                    <div className="orion-investigation-depot-list">
+                      {material.candidates.map(candidate => (
+                        <div key={candidate.candidate_id} className="orion-investigation-depot">
+                          <div>
+                            <strong>{candidate.depot} · {qty(candidate.quantity, candidate.unit)} encontrados</strong>
+                            <span>Centro {candidate.center || '—'} · ORIGINAL, linhas {(candidate.source_rows || []).join(', ')}</span>
+                            <small>{validationStatus(candidate)}</small>
+                          </div>
+                          <button type="button" className="secondary-button"
+                            onClick={() => setSelectedId(candidate.candidate_id)}>
+                            {candidate.validation ? 'Revisar' : 'Confirmar com área'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </details>
+              ))}
             </div>
-          )}
-          <section className="orion-stock-projection">
-            <h4>PNs e divergências</h4>
-            <p>Exibimos somente a parcela comprovada e atribuída à falta de cada PN. A confirmação bruta e a origem permanecem no Excel. Encaminhar para Scrap não comprova refugo nem significa que essa investigação foi executada.</p>
-            <div className="orion-stock-investigation-scroll">
-              <table>
-                <thead><tr>
-                  <th>PN</th><th>Falta recebida de Estoque</th><th>Potencial teórico</th>
-                  <th>Liberado aplicado</th><th>Reprovado aplicado</th><th>Refugo aplicado</th>
-                  <th>Gap físico após Qualidade</th><th>Sem explicação</th><th>Próxima etapa</th>
-                </tr></thead>
-                <tbody>
-                  {summaryPagination.rows.map((material) => (
-                    <tr key={material.material}>
-                      <td>{material.material}</td>
-                      <td className="orion-stock-number">{fmt(material.gap_from_41)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.theoretical_coverage_limit)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.quality_released_applied)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.quality_rejected_applied)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.quality_scrap_applied)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.physical_gap_after_quality)} {material.unit}</td>
-                      <td className="orion-stock-number">{fmt(material.unexplained_after_quality)} {material.unit}</td>
-                      <td>{material.next_step}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <InvestigationPagination value={summaryPagination} label="Consolidação por PN — Qualidade" />
-            </div>
-          </section>
-          <p className="orion-stock-investigation-note">{report.note}</p>
-        </>
-      )}
+            {!listPage.rows.length && <p>Nenhum PN corresponde à busca ou ao filtro.</p>}
+            <InvestigationPagination value={listPage} label="PNs encontrados em Qualidade" />
+          </> : <p>Nenhum PN encontrado em Q239/Q273. Consulte o Excel para as faltas sem registro.</p>}
+        </section>
+        <p className="orion-stock-investigation-note">Reprovação/refugo não recupera estoque. Encaminhamento não comprova scrap e não executa outra análise.</p>
+      </>}
     </section>
   )
 }
