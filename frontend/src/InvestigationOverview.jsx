@@ -66,26 +66,18 @@ export default function InvestigationOverview({ scenario, stockFile }) {
       id="orion-investigation-overview" aria-label="Resumo operacional das investigações">
       <header className="orion-investigation-block-heading">
         <div>
-          <div className="module-heading-with-info orion-visual-heading">
-            <span className="orion-visual-icon orion-visual-icon-feature"><OrionVisualIcon name="overview" /></span>
+          <div className="module-heading-with-info">
             <h3>Resumo operacional</h3>
             <ModuleInfoHint moduleKey="dashboard.investigations_summary" />
           </div>
           <p>Os números principais, as etapas da investigação e o que ainda precisa de confirmação.</p>
         </div>
         <nav className="orion-investigation-shortcuts" aria-label="Ir para investigação">
-          <a href="#orion-stock-investigation">Estoque</a>
-          <a href="#orion-quality-investigation">Qualidade</a>
+          <a href="#orion-stock-investigation"><OrionVisualIcon name="stock" size={16} /> Estoque</a>
+          <a href="#orion-quality-investigation"><OrionVisualIcon name="quality" size={16} /> Qualidade</a>
         </nav>
       </header>
 
-      <div className="orion-visual-journey" aria-label="Caminho da investigação">
-        <span><OrionVisualIcon name="overview" size={16} /> Cenário inicial</span>
-        <OrionVisualIcon name="arrow" size={16} />
-        <span><OrionVisualIcon name="stock" size={16} /> Estoque</span>
-        <OrionVisualIcon name="arrow" size={16} />
-        <span><OrionVisualIcon name="quality" size={16} /> Qualidade / CQ</span>
-      </div>
       <dl className="orion-investigation-overview-metrics">
         {metrics.map(metric => <OverviewMetric key={metric.label} {...metric} />)}
       </dl>
@@ -128,7 +120,7 @@ export default function InvestigationOverview({ scenario, stockFile }) {
       ) : (
         <>
           <div className="orion-investigation-subheading">
-            <h4 className="orion-visual-small-heading"><OrionVisualIcon name="gap" size={18} /> Gap por unidade de medida</h4>
+            <h4>Gap por unidade de medida</h4>
             <p>Valores do cenário e das confirmações já registradas. Quantidade encontrada não significa material liberado.</p>
           </div>
           <div className="orion-investigation-unit-grid">
@@ -158,7 +150,7 @@ export default function InvestigationOverview({ scenario, stockFile }) {
 
       <div className="orion-investigation-priority-summary">
         <div>
-          <h4 className="orion-visual-small-heading"><OrionVisualIcon name="action" size={18} /> Próximas confirmações</h4>
+          <h4>Próximas confirmações</h4>
           <p>As filas abaixo mostram apenas PNs encontrados em depósitos investigados.</p>
         </div>
         <div className="orion-investigation-priority-links">

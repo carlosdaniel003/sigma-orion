@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
-import OrionVisualIcon from './OrionVisualIcon'
 import './dashboard.css'
 import './dashboard-state.css'
 import './dashboard-comparison-metrics.css'
@@ -158,8 +157,7 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
       <header className="page-header dashboard-header orion-visual-dashboard-header">
         <div>
           <span className="eyebrow">VISÃO OPERACIONAL</span>
-          <div className="module-heading-with-info orion-visual-heading">
-            <span className="orion-visual-icon orion-visual-icon-feature"><OrionVisualIcon name="overview" size={23} /></span>
+          <div className="module-heading-with-info">
             <h2>Cenário inicial do DPP</h2>
             <ModuleInfoHint moduleKey="dashboard.overview" />
           </div>
@@ -179,7 +177,7 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
               <div><span>PGD do mês</span><strong>{formatNumber(data.pgdTotal)} un.</strong><small>Referência de produção</small></div>
               <div><span>REAL planejado</span><strong>{formatNumber(data.realTotal)} un.</strong><small>Definido pelo cenário ORION</small></div>
               <div><span>Gap PGD × REAL</span><strong>{formatNumber(Math.abs(data.gap))} un.</strong><small>{gapDescription(data.gap)}</small></div>
-              <div className="orion-visual-feature-metric"><span>Materiais críticos</span><strong>{formatNumber(data.criticalMaterials.length)}</strong><small>PNs UN com SALDO negativo</small></div>
+              <div><span>Materiais críticos</span><strong>{formatNumber(data.criticalMaterials.length)}</strong><small>PNs UN com SALDO negativo</small></div>
             </div>
           </section>
           <details className="dashboard-complementary-details">
