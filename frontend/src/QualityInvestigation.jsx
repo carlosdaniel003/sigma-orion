@@ -175,6 +175,8 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <span>Encaminhamentos provisórios: <strong>{report.summary.provisional_handoffs ?? 0}</strong></span>
             <span>Aguardando CQ: <strong>{report.summary.items_awaiting_quality}</strong></span>
           </div>
+          <h4 className="orion-investigation-section-title">Confirmar com área</h4>
+          <p className="orion-investigation-section-description">PNs encontrados em Q239/Q273. O analista deve solicitar confirmação à Qualidade/CQ antes de contabilizar qualquer explicação.</p>
           {rows.length > 0 && (
             <div className="orion-stock-investigation-scroll">
               <table>
@@ -225,7 +227,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
             </div>
           )}
           <section className="orion-stock-projection">
-            <h4>Consolidação e próxima etapa</h4>
+            <h4>PNs e divergências</h4>
             <p>Exibimos somente a parcela comprovada e atribuída à falta de cada PN. A confirmação bruta e a origem permanecem no Excel. Encaminhar para Scrap não comprova refugo nem significa que essa investigação foi executada.</p>
             <div className="orion-stock-investigation-scroll">
               <table>

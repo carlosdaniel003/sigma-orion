@@ -70,9 +70,17 @@
 
 **Finalidade:** Indicar se existe base mínima para confiar na leitura do cenário antes de investigar resultados. Serve como contexto operacional para o analista; não substitui os testes de reconstrução nem é, por si só, um veredito do Agente ORION.
 
+## dashboard.investigations_summary — Resumo das investigações
+
+**O que mostra:** Em um só lugar, os PNs com SALDO negativo, os PNs encontrados nos depósitos M221/P277, os encaminhados à Qualidade e os encontrados em Q239/Q273, com falta inicial, quantidade encontrada e gap restante por unidade de medida.
+
+**Origem:** Cenário ORION vigente, investigação de Divergência de Estoque validada para o pacote atual e investigação de Qualidade correspondente. Quantidades são extraídas dos mesmos resultados usados nas respectivas tabelas; sem consulta, indicadores dependentes são mostrados como ainda não disponíveis.
+
+**Finalidade:** Dar ao analista uma visão operacional da extensão das faltas e do andamento das validações, permitindo decidir quais áreas precisam confirmar os PNs. Quantidade no depósito é apenas evidência; não representa liberação, não altera DPP nem comprova Scrap.
+
 ## dashboard.stock_divergence — Divergência de Estoque
 
-**O que mostra:** Consulta os PNs críticos do Cenário ORION nos depósitos M221 e P277 da aba ORIGINAL do STK SAP, registros e linhas de origem. Permite validar quantidade disponível, quantidade indisponível justificada e contabilização no DPP, preservando o histórico no SQLite. Resume o déficit inicial, o gap após recuperação e a falta sem justificativa por PN, inclusive PNs sem registro nesses depósitos. Após a consulta, o botão **Baixar Excel** gera um relatório do cenário ORION com abas de Resumo, PNs investigados, Registros depósitos e Histórico validações. As tabelas do Dashboard (registros por depósito e resultado por PN) têm paginação independente de 10, 25 ou 50 linhas. A exportação Excel permanece completa.
+**O que mostra:** Consulta os PNs críticos do Cenário ORION nos depósitos M221 e P277 da aba ORIGINAL do STK SAP, registros e linhas de origem. Permite validar quantidade disponível, quantidade indisponível justificada e contabilização no DPP, preservando o histórico no SQLite. Resume o déficit inicial, o gap após recuperação e a falta sem justificativa por PN, inclusive PNs sem registro nesses depósitos. Após a consulta, o botão **Baixar Excel** gera um relatório de três abas: Resumo (indicadores de Estoque e Qualidade), PNs e divergências (saldo, depósitos e gap por PN) e Confirmar com área (registros M221/P277, ações e validações com histórico na mesma linha). As tabelas do Dashboard (registros por depósito e resultado por PN) têm paginação independente de 10, 25 ou 50 linhas. A exportação Excel permanece completa.
 
 **Origem:** STK SAP do pacote compartilhado, cenário calculado pelo motor Python e histórico de revisões local em SQLite. A consulta é persistida no IndexedDB até mudança do pacote ou do cenário, e o cálculo oficial do DPP segue exclusivamente a fonte consolidada. O Excel é reconstruído pela API no momento do download, sem usar o DPP Final como fonte de investigação. O arquivo expõe cobertura potencial teórica limitada ao déficit por PN, quantidade bruta, parcela aplicada ao déficit e encaminhamentos provisórios; totais de UM diferentes não são somados.
 
@@ -81,7 +89,7 @@
 
 ## dashboard.quality_investigation — Análise de Qualidade
 
-**O que mostra:** PNs encaminhados pela Divergência de Estoque com falta ainda não explicada, com registros dos depósitos Q239 (material em análise no CQ) e, quando Q239 não tiver saldo, Q273 (material com indicação de refugo). Exibe linhas do STK SAP, decisões humanas, justificativas, quantidade explicada e a próxima etapa de cada material. Após a consulta, o botão **Baixar Excel** gera relatório com Resumo, PNs investigados, Registros depósitos, Q273 não investigado (quando Q239 tem prioridade) e Histórico validações. As tabelas do Dashboard (registros por depósito e consolidação por PN) têm paginação independente de 10, 25 ou 50 linhas. A exportação Excel permanece completa.
+**O que mostra:** PNs encaminhados pela Divergência de Estoque com falta ainda não explicada, com registros dos depósitos Q239 (material em análise no CQ) e, quando Q239 não tiver saldo, Q273 (material com indicação de refugo). Exibe linhas do STK SAP, decisões humanas, justificativas, quantidade explicada e a próxima etapa de cada material. Após a consulta, o botão **Baixar Excel** gera um relatório de três abas: Resumo, PNs e divergências e Confirmar com área (Q239/Q273, confirmações, justificativas e histórico). Os Q273 informativos aparecem na mesma lista com rótulo explícito de não aplicável à atribuição do déficit. As tabelas do Dashboard (registros por depósito e consolidação por PN) têm paginação independente de 10, 25 ou 50 linhas. A exportação Excel permanece completa.
 
 **Origem:** Aba ORIGINAL do mesmo STK SAP usado no cenário, decisões atuais da Divergência de Estoque recalculadas no backend e histórico local das confirmações de Qualidade em SQLite. O resultado da investigação fica no workspace/IndexedDB do navegador. O Excel é reconstruído pela API ao clicar em Baixar Excel, sem usar o DPP Final como fonte de cálculo. Traz cobertura potencial teórica, confirmação bruta e parcela atribuída à falta restante, com indicador provisório. A coluna "Controle qualidade" do relatório não substitui o código do depósito, nem indica liberação física.
 

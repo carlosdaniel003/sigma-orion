@@ -69,7 +69,7 @@ Consultas factuais simples podem responder diretamente por SQL/Python para reduz
 
 ## Relatórios Excel das investigações
 
-Após as consultas de **Divergência de Estoque** e **Análise de Qualidade** no Dashboard, os botões contextuais **Baixar Excel** exportam o estado atual dos PNs críticos, depósitos, valores, validações e encaminhamentos. São relatórios derivados do cenário ORION em construção e do STK SAP do mesmo pacote, não do DPP Final já consolidado. Os downloads são apenas leitura e não fazem lançamentos no SAP nem alteram o DPP.
+Após as consultas de **Divergência de Estoque** e **Análise de Qualidade** no Dashboard, os botões contextuais **Baixar Excel** geram relatórios de três abas: **Resumo**, **PNs e divergências** e **Confirmar com área**. O Dashboard também apresenta um resumo conjunto das investigações. Os relatórios incluem PNs críticos, achados por depósito, gaps recalculados, responsáveis pela confirmação e histórico de revisões no mesmo conjunto de planilhas. São relatórios derivados do cenário ORION em construção e do STK SAP do mesmo pacote, não do DPP Final já consolidado. Os downloads são apenas leitura e não fazem lançamentos no SAP nem alteram o DPP.
 
 ## Fluxo mensal atual
 

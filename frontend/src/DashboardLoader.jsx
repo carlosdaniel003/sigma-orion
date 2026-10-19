@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
 import Dashboard from './Dashboard'
 import StockDivergenceInvestigation from './StockDivergenceInvestigation'
+import InvestigationOverview from './InvestigationOverview'
 import QualityInvestigation from './QualityInvestigation'
 import ModuleInfoHint from './ModuleInfoHint'
 import OrionWorking from './OrionWorking'
@@ -580,6 +581,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
             onNavigate={onNavigate}
             finalDppAnalysis={finalDppAnalysis}
           />
+          <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
           <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
           <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
         </>

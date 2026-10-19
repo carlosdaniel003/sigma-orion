@@ -170,7 +170,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
           <div className="orion-stock-investigation-summary" aria-live="polite">
             <span>PNs críticos: <strong>{result.summary.critical_materials}</strong></span>
             <span>PNs com registros: <strong>{result.summary.materials_with_candidates}</strong></span>
-            <span>Depósitos validados: <strong>{result.summary.candidates_reviewed}</strong></span>
+            <span>Registros validados: <strong>{result.summary.candidates_reviewed}</strong></span>
             <span>Itens finalizados: <strong>{result.summary.items_finished ?? 0}</strong></span>
             <span>Encaminhar à Qualidade: <strong>{result.summary.items_to_quality ?? 0}</strong></span>
             <span>Encaminhamentos provisórios: <strong>{result.summary.provisional_handoffs ?? 0}</strong></span>
@@ -178,6 +178,8 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <span>Sem registros para esses PNs: <strong>{result.summary.materials_without_candidates}</strong></span>
             <span>Depósitos sem registros no arquivo: <strong>{result.summary.depots_without_records.join(', ') || 'nenhum'}</strong></span>
           </div>
+          <h4 className="orion-investigation-section-title">Confirmar com área</h4>
+          <p className="orion-investigation-section-description">PNs encontrados em M221/P277. O analista deve confirmar cada quantidade com PCM e Almoxarifado antes de considerá-la disponível ou justificada.</p>
           {rows.length ? (
             <div className="orion-stock-investigation-scroll">
               <table>
@@ -236,7 +238,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
           )}
           {result.workflow && (
             <div className="orion-stock-projection">
-              <h4>Resultado da investigação de estoque</h4>
+              <h4>PNs e divergências</h4>
               <p>A quantidade encontrada é evidência, não estoque liberado. A cobertura potencial limita-se ao déficit de cada PN; apenas a quantidade validada e atribuída reduz o gap. Encaminhamentos podem ser provisórios quando restam validações.</p>
               <div className="orion-stock-investigation-scroll">
                 <table>

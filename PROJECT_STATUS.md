@@ -657,3 +657,13 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O cache local da investigação recebeu uma nova versão para evitar reutilização de relatórios produzidos com a regra anterior. A etapa 4.2 parte somente do encaminhamento atual recalculado pelo backend, portanto é atualizada a partir do novo relatório.
 - Depósitos fora da configuração são ignorados no cruzamento e não acrescentam quantidade, nem justificativa, nem encaminhamentos. O arquivo STK de origem e o histórico imutável de validações não são apagados.
 - Nenhum impacto nas fórmulas de NEC, SALDO, STK TTL ou REAL, nem movimentação SAP.
+
+### Resumo único das investigações e Excel simplificado (2026-10-19)
+
+- O Dashboard ganhou um resumo operacional conjunto de Divergência de Estoque e Qualidade, com contagem de PNs críticos, PNs encontrados, encaminhamentos, validações pendentes e totais quantitativos separados por UM. Dados não consultados aparecem como indisponíveis, não como zero.
+- As duas seções usam os títulos **PNs e divergências** e **Confirmar com área**, idênticos às abas dos dois relatórios Excel.
+- Cada exportação possui **três abas somente**: **Resumo**, **PNs e divergências** e **Confirmar com área**. A aba Resumo oferece indicadores espelhados do Dashboard e visão integrada de Estoque e CQ por unidade de medida, inclusive fontes e notas de leitura.
+- PNs e divergências consolida déficits, quantidades reais encontradas por depósito, cobertura potencial, validação aplicada ao gap, saldo remanescente e ação. Todos os PNs do escopo são apresentados, inclusive ausentes dos depósitos pertinentes.
+- Confirmar com área contém lista operacional de achados individuais no STK ORIGINAL para o analista solicitar confirmação a PCM/Almoxarifado ou Qualidade/CQ; identifica material, centro, depósito, quantidade, linha, decisão, justificativa e histórico de revisões na mesma aba.
+- Q273 com Q239 prioritário continua informativo e não entra em somas de CQ. Não se supõe Scrap confirmado na ausência de registro; SALDO/REAL/NEC e DPP final permanecem intactos.
+- As duas exportações são reconstruídas pelo backend com os estados atuais de Estoque e Qualidade no mesmo cenário e snapshot STK; o botão de download exporta toda a população independentemente da página visível.

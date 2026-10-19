@@ -26,6 +26,7 @@ REQUIRED_MODULE_KEYS = {
     "dashboard.planning",
     "dashboard.quality",
     "dashboard.quality_investigation",
+    "dashboard.investigations_summary",
     "dashboard.guide",
     "dashboard.final_model_plan",
     "dashboard.column_comparison",
