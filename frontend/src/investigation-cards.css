@@ -125,3 +125,37 @@
   .orion-investigation-pn-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .orion-investigation-queue-list > li { align-items:flex-start; flex-wrap:wrap; }
 }
+
+.orion-investigation-ui .orion-investigation-local-summary {
+  margin-block:var(--space-4,16px);
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
+  border-top:1px solid var(--orion-border);
+  border-bottom:1px solid var(--orion-border);
+}
+.orion-investigation-local-summary > div {
+  min-width:0; display:flex; flex-direction:column; gap:8px;
+  padding:14px; border-right:1px solid var(--orion-border);
+}
+.orion-investigation-local-summary > div:last-child { border-right:0; }
+.orion-investigation-local-summary span { font-size:12px; color:var(--orion-text-secondary); }
+.orion-investigation-local-summary strong { font-size:21px; font-variant-numeric:tabular-nums; line-height:1.15; }
+.orion-investigation-ui .orion-investigation-card-section { scroll-margin-top:85px; }
+.orion-investigation-queue { scroll-margin-top:85px; }
+.orion-investigation-ui .orion-investigation-queue-list,
+.orion-investigation-ui .orion-investigation-pn-card { border-radius:0; box-shadow:none; }
+.orion-investigation-ui .orion-investigation-pn-card[open] { background:var(--orion-surface); }
+.orion-investigation-ui .orion-investigation-pn-card > summary:focus-visible,
+.orion-investigation-ui button:focus-visible { outline:2px solid var(--orion-blue); outline-offset:2px; }
+.orion-investigation-ui .orion-stock-review-anchor { scroll-margin-top:90px; }
+@media (max-width:1150px) {
+  .orion-investigation-ui .orion-investigation-local-summary { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .orion-investigation-local-summary > div:nth-child(3) { border-right:0; }
+  .orion-investigation-local-summary > div:nth-child(-n+3) { border-bottom:1px solid var(--orion-border); }
+}
+@media (max-width:700px) {
+  .orion-investigation-ui .orion-investigation-local-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .orion-investigation-local-summary > div:nth-child(3) { border-right:1px solid var(--orion-border); }
+  .orion-investigation-local-summary > div:nth-child(2n) { border-right:0; }
+  .orion-investigation-local-summary > div:nth-child(-n+4) { border-bottom:1px solid var(--orion-border); }
+  .orion-investigation-local-summary strong { font-size:19px; }
+}
