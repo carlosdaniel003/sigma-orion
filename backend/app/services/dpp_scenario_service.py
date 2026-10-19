@@ -35,10 +35,17 @@ def _persist_latest_scenario() -> bool:
 
     scenario_id = next(reversed(_SCENARIOS))
     payload = {
-        "version": 1,
+        "version": 2,
         "scenario_id": scenario_id,
         "scenario": _SCENARIOS[scenario_id],
     }
+    # Keep the exact pre-approval source scenario recoverable across restarts,
+    # instead of retaining only an ID inside the approval metadata.
+    original_id = (_SCENARIOS[scenario_id].get("gap_approval") or {}).get("original_scenario_id")
+    if original_id and original_id in _SCENARIOS:
+        payload["original_scenario"] = {
+            "scenario_id": original_id, "scenario": _SCENARIOS[original_id],
+        }
     temporary = SCENARIO_STATE_PATH.with_suffix(".tmp")
     try:
         temporary.write_text(
@@ -65,6 +72,12 @@ def restore_persisted_monthly_scenario() -> bool:
         scenario = payload.get("scenario")
         if not isinstance(scenario_id, str) or not scenario_id or not isinstance(scenario, dict):
             return False
+        original = payload.get("original_scenario")
+        if isinstance(original, dict):
+            original_id = original.get("scenario_id")
+            original_scenario = original.get("scenario")
+            if isinstance(original_id, str) and original_id and isinstance(original_scenario, dict):
+                _SCENARIOS[original_id] = original_scenario
         _SCENARIOS[scenario_id] = scenario
         _SCENARIOS.move_to_end(scenario_id)
         while len(_SCENARIOS) > MAX_SCENARIOS:
