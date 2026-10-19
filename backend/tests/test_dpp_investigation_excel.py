@@ -224,3 +224,45 @@ def test_export_escapes_untrusted_formula_like_justification(monkeypatch):
         assert row[12].data_type != "f"
         assert row[12].value.startswith("'=")
         book.close()
+
+
+
+def test_generated_excel_and_visible_next_steps_have_no_stage_numbering(monkeypatch):
+    """Output labels must be operational, not internal codes or drawing references."""
+    import re
+
+    current = scenario()
+    stock = stock_bytes(rows())
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+
+    forbidden = re.compile(r"fluxograma|\b4\.[123]\b|QUALITY_4_2|SCRAP_4_3", re.IGNORECASE)
+    with TestClient(app) as client:
+        for route in (
+            "/api/dpp/investigations/stock-divergence/export",
+            "/api/dpp/investigations/quality/export",
+        ):
+            book = spreadsheet(upload(client, route, current, stock))
+            try:
+                for sheet in book.worksheets:
+                    for line in sheet.iter_rows(values_only=True):
+                        for value in line:
+                            if isinstance(value, str):
+                                assert not forbidden.search(value), (
+                                    f"{sheet.title}: unexpected technical process reference: {value!r}"
+                                )
+            finally:
+                book.close()
+
+        stock_report = upload(
+            client, "/api/dpp/investigations/stock-divergence", current, stock,
+        ).json()
+        quality_report = upload(
+            client, "/api/dpp/investigations/quality", current, stock,
+        ).json()
+        for item in stock_report["workflow"]["forward_to_quality"]:
+            assert not forbidden.search(item["next_step"])
+        for item in quality_report["materials"]:
+            assert not forbidden.search(item["next_step"])
+        assert stock_report["summary"]["items_to_quality"] >= 1
+        assert quality_report["summary"]["items_to_scrap"] >= 1
