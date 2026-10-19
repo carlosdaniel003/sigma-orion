@@ -154,10 +154,10 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
 
   return (
     <>
-      <header className="page-header dashboard-header orion-visual-dashboard-header">
+      <header className="page-header dashboard-header">
         <div>
           <span className="eyebrow">VISÃO OPERACIONAL</span>
-          <div className="module-heading-with-info">
+          <div className="module-heading-with-info dashboard-primary-heading">
             <h2>Cenário inicial do DPP</h2>
             <ModuleInfoHint moduleKey="dashboard.overview" />
           </div>

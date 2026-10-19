@@ -697,3 +697,11 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - As duas barras agregadas de PNs encontrados na visão geral foram mantidas por conterem informação medida, explicitamente não validada; preservados os textos e valores absolutos.
 - Mantidos tema claro/escuro e comportamento responsivo. Não houve mudanças no backend, lógica determinística, dados do DPP, decisões ou exportações Excel.
 - Teste estático adicional verifica que não reaparecem tiles decorativos de ícones nem trilha ilustrativa redundante no Dashboard.
+
+### Remoção definitiva do tile decorativo do cabeçalho do DPP (2026-10-19)
+
+- O cabeçalho principal usa a estrutura explícita `dashboard-primary-heading`: texto simples `Cenário inicial do DPP` seguido apenas de `ModuleInfoHint` (controle `i`).
+- Removida a classe `orion-visual-dashboard-header` herdada da experiência de ícones com caixa e suas regras CSS. O código atual já não incluía o SVG decorativo no JSX; a limpeza elimina a identidade visual antiga do cabeçalho e acrescenta um teste direto sobre a sua composição.
+- O controle contextual `i` mantém fundo transparente e borda neutra no CSS existente. Nenhum ícone de marca/depósito foi adicionado ao título.
+- Alteração apenas de marcação, CSS, documentação e teste do frontend; não modifica dados, cálculos, endpoints, decisões ou Excel.
+- Para visualizar a alteração, o navegador deve carregar o build/branch atualizados; uma cópia local anterior continuará exibindo a versão antiga mesmo após o commit no GitHub.

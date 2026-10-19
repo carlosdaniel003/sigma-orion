@@ -34,3 +34,19 @@ test('the workbooks are unaffected by the presentation-only design update', () =
   assert.doesNotMatch(source('dashboard-visual-rhythm.css'), /(?:workbook|worksheet|spreadsheet|xlsx)/i)
   assert.match(source('InvestigationOverview.jsx'), /aria-label="Registros encontrados"/)
 })
+
+
+test('the initial DPP headline is plain text followed by the functional info hint', () => {
+  const dashboard = source('Dashboard.jsx')
+  const heading = dashboard.match(
+    /<div className="module-heading-with-info dashboard-primary-heading">([\s\S]*?)<\/div>/,
+  )
+  assert.ok(heading, 'dashboard uses the specific plain heading structure')
+  assert.match(heading[1], /^\s*<h2>Cenário inicial do DPP<\/h2>\s*<ModuleInfoHint moduleKey="dashboard\.overview" \/>\s*$/)
+  assert.doesNotMatch(heading[1], /<svg|OrionVisualIcon|visual-icon|<span/)
+  assert.doesNotMatch(source('dashboard-visual-rhythm.css'), /orion-visual-dashboard-header/)
+  const info = source('info-hint.css')
+  assert.match(info, /\.info-hint-trigger\s*\{/)
+  assert.match(info, /background:\s*transparent/)
+  assert.match(info, /border:\s*1px solid var\(--orion-border\)/)
+})

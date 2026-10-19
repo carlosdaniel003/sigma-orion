@@ -2,13 +2,20 @@
  * Dashboard DPP — leitura industrial, sem icon tiles nem "card em card".
  * Somente apresentação web. Fonte de verdade: DESIGN_SYSTEM.md.
  */
-.dpp-dashboard-view .orion-visual-dashboard-header {
+.dpp-dashboard-view .dashboard-header {
   margin-bottom: var(--space-5);
 }
-.dpp-dashboard-view .orion-visual-dashboard-header h2 {
+.dpp-dashboard-view .dashboard-primary-heading {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.dpp-dashboard-view .dashboard-primary-heading h2 {
+  margin: 0;
   font-size: clamp(20px, 2vw, 26px);
 }
-.dpp-dashboard-view .orion-visual-dashboard-header > div > p {
+.dpp-dashboard-view .dashboard-header > div > p {
   max-width: 740px;
   line-height: 1.55;
 }
