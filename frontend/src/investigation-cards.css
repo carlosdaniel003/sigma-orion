@@ -159,3 +159,17 @@
   .orion-investigation-local-summary > div:nth-child(-n+4) { border-bottom:1px solid var(--orion-border); }
   .orion-investigation-local-summary strong { font-size:19px; }
 }
+
+/* A área útil do notebook pode ser menor que o viewport por causa da barra lateral. */
+.orion-investigation-ui { container-type:inline-size; }
+@container (max-width:1050px) {
+  .orion-investigation-found-grid { grid-template-columns:minmax(0,1fr); }
+}
+@container (max-width:780px) {
+  .orion-investigation-ui .orion-investigation-local-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@container (max-width:440px) {
+  .orion-investigation-gap-sequence { grid-template-columns:minmax(0,1fr); }
+  .orion-investigation-pn-facts,
+  .orion-investigation-detail-facts { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+}

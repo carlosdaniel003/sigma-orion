@@ -56,3 +56,10 @@
   .dashboard-plan-metrics > div { padding:10px 12px; }
   .dashboard-complementary-content { padding:12px; }
 }
+
+.dashboard-plan-overview { container-type:inline-size; }
+@container (max-width:960px) {
+  .dashboard-plan-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dashboard-plan-metrics > div:nth-child(2n) { border-right:0; }
+  .dashboard-plan-metrics > div:nth-child(-n+2) { border-bottom:1px solid var(--orion-border); }
+}
