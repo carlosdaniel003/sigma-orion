@@ -66,8 +66,8 @@ def test_only_critical_materials_and_investigation_depots_are_considered():
     assert result["requires_human_validation"] is True
     assert result["summary"]["critical_materials"] == 1
     assert result["summary"]["materials_with_candidates"] == 1
-    assert result["summary"]["records_by_depot"] == {"M221": 4, "P277": 1, "G702": 0}
-    assert result["summary"]["depots_without_records"] == ["G702"]
+    assert result["summary"]["records_by_depot"] == {"M221": 4, "P277": 1}
+    assert result["summary"]["depots_without_records"] == []
     assert result["summary"]["ignored_records"] == {"unidade_divergente": 1}
     item = result["materials"][0]
     assert item["material"] == "MAT-NEG"
@@ -110,7 +110,7 @@ def test_identical_filename_but_different_snapshot_is_rejected():
     )
     assert valid["summary"]["materials_with_candidates"] == 1
 
-    changed_bytes = stock_bytes(example_rows() + [["MAT-NEG", "Material crítico", 9, "G702", 0, 0, "UN", "1063"]])
+    changed_bytes = stock_bytes(example_rows() + [["MAT-NEG", "Material crítico", 9, "X999", 0, 0, "UN", "1063"]])
     with pytest.raises(ValueError, match="conteúdo do STK difere"):
         investigate_stock_divergence(
             stock_content=changed_bytes,
@@ -512,3 +512,23 @@ def test_41_unavailable_amount_requires_explanation_and_cannot_exceed_depot(monk
         assert line["justified_unavailable_quantity"] == 2
         assert line["projected_gap_remaining"] == 10
         assert line["unexplained_quantity"] == 8
+
+
+def test_unconfigured_depots_do_not_enter_stock_investigation_or_quality_referrals():
+    """Depósitos não autorizados não podem modificar a etapa 4.1."""
+    source = example_rows()
+    extended = source + [
+        ["MAT-NEG", "Material crítico", 900, "X999", 0, 0, "UN", "1063"],
+        ["MAT-NEG", "Material crítico", 900, "P000", 0, 0, "UN", "1063"],
+    ]
+    current = scenario()
+    base = investigate_stock_divergence(
+        stock_content=stock_bytes(source), stock_filename="STK JULHO.xlsx", scenario=current,
+    )
+    ignored = investigate_stock_divergence(
+        stock_content=stock_bytes(extended), stock_filename="STK JULHO.xlsx", scenario=current,
+    )
+    assert ignored == base
+    assert set(ignored["summary"]["records_by_depot"]) == {"M221", "P277"}
+    assert {item["depot"] for item in ignored["materials"][0]["candidates"]} == {"M221", "P277"}
+    assert ignored["materials"][0]["candidate_quantity"] == 9

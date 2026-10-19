@@ -560,7 +560,7 @@ Navegação lateral fixa e recolhível, organizada por áreas com rótulos visí
 
 Primeira entrega somente investigativa, correspondente ao fluxo da reunião:
 - consulta sob demanda da aba ORIGINAL do mesmo arquivo STK SAP do cenário;
-- cruza materiais classificados como INVESTIGAR com M221, P277 e G702;
+- cruza materiais classificados como INVESTIGAR com M221 e P277;
 - agrupa quantidades da coluna Utilização livre por PN, depósito, centro e unidade e apresenta linhas de origem;
 - não soma registros com unidade divergente, quantidade inválida ou não positiva;
 - informa depósitos sem registros (ausência no arquivo não prova estoque igual a zero);
@@ -603,7 +603,7 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Para material AVAILABLE + NOT_INCLUDED, o campo confirmed_quantity é a quantidade adicional efetivamente recuperada na projeção.
 - Para UNAVAILABLE, o mesmo campo armazenado representa a quantidade indisponível especificamente justificada; justificativa textual é obrigatória apenas quando essa quantidade é positiva. Zero permanece válido como registro sem quantidade explicada. A estrutura do banco já existente não precisa de migração.
 - `gap_após_recuperação = max(0, déficit_original - disponível_adicional)`; `falta_sem_justificativa = max(0, gap_após_recuperação - indisponível_justificada)`. A justificativa não é somada como estoque. Unidade permanece a do PN.
-- Sem falta não explicada: `FINISHED`. Restando falta após alguma validação: `QUALITY_4_2`, sinalização lógica, reavaliável após cada revisão humana. Havendo registros sem qualquer validação: `AWAITING_VALIDATION`. Sem registros M221/P277/G702: encaminhamento direto para 4.2.
+- Sem falta não explicada: `FINISHED`. Restando falta após alguma validação: `QUALITY_4_2`, sinalização lógica, reavaliável após cada revisão humana. Havendo registros sem qualquer validação: `AWAITING_VALIDATION`. Sem registros M221/P277: encaminhamento direto para 4.2.
 - A lista de encaminhamento abrange também PNs sem registros em depósito. A interface apresenta o valor de cada componente e não executa a etapa de Qualidade.
 - A identidade dos dados persistidos na interface recebe versão da regra para recalcular consultas antigas do navegador; SALDO oficial permanece intacto.
 
@@ -623,7 +623,7 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 
 - Após consultar **Divergência de Estoque** ou **Análise de Qualidade**, cada seção apresenta o botão contextual **Baixar Excel**.
 - O arquivo é regenerado pelo backend a cada download a partir do cenário ORION identificado pelo `scenario_id`, do **mesmo STK SAP** validado por nome e fingerprint SHA-256 e do histórico SQLite mais recente. O navegador não envia nem determina as quantidades calculadas.
-- Estoque: abas **Resumo**, **PNs investigados**, **Registros depósitos** e **Histórico validações**. Todos os PNs críticos aparecem, inclusive os não localizados em M221/P277/G702. Depósitos, centros, unidades, origem (aba ORIGINAL, linhas), justificativas, decisões, gap físico projetado, falta sem explicação e encaminhamentos são preservados.
+- Estoque: abas **Resumo**, **PNs investigados**, **Registros depósitos** e **Histórico validações**. Todos os PNs críticos aparecem, inclusive os não localizados em M221/P277. Depósitos, centros, unidades, origem (aba ORIGINAL, linhas), justificativas, decisões, gap físico projetado, falta sem explicação e encaminhamentos são preservados.
 - Qualidade: abas **Resumo**, **PNs investigados**, **Registros depósitos**, **Q273 não investigado** e **Histórico validações**. Esta última aba informativa de Q273 documenta registros não utilizados quando há Q239 para o mesmo PN; não modifica a prioridade nem soma esses valores à recuperação de estoque.
 - As abas possuem títulos, resumo de fontes e cenário, cabeçalhos legíveis, larguras limitadas, filtros, cabeçalhos congelados, números formatados e cores para os estados. Textos livres e descrições são escapados contra fórmulas no Excel.
 - A construção do cenário **2026-07** continua usando DPP **2026-06** como base e as demais fontes de julho (STK SAP, Explosão, WIU, PGD de geração, OPEN opcional). DPP Final de julho só serve como referência de comparação e validação, não para alterar o cenário nem os relatórios das investigações.
@@ -635,7 +635,7 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Auditoria dos Excel exportados identificou necessidade de distinguir saldos de depósitos (evidências), declarações de validação, e quantidade de fato atribuível à falta por PN.
 - Agora a alocação de quantidade por PN é limitada: na etapa 4.1, confirmações disponíveis fora do DPP são atribuídas primeiro; justificativas de indisponibilidade só podem explicar a falta restante. Na etapa 4.2, liberações são limitadas à falta ainda não explicada da etapa anterior, seguidas de reprovação ou refugo justificado.
 - Cada relatório e o Dashboard preservam **quantidade confirmada bruta** e mostram separadamente **quantidade aplicada ao gap**. Excedentes de quantidade confirmada não contam como nova recuperação ou justificativa do déficit. Causas e unidades não são somadas entre PNs diferentes.
-- A cobertura potencial teórica por PN é limitada à falta individual e explicitamente identificada como **não validada**. O resumo do Excel agrega indicadores somente por unidade de medida e inclui PNs sem registro em M221/P277/G702 no denominador de falta.
+- A cobertura potencial teórica por PN é limitada à falta individual e explicitamente identificada como **não validada**. O resumo do Excel agrega indicadores somente por unidade de medida e inclui PNs sem registro em M221/P277 no denominador de falta.
 - Quando ainda há validações pendentes em qualquer depósito da etapa 4.1 ou da Qualidade, o encaminhamento/conclusão é rotulado **provisório**; etapas posteriores não são executadas automaticamente pelo simples status.
 - O relatório Excel identifica o saldo como **SALDO Cenário ORION**, jamais o DPP Final já preenchido. Nas abas detalhadas mantém-se a fonte exata de cada quantidade (STK ORIGINAL), os IDs e histórico das revisões.
 - Para impressão, planilhas largas não são mais comprimidas em uma única página A3: a configuração distribui o número de colunas em até duas ou três larguras, preservando legibilidade.
@@ -649,3 +649,11 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Trocar pacote ou cenário reinicia a paginação; a revisão de um candidato não apaga a página corrente. Navegar entre páginas de registros fecha o formulário de validação aberto para não manter um formulário de um registro fora da página visível.
 - Indicadores gerais, decisões salvas e download Excel continuam referentes a **todos** os PNs e depósitos da investigação. Nenhum dado é removido, filtrado do backend ou alterado no DPP.
 - Testes de paginação executam no frontend CI com Node antes do build Vite.
+
+### Correção dos depósitos de investigação de estoque (2026-10-19)
+
+- A etapa 4.1 considera exclusivamente os depósitos **M221** e **P277**, conforme correção operacional do usuário. Não inferir depósitos adicionais a partir do fluxograma anteriormente importado.
+- Textos de interface, referência de conhecimento, resumo da API, relatório Excel e testes foram alinhados à mesma lista de dois depósitos.
+- O cache local da investigação recebeu uma nova versão para evitar reutilização de relatórios produzidos com a regra anterior. A etapa 4.2 parte somente do encaminhamento atual recalculado pelo backend, portanto é atualizada a partir do novo relatório.
+- Depósitos fora da configuração são ignorados no cruzamento e não acrescentam quantidade, nem justificativa, nem encaminhamentos. O arquivo STK de origem e o histórico imutável de validações não são apagados.
+- Nenhum impacto nas fórmulas de NEC, SALDO, STK TTL ou REAL, nem movimentação SAP.

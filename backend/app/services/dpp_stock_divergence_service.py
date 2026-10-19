@@ -15,7 +15,7 @@ from openpyxl import load_workbook
 from app.services.dpp_consolidation_service import _material_key, _normalize, _number
 
 SOURCE_SHEET = "ORIGINAL"
-TARGET_DEPOTS = ("M221", "P277", "G702")
+TARGET_DEPOTS = ("M221", "P277")
 REQUIRED_COLUMNS = {
     "material": "Material",
     "depot": "Depósito",

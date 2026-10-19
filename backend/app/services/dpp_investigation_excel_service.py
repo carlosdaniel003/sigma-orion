@@ -152,7 +152,7 @@ def _rows(sheet, headings, widths, rows, *, title, subtitle, note=None, status_c
 def _summary(workbook, *, report, scenario, kind):
     summary = report.get("summary") or {}
     quality = kind == "quality"
-    caption = "ANÁLISE DE QUALIDADE · Q239 / Q273" if quality else "DIVERGÊNCIA DE ESTOQUE · M221 / P277 / G702"
+    caption = "ANÁLISE DE QUALIDADE · Q239 / Q273" if quality else "DIVERGÊNCIA DE ESTOQUE · M221 / P277"
     sheet = workbook.create_sheet("Resumo")
     current = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
     information = [
@@ -182,7 +182,7 @@ def _summary(workbook, *, report, scenario, kind):
         ("Aguardando validação do CQ", "items_awaiting_quality"),
     ] if quality else [
         ("PNs críticos no cenário", "critical_materials"),
-        ("PNs com registros M221/P277/G702", "materials_with_candidates"),
+        ("PNs com registros M221/P277", "materials_with_candidates"),
         ("PNs sem registros nesses depósitos", "materials_without_candidates"),
         ("Registros validados", "candidates_reviewed"),
         ("Itens finalizados", "items_finished"),
@@ -398,7 +398,7 @@ def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tu
              "Indisponível confirmada (bruto)", "Confirmado não atribuído", "Provisório?"],
             [25, 42, 9, 23, 16, 24, 26, 22, 25, 20, 24, 58, 27, 28, 31, 28, 15],
             _stock_materials(report), title="DIVERGÊNCIA DE ESTOQUE · PNs",
-            subtitle="Todos os PNs críticos, inclusive sem registros M221/P277/G702. Valores não alteram o DPP.",
+            subtitle="Todos os PNs críticos, inclusive sem registros M221/P277. Valores não alteram o DPP.",
             status_column=11)
         entries, history = _stock_candidates(report)
         _rows(book.create_sheet("Registros depósitos"),
@@ -409,7 +409,7 @@ def export_investigation_excel(kind: str, *, report: dict, scenario: dict) -> tu
             [25, 42, 13, 12, 9, 20, 30, 25, 17, 21, 23, 26, 54, 25, 24, 50],
             entries, title="DIVERGÊNCIA DE ESTOQUE · REGISTROS",
             subtitle="Registros por depósito, quantidade bruta e validação humana. Não somar quantidades automaticamente.",
-            note="Registros M221/P277/G702 vêm da aba ORIGINAL. Disponível adicional depende de confirmação de não contabilização.",
+            note="Registros M221/P277 vêm da aba ORIGINAL. Disponível adicional depende de confirmação de não contabilização.",
             status_column=15)
     else:
         _rows(book.create_sheet("PNs investigados"),

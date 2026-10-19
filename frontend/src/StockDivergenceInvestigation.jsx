@@ -33,7 +33,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
   )
   const reportKey = useMemo(
     () => packageKey && scenario?.scenario_id
-      ? `${packageKey}|${scenarioValidationIdentity(scenario)}|stock-routing-v3`
+      ? `${packageKey}|${scenarioValidationIdentity(scenario)}|stock-routing-v4`
       : '',
     [packageKey, scenario],
   )
@@ -147,7 +147,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <h3>Divergência de Estoque</h3>
             <ModuleInfoHint moduleKey="dashboard.stock_divergence" />
           </div>
-          <p>Conferir PNs críticos nos depósitos M221, P277 e G702 da aba ORIGINAL do STK SAP.</p>
+          <p>Conferir PNs críticos nos depósitos M221 e P277 da aba ORIGINAL do STK SAP.</p>
           <small>Consulta para validação do PCM com Almoxarifado. Não altera estoque, REAL ou SALDO.</small>
         </div>
         <div className="orion-investigation-actions">
