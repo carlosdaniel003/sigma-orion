@@ -285,9 +285,15 @@ def create_approved_gap_scenario(scenario_id: str, *, additions: dict[str, dict]
     next_state["gap_approval"]["original_scenario_id"] = scenario_id
     next_state["gap_approval"]["applied_scenario_id"] = new_id
     original["gap_applied_as"] = new_id
+    # Keep parent and approved child together even if the scenario LRU is full.
+    _SCENARIOS.move_to_end(scenario_id)
     _SCENARIOS[new_id] = next_state
     _SCENARIOS.move_to_end(new_id)
+    # Do not report success if the audit versions could not be persisted.
+    if not _persist_latest_scenario():
+        _SCENARIOS.pop(new_id, None)
+        original.pop("gap_applied_as", None)
+        raise ValueError("Não foi possível salvar a versão aprovada e o histórico. Nenhum ajuste foi aplicado.")
     while len(_SCENARIOS) > MAX_SCENARIOS:
         _SCENARIOS.popitem(last=False)
-    _persist_latest_scenario()
     return _payload(new_id, next_state)
