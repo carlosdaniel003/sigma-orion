@@ -164,6 +164,7 @@ def _payload(scenario_id: str, scenario: dict) -> dict:
         "mode": "monthly_dpp",
         "status": "GAP_APLICADO" if scenario.get("gap_approval") else "PRONTO_PARA_AJUSTE_REAL",
         "gap_approval": deepcopy(scenario.get("gap_approval")),
+        "gap_applied_as": scenario.get("gap_applied_as"),
         "scenario_id": scenario_id,
         "reference_month": scenario["reference_month"],
         "scope": scenario["scope"],
@@ -238,7 +239,7 @@ def create_approved_gap_scenario(scenario_id: str, *, additions: dict[str, dict]
     original = _SCENARIOS.get(scenario_id)
     if original is None:
         raise ValueError("Cenário original não encontrado ou expirado.")
-    if original.get("gap_approval"):
+    if original.get("gap_approval") or original.get("gap_applied_as"):
         raise ValueError("Este cenário já teve o gap aplicado. Não é possível reaplicar a mesma aprovação.")
     current = get_monthly_scenario(scenario_id)
     if current is None:
@@ -270,6 +271,7 @@ def create_approved_gap_scenario(scenario_id: str, *, additions: dict[str, dict]
     next_state["gap_approval"] = deepcopy(approval)
     next_state["gap_approval"]["original_scenario_id"] = scenario_id
     next_state["gap_approval"]["applied_scenario_id"] = new_id
+    original["gap_applied_as"] = new_id
     _SCENARIOS[new_id] = next_state
     _SCENARIOS.move_to_end(new_id)
     while len(_SCENARIOS) > MAX_SCENARIOS:

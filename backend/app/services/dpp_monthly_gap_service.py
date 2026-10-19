@@ -282,7 +282,7 @@ def _live_approval_context(*, scenario: dict, stock_content: bytes, stock_filena
 
 def prepare_monthly_gap_application(*, scenario: dict, stock_content: bytes,
                                     stock_filename: str) -> dict:
-    if scenario.get("gap_approval"):
+    if scenario.get("gap_approval") or scenario.get("gap_applied_as"):
         raise ValueError("Este cenário já teve sua aplicação confirmada. Use a nova versão do DPP.")
     ctx = _live_approval_context(
         scenario=scenario, stock_content=stock_content, stock_filename=stock_filename
