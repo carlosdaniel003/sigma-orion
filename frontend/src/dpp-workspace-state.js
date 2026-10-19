@@ -12,6 +12,14 @@ export function scenarioValidationIdentity(scenario) {
   return `${scenario.scenario_id || ''}:${models}`
 }
 
+// Versão única para descartar investigações salvas com regras anteriores.
+export const STOCK_INVESTIGATION_RULE_VERSION = 'stock-routing-v4'
+
+export function buildStockInvestigationReportKey(packageKey, scenario) {
+  if (!packageKey || !scenario?.scenario_id) return ''
+  return `${packageKey}|${scenarioValidationIdentity(scenario)}|${STOCK_INVESTIGATION_RULE_VERSION}`
+}
+
 export function buildFinalDppSignature({ bundle, scenario, referenceMonth }) {
   const finalFile = bundle?.expectedDpp
   if (!finalFile || !scenario) return ''

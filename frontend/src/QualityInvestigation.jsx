@@ -4,7 +4,7 @@ import QualityReviewForm from './QualityReviewForm'
 import InvestigationPagination, { useInvestigationPagination } from './InvestigationPagination'
 import { downloadInvestigationExcel } from './investigation-excel'
 import { useDppWorkspace } from './DppWorkspaceContext'
-import { fileIdentity } from './dpp-workspace-state'
+import { fileIdentity, buildStockInvestigationReportKey } from './dpp-workspace-state'
 import './stock-divergence-investigation.css'
 import './quality-investigation.css'
 
@@ -32,6 +32,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     : ''
   const stockReady = Boolean(
     packageKey && scenario?.scenario_id
+    && stockInvestigation?.reportKey === buildStockInvestigationReportKey(packageKey, scenario)
     && stockInvestigation?.packageKey === packageKey
     && stockInvestigation?.result?.scenario_id === scenario.scenario_id
     && stockInvestigation.result.workflow,

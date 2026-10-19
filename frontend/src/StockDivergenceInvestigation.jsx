@@ -4,7 +4,7 @@ import { downloadInvestigationExcel } from './investigation-excel'
 import StockDepotReviewForm from './StockDepotReviewForm'
 import InvestigationPagination, { useInvestigationPagination } from './InvestigationPagination'
 import { useDppWorkspace } from './DppWorkspaceContext'
-import { fileIdentity, scenarioValidationIdentity } from './dpp-workspace-state'
+import { fileIdentity, buildStockInvestigationReportKey } from './dpp-workspace-state'
 import './stock-divergence-investigation.css'
 
 function formatQuantity(value) {
@@ -32,9 +32,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
     [workspaceReady, stockFile, dppState.bundle.signature],
   )
   const reportKey = useMemo(
-    () => packageKey && scenario?.scenario_id
-      ? `${packageKey}|${scenarioValidationIdentity(scenario)}|stock-routing-v4`
-      : '',
+    () => buildStockInvestigationReportKey(packageKey, scenario),
     [packageKey, scenario],
   )
   const cachedForPackage = Boolean(packageKey && stockInvestigation?.packageKey === packageKey)
