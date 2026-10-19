@@ -64,28 +64,31 @@ def test_stock_excel_includes_every_critical_pn_and_auditable_depots(monkeypatch
         book = spreadsheet(upload(
             client, "/api/dpp/investigations/stock-divergence/export", current, stock,
         ))
-        assert book.sheetnames == [
-            "Resumo", "PNs investigados", "Registros depósitos", "Histórico validações",
-        ]
+        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área"]
         info = [cell[1] for cell in book["Resumo"].iter_rows(min_row=5, values_only=True)]
         assert "DPP JUN_2026.06.02.xlsx" in info
         assert "STK JULHO.xlsx" in info
         # Final DPP is a validation reference only; no file is required to export.
-        assert any("Somente comparação/validação" in str(value) for value in info)
+        assert any("Somente comparação e validação" in str(value) for value in info)
+        summary = dict((row[0], row[1]) for row in book["Resumo"].iter_rows(min_row=6, max_col=2, values_only=True) if row[0])
+        assert summary["PNs críticos (SALDO negativo)"] == 2
+        assert summary["PNs com registros em Estoque"] == 1
+        assert summary["PNs encaminhados à Qualidade"] == 1
+        assert summary["PNs em análise de Qualidade com registros"] == 0
 
-        pn_rows = list(book["PNs investigados"].iter_rows(min_row=5, values_only=True))
+        pn_rows = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
         material_codes = {row[0] for row in pn_rows if row[0]}
         assert material_codes == {"PN-CQ", "PN-V"}
         missing = next(row for row in pn_rows if row[0] == "PN-V")
-        assert missing[9] == 4
-        assert missing[10] == "Encaminhar à Qualidade"
+        assert missing[12] == 4
+        assert missing[13] == "Encaminhar à Qualidade"
 
-        details = list(book["Registros depósitos"].iter_rows(min_row=6, values_only=True))
-        assert any(row[0] == "PN-CQ" and row[2] == "M221" and row[5] == 12
-                   and "ORIGINAL: 2" in row[6] for row in details)
-        assert all(row[2] not in {"Q239", "Q273"} for row in details if row[0])
-        assert book["PNs investigados"].freeze_panes == "C5"
-        assert book["Registros depósitos"].auto_filter.ref is not None
+        details = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
+        assert any(row[1] == "PN-CQ" and row[3] == "M221" and row[6] == 12
+                   and "ORIGINAL · linhas 2" in row[7] for row in details)
+        assert all(row[3] not in {"Q239", "Q273"} for row in details if row[1])
+        assert book["PNs e divergências"].freeze_panes == "C6"
+        assert book["Confirmar com área"].auto_filter.ref is not None
         book.close()
 
 
@@ -99,16 +102,13 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         book = spreadsheet(upload(
             client, "/api/dpp/investigations/quality/export", current, stock,
         ))
-        assert book.sheetnames == [
-            "Resumo", "PNs investigados", "Registros depósitos",
-            "Q273 não investigado", "Histórico validações",
-        ]
-        items = list(book["PNs investigados"].iter_rows(min_row=6, values_only=True))
+        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área"]
+        items = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
         by_pn = {row[0]: row for row in items if row[0]}
-        # PN-CQ has pending stock review in 4.1; quality cannot precede it.
+        # PN-CQ has pending stock review; quality cannot precede it.
         assert "PN-CQ" not in by_pn
         assert "PN-V" in by_pn
-        assert by_pn["PN-V"][12] == "Encaminhar a Scrap"
+        assert by_pn["PN-V"][15] == "Encaminhar a Scrap"
         assert "DPP JUN_2026.06.02.xlsx" in [
             row[1] for row in book["Resumo"].iter_rows(min_row=5, values_only=True)
         ]
@@ -129,16 +129,16 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         assert save.status_code == 200
         reply = upload(client, "/api/dpp/investigations/quality/export", current, stock)
         book = spreadsheet(reply)
-        items = list(book["PNs investigados"].iter_rows(min_row=6, values_only=True))
+        items = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
         cq = next(row for row in items if row[0] == "PN-CQ")
-        assert cq[3] == "Q239"
-        assert cq[11] == 1  # A Q273 record is intentionally outside the active branch.
-        nonactive = list(book["Q273 não investigado"].iter_rows(min_row=6, values_only=True))
-        assert any(row[0] == "PN-CQ" and row[2] == "Q273"
-                   and row[5] == 3 and "ORIGINAL: 4" in row[6] for row in nonactive)
-        details = list(book["Registros depósitos"].iter_rows(min_row=6, values_only=True))
-        assert any(row[0] == "PN-CQ" and row[2] == "Q239"
-                   and row[5] == 7 and "ORIGINAL: 3" in row[6] for row in details)
+        assert cq[7] == "Q239"
+        assert cq[8] == 7
+        details = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
+        assert any(row[1] == "PN-CQ" and row[3] == "Q273"
+                   and row[6] == 3 and "ORIGINAL · linhas 4" in row[7]
+                   and row[0] == "Informativo · não somar" for row in details)
+        assert any(row[1] == "PN-CQ" and row[3] == "Q239"
+                   and row[6] == 7 and "ORIGINAL · linhas 3" in row[7] for row in details)
         book.close()
 
 
@@ -165,12 +165,11 @@ def test_export_preserves_latest_justification_and_history(monkeypatch):
         book = spreadsheet(upload(
             client, "/api/dpp/investigations/stock-divergence/export", current, stock,
         ))
-        details = list(book["Registros depósitos"].iter_rows(min_row=6, values_only=True))
-        current_review = next(row for row in details if row[0] == "PN-CQ")
-        assert current_review[12] == "Revisão: lote permanece indisponível."
-        history = list(book["Histórico validações"].iter_rows(min_row=5, values_only=True))
-        notes = [row[9] for row in history if row[0] == "PN-CQ"]
-        assert notes == ["Primeira validação do depósito M221.", "Revisão: lote permanece indisponível."]
+        details = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
+        current_review = next(row for row in details if row[1] == "PN-CQ")
+        assert current_review[17] == "Revisão: lote permanece indisponível."
+        assert "Primeira validação do depósito M221." in current_review[19]
+        assert "Revisão: lote permanece indisponível." in current_review[19]
         book.close()
 
 
@@ -219,10 +218,10 @@ def test_export_escapes_untrusted_formula_like_justification(monkeypatch):
         )
         assert saved.status_code == 200
         book = spreadsheet(upload(client, "/api/dpp/investigations/stock-divergence/export", current, stock))
-        values = list(book["Registros depósitos"].iter_rows(min_row=6))
-        row = next(row for row in values if row[0].value == "PN-CQ")
-        assert row[12].data_type != "f"
-        assert row[12].value.startswith("'=")
+        values = list(book["Confirmar com área"].iter_rows(min_row=6))
+        row = next(row for row in values if row[1].value == "PN-CQ")
+        assert row[17].data_type != "f"
+        assert row[17].value.startswith("'=")
         book.close()
 
 
