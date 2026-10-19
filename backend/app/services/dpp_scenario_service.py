@@ -106,11 +106,12 @@ def _calculate(materials: list[dict], models: list[dict], real_by_model: dict[st
     for source in materials:
         item = deepcopy(source)
         nec = calculate_nec(item, real_lookup)
-        stock_total = calculate_stock_total(item)
+        stock_total = calculate_stock_total(item) + max(_number(item.get("approved_gap_added_stock")), 0.0)
         balance = calculate_balance(stock_total, nec)
         price = _number(item.get("price"), 0.0)
         item["nec"] = nec
         item["stock_total"] = stock_total
+        item["approved_gap_added_stock"] = max(_number(item.get("approved_gap_added_stock")), 0.0)
         item["balance"] = balance
         item["price"] = price
         item["amount"] = price * balance
@@ -161,7 +162,8 @@ def _payload(scenario_id: str, scenario: dict) -> dict:
     summary = {**scenario["base_summary"], **scenario_summary}
     return {
         "mode": "monthly_dpp",
-        "status": "PRONTO_PARA_AJUSTE_REAL",
+        "status": "GAP_APLICADO" if scenario.get("gap_approval") else "PRONTO_PARA_AJUSTE_REAL",
+        "gap_approval": deepcopy(scenario.get("gap_approval")),
         "scenario_id": scenario_id,
         "reference_month": scenario["reference_month"],
         "scope": scenario["scope"],
@@ -210,6 +212,8 @@ def recalculate_monthly_scenario(scenario_id: str, real_by_model: dict[str, floa
     scenario = _SCENARIOS.get(scenario_id)
     if scenario is None:
         raise ValueError("Cenário não encontrado ou expirado. Gere o DPP mensal novamente.")
+    if scenario.get("gap_approval"):
+        raise ValueError("O cenário com gap aplicado é uma versão fechada. Gere nova versão para alterar o REAL.")
     known_models = {model["name"] for model in scenario["models"]}
     updated = dict(scenario["real_by_model"])
     for model_name, value in real_by_model.items():
@@ -220,3 +224,55 @@ def recalculate_monthly_scenario(scenario_id: str, real_by_model: dict[str, floa
     _SCENARIOS.move_to_end(scenario_id)
     _persist_latest_scenario()
     return _payload(scenario_id, scenario)
+
+
+def create_approved_gap_scenario(scenario_id: str, *, additions: dict[str, dict],
+                                 approval: dict) -> dict:
+    """Fork the working DPP. Never overwrite raw STK or the original scenario.
+
+    additions keyed by normalized PN. Only confirmed physical availability becomes
+    an additive stock-total component; explanatory reasons remain audit metadata.
+    """
+    from app.services.dpp_consolidation_service import _material_key
+
+    original = _SCENARIOS.get(scenario_id)
+    if original is None:
+        raise ValueError("Cenário original não encontrado ou expirado.")
+    if original.get("gap_approval"):
+        raise ValueError("Este cenário já teve o gap aplicado. Não é possível reaplicar a mesma aprovação.")
+    current = get_monthly_scenario(scenario_id)
+    if current is None:
+        raise ValueError("Cenário original não encontrado.")
+    next_state = deepcopy(original)
+    applicable = {_material_key(k): v for k, v in additions.items()}
+    changed = set()
+    for source in next_state["materials"]:
+        key = _material_key(source.get("material") or source.get("material_key"))
+        patch = applicable.get(key)
+        if patch is None:
+            continue
+        amount = _number(patch.get("recovered_stock"), 0.0) + _number(patch.get("recovered_cq"), 0.0)
+        if amount < 0 or not math.isfinite(amount):
+            raise ValueError("Quantidade a aplicar inválida.")
+        source["approved_gap_added_stock"] = amount
+        source["approved_gap_stock"] = _number(patch.get("recovered_stock"), 0.0)
+        source["approved_gap_cq"] = _number(patch.get("recovered_cq"), 0.0)
+        source["approved_gap_justified_stock"] = _number(patch.get("justified_stock"), 0.0)
+        source["approved_gap_justified_cq"] = (
+            _number(patch.get("justified_cq_rejection"), 0.0)
+            + _number(patch.get("justified_cq_scrap"), 0.0)
+        )
+        source["approved_gap_original_balance"] = _number(patch.get("original_balance"), 0.0)
+        changed.add(key)
+    if changed != set(applicable):
+        raise ValueError("Um ou mais PNs da aprovação não existem no cenário.")
+    new_id = uuid4().hex
+    next_state["gap_approval"] = deepcopy(approval)
+    next_state["gap_approval"]["original_scenario_id"] = scenario_id
+    next_state["gap_approval"]["applied_scenario_id"] = new_id
+    _SCENARIOS[new_id] = next_state
+    _SCENARIOS.move_to_end(new_id)
+    while len(_SCENARIOS) > MAX_SCENARIOS:
+        _SCENARIOS.popitem(last=False)
+    _persist_latest_scenario()
+    return _payload(new_id, next_state)
