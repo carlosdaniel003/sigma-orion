@@ -102,3 +102,14 @@ O princípio do ORION é:
 `Python calcula → RAG recupera conhecimento → LLM interpreta → humano valida e decide`
 
 A LLM não substitui o motor determinístico e não deve inventar fatos, valores ou causas ausentes.
+
+## REGRA-013 — Gap consolidado após Estoque e Qualidade
+
+O gap físico de PN crítico inicia em max(0, -SALDO original). Apenas quantidade disponível validada fora do DPP em M221/P277 e liberação validada fora do DPP em Q239/Q273 reduzem essa falta física, sempre limitada ao saldo residual do mesmo PN.
+
+- gap físico após Estoque = max(0, déficit inicial - disponibilidade adicional confirmada em Estoque).
+- gap físico após Qualidade = max(0, gap físico após Estoque - liberação adicional confirmada no CQ).
+- falta sem explicação = max(0, déficit inicial - disponibilidade adicional - indisponibilidade justificada - liberação CQ adicional - reprovação CQ justificada - refugo CQ justificado).
+- Justificativas não tornam material disponível; a investigação posterior de Scrap não participa do cálculo.
+- O cálculo considera todos os PNs do DPP, sem somar unidades diferentes. Materiais de UM fora de UN permanecem sem recuperação automática.
+- SALDO original e planilha mensal não são automaticamente substituídos pela projeção.

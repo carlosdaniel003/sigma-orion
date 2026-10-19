@@ -71,6 +71,12 @@ Consultas factuais simples podem responder diretamente por SQL/Python para reduz
 
 Após as consultas de **Divergência de Estoque** e **Análise de Qualidade** no Dashboard, os botões contextuais **Baixar Excel** geram relatórios de três abas: **Resumo**, **PNs e divergências** e **Confirmar com área**. O Dashboard também apresenta um resumo conjunto das investigações. Os relatórios incluem PNs críticos, achados por depósito, gaps recalculados, responsáveis pela confirmação e histórico de revisões no mesmo conjunto de planilhas. São relatórios derivados do cenário ORION em construção e do STK SAP do mesmo pacote, não do DPP Final já consolidado. Os downloads são apenas leitura e não fazem lançamentos no SAP nem alteram o DPP.
 
+### Gap recalculado do DPP em construção
+
+Depois de registrar as confirmações de Divergência de Estoque e Análise de Qualidade, o ORION recompõe a projeção do déficit de **todos os materiais** da base mensal. Somente disponibilidade e liberação validadas como adicionais ao DPP reduzem a falta física; justificativas explicam a falta restante sem virarem estoque. O resultado aparece no Dashboard com botão Recalcular gap e também é atualizado quando as revisões humanas mudam.
+
+Esta projeção **não substitui o SALDO original nem altera o Excel mensal exportado**. Não executa a etapa posterior de Scrap. O DPP Final anterior é usado apenas para comparar e validar, não como entrada dos cálculos.
+
 ## Fluxo mensal atual
 
 ```text

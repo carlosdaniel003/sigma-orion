@@ -705,3 +705,13 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O controle contextual `i` mantém fundo transparente e borda neutra no CSS existente. Nenhum ícone de marca/depósito foi adicionado ao título.
 - Alteração apenas de marcação, CSS, documentação e teste do frontend; não modifica dados, cálculos, endpoints, decisões ou Excel.
 - Para visualizar a alteração, o navegador deve carregar o build/branch atualizados; uma cópia local anterior continuará exibindo a versão antiga mesmo após o commit no GitHub.
+
+### Recálculo mensal do gap após Estoque e Qualidade (2026-10-19)
+
+- O serviço dpp_monthly_gap_service.py recompõe as investigações e revisões efetivas do SQLite com o mesmo cenário e STK, produzindo uma projeção para **todos os materiais** do DPP em construção.
+- A API POST /api/dpp/monthly/gap/recalculate recebe scenario_id e o STK original. O navegador não fornece quantidades a creditar. Cada recuperação confirmada fora do DPP fica limitada ao déficit residual do PN, sem misturar UM.
+- Para cada PN são apresentados SALDO original e projetado, falta inicial, recuperação confirmada em M221/P277, falta após Estoque, indisponibilidade justificada, recuperação em Q239/Q273, reprovação/refugo justificado no CQ, falta física após Qualidade e falta sem explicação. Justificativas não são convertidas em estoque.
+- A projeção cobre também materiais positivos e negativos fora do escopo UN; nesses últimos nenhuma recuperação automática é atribuída. Totais agrupados por UM.
+- O Dashboard inclui Gap recalculado do DPP após Estoque e Qualidade, com botão Recalcular gap e atualização automática após mudanças nas revisões registradas. A tela resume toda a população e detalha apenas os PNs com alteração confirmada.
+- Não executa a investigação posterior de Scrap, não altera NEC/REAL/STK TTL/SALDO oficial, nem modifica o Excel do DPP ou os relatórios de investigação. O resultado é uma projeção separada e auditável, não uma materialização silenciosa em exportação.
+- Testes cobrem limites, preservação do cenário, PNs não localizados, UMs fora do escopo e as revisões reais pelas APIs.

@@ -214,3 +214,7 @@ O ORION deve preservar esta separação:
 `Python calcula → RAG recupera conhecimento → LLM interpreta → humano valida e decide`
 
 Uma futura LLM não deve substituir o motor Python, alterar fatos calculados para fazer o resultado coincidir com o DPP Final nem afirmar uma causa que o motor não conseguiu demonstrar matematicamente.
+
+## Recálculo projetado de todo o DPP mensal
+
+O serviço dpp_monthly_gap_service.py percorre a população inteira de materiais, consulta somente as revisões efetivas das investigações de Estoque e Qualidade para os PNs críticos em UN e produz campos projetados separados dos valores determinísticos originais. Comprovação disponível fora do cenário reduz a falta física; justificativas reduzem apenas a falta ainda sem explicação. As quantidades são limitadas por déficit do PN e consolidadas por UM. Não se escreve no SALDO, NEC, STK TTL, REAL ou no Excel mensal até aprovação explícita de uma regra de materialização.
