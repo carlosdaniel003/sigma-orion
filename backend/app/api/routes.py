@@ -26,7 +26,9 @@ from app.services.agent_service import (
 from app.services.dpp_consolidation_service import consolidate_dpp_sources
 from app.services.dpp_dashboard_service import get_column_divergences, summarize_final_dpp
 from app.services.dpp_export_progress_service import get_export_download, get_export_job, start_export_job
-from app.services.dpp_export_service import export_monthly_scenario_excel
+from app.services.dpp_canonical_export_service import export_monthly_scenario_excel
+from app.services.dpp_export_formula_fidelity_service import finalize_and_audit_dpp_formulas
+from app.services.dpp_export_material_fidelity_service import finalize_and_audit_material_extent
 from app.services.dpp_monthly_service import generate_monthly_dpp
 from app.services.dpp_progress_service import get_monthly_generation_job, start_monthly_generation_job
 from app.services.dpp_scenario_service import get_latest_monthly_scenario, get_monthly_scenario, recalculate_monthly_scenario
@@ -487,6 +489,11 @@ async def export_monthly_dpp_route(
             template_content=await base_dpp.read(),
             template_filename=base_dpp.filename or "dpp.xlsx",
         )
+        scenario = get_monthly_scenario(scenario_id)
+        if scenario is None:
+            raise ValueError("Cenário não encontrado durante a auditoria do Excel.")
+        content = finalize_and_audit_dpp_formulas(content, scenario)
+        content, _audit = finalize_and_audit_material_extent(content, scenario)
         return Response(
             content=content,
             media_type=media_type,
