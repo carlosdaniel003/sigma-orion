@@ -3,6 +3,8 @@ import { useDppWorkspace } from './DppWorkspaceContext'
 import { buildStockInvestigationReportKey, fileIdentity } from './dpp-workspace-state'
 import { investigationUnits, pendingRecords, qualityFound, stockFound } from './investigation-view-model'
 import ModuleInfoHint from './ModuleInfoHint'
+import OrionVisualIcon from './OrionVisualIcon'
+import { evidenceCoveragePercent } from './investigation-visual-metrics'
 import './investigation-cards.css'
 
 function display(value) {
@@ -64,11 +66,12 @@ export default function InvestigationOverview({ scenario, stockFile }) {
       id="orion-investigation-overview" aria-label="Resumo operacional das investigações">
       <header className="orion-investigation-block-heading">
         <div>
-          <div className="module-heading-with-info">
+          <div className="module-heading-with-info orion-visual-heading">
+            <span className="orion-visual-icon orion-visual-icon-feature"><OrionVisualIcon name="overview" /></span>
             <h3>Resumo operacional</h3>
             <ModuleInfoHint moduleKey="dashboard.investigations_summary" />
           </div>
-          <p>Do saldo negativo à validação: o que foi encontrado, o que precisa de confirmação e quanto ainda falta explicar.</p>
+          <p>Os números principais, as etapas da investigação e o que ainda precisa de confirmação.</p>
         </div>
         <nav className="orion-investigation-shortcuts" aria-label="Ir para investigação">
           <a href="#orion-stock-investigation">Estoque</a>
@@ -76,10 +79,48 @@ export default function InvestigationOverview({ scenario, stockFile }) {
         </nav>
       </header>
 
+      <div className="orion-visual-journey" aria-label="Caminho da investigação">
+        <span><OrionVisualIcon name="overview" size={16} /> Cenário inicial</span>
+        <OrionVisualIcon name="arrow" size={16} />
+        <span><OrionVisualIcon name="stock" size={16} /> Estoque</span>
+        <OrionVisualIcon name="arrow" size={16} />
+        <span><OrionVisualIcon name="quality" size={16} /> Qualidade / CQ</span>
+      </div>
       <dl className="orion-investigation-overview-metrics">
         {metrics.map(metric => <OverviewMetric key={metric.label} {...metric} />)}
       </dl>
 
+      {stock && (
+        <div className="orion-visual-coverage-grid" aria-label="Registros encontrados">
+          <div className="orion-visual-coverage">
+            <div className="orion-visual-coverage-heading">
+              <span>PNs encontrados nos depósitos de Estoque</span>
+              <strong>{stock.summary.materials_with_candidates} / {criticalCount}</strong>
+            </div>
+            <div className="orion-visual-track" role="progressbar"
+              aria-label="Proporção de PNs críticos encontrados em M221/P277"
+              aria-valuemin={0} aria-valuemax={100}
+              aria-valuenow={Math.round(evidenceCoveragePercent(stock.summary.materials_with_candidates, criticalCount))}>
+              <span style={{ width: evidenceCoveragePercent(stock.summary.materials_with_candidates, criticalCount) + '%' }} />
+            </div>
+          </div>
+          {quality && (
+            <div className="orion-visual-coverage">
+              <div className="orion-visual-coverage-heading">
+                <span>PNs encontrados nos depósitos de Qualidade</span>
+                <strong>{qualityFound(quality).length} / {quality.summary.items_received_from_41}</strong>
+              </div>
+              <div className="orion-visual-track orion-visual-track-cq" role="progressbar"
+                aria-label="Proporção de PNs encaminhados com registro no CQ"
+                aria-valuemin={0} aria-valuemax={100}
+                aria-valuenow={Math.round(evidenceCoveragePercent(qualityFound(quality).length, quality.summary.items_received_from_41))}>
+                <span style={{ width: evidenceCoveragePercent(qualityFound(quality).length, quality.summary.items_received_from_41) + '%' }} />
+              </div>
+            </div>
+          )}
+          <small>Encontrado não significa material liberado; as barras mostram apenas registros localizados.</small>
+        </div>
+      )}
       {!stock ? (
         <p className="orion-investigation-empty" role="status">
           Consulte Divergência de Estoque para visualizar os PNs encontrados e o gap recalculado.
@@ -87,7 +128,7 @@ export default function InvestigationOverview({ scenario, stockFile }) {
       ) : (
         <>
           <div className="orion-investigation-subheading">
-            <h4>Gap por unidade de medida</h4>
+            <h4 className="orion-visual-small-heading"><OrionVisualIcon name="gap" size={18} /> Gap por unidade de medida</h4>
             <p>Valores do cenário e das confirmações já registradas. Quantidade encontrada não significa material liberado.</p>
           </div>
           <div className="orion-investigation-unit-grid">
@@ -117,7 +158,7 @@ export default function InvestigationOverview({ scenario, stockFile }) {
 
       <div className="orion-investigation-priority-summary">
         <div>
-          <h4>Próximas confirmações</h4>
+          <h4 className="orion-visual-small-heading"><OrionVisualIcon name="action" size={18} /> Próximas confirmações</h4>
           <p>As filas abaixo mostram apenas PNs encontrados em depósitos investigados.</p>
         </div>
         <div className="orion-investigation-priority-links">

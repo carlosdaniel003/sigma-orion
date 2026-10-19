@@ -6,6 +6,7 @@ import InvestigationOverview from './InvestigationOverview'
 import QualityInvestigation from './QualityInvestigation'
 import ModuleInfoHint from './ModuleInfoHint'
 import OrionWorking from './OrionWorking'
+import './dashboard-visual-rhythm.css'
 import { classifyDppBundle } from './dpp-file-bundle'
 import { useDppWorkspace } from './DppWorkspaceContext'
 
