@@ -78,7 +78,7 @@ def test_stock_excel_includes_every_critical_pn_and_auditable_depots(monkeypatch
         assert material_codes == {"PN-CQ", "PN-V"}
         missing = next(row for row in pn_rows if row[0] == "PN-V")
         assert missing[9] == 4
-        assert missing[10] == "QUALITY_4_2"
+        assert missing[10] == "Encaminhar à Qualidade"
 
         details = list(book["Registros depósitos"].iter_rows(min_row=6, values_only=True))
         assert any(row[0] == "PN-CQ" and row[2] == "M221" and row[5] == 12
@@ -108,7 +108,7 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         # PN-CQ has pending stock review in 4.1; quality cannot precede it.
         assert "PN-CQ" not in by_pn
         assert "PN-V" in by_pn
-        assert by_pn["PN-V"][12] == "SCRAP_4_3"
+        assert by_pn["PN-V"][12] == "Encaminhar a Scrap"
         assert "DPP JUN_2026.06.02.xlsx" in [
             row[1] for row in book["Resumo"].iter_rows(min_row=5, values_only=True)
         ]

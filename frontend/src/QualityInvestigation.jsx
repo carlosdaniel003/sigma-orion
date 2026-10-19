@@ -226,11 +226,11 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
           )}
           <section className="orion-stock-projection">
             <h4>Consolidação e próxima etapa</h4>
-            <p>Exibimos somente a parcela comprovada e atribuída à falta de cada PN. A confirmação bruta e a origem permanecem no Excel. Encaminhar para Scrap não comprova refugo nem executa a etapa 4.3.</p>
+            <p>Exibimos somente a parcela comprovada e atribuída à falta de cada PN. A confirmação bruta e a origem permanecem no Excel. Encaminhar para Scrap não comprova refugo nem significa que essa investigação foi executada.</p>
             <div className="orion-stock-investigation-scroll">
               <table>
                 <thead><tr>
-                  <th>PN</th><th>Falta recebida de 4.1</th><th>Potencial teórico</th>
+                  <th>PN</th><th>Falta recebida de Estoque</th><th>Potencial teórico</th>
                   <th>Liberado aplicado</th><th>Reprovado aplicado</th><th>Refugo aplicado</th>
                   <th>Gap físico após Qualidade</th><th>Sem explicação</th><th>Próxima etapa</th>
                 </tr></thead>

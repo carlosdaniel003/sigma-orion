@@ -215,7 +215,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
               <InvestigationPagination value={detailPagination} label="Registros por depósito — Estoque"
                 onNavigate={() => setSelectedId('')} />
             </div>
-          ) : <p>Nenhum PN crítico foi encontrado nos depósitos da investigação. O fluxo indica encaminhamento dos itens à análise de Qualidade 4.2.</p>}
+          ) : <p>Nenhum PN crítico foi encontrado nos depósitos da investigação. Os itens seguem para a Análise de Qualidade.</p>}
           {selected && (
             <div ref={scrollRef} className="orion-stock-review-anchor">
             <StockDepotReviewForm

@@ -132,8 +132,8 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
         elif reviewed_candidates > 0:
             status = "QUALITY_4_2"
             next_step = (
-                "Encaminhamento provisório à Qualidade 4.2; validações de Estoque pendentes"
-                if provisional else "Encaminhar saldo não explicado à análise de Qualidade 4.2"
+                "Encaminhamento provisório à Qualidade; validações de Estoque pendentes"
+                if provisional else "Encaminhar saldo não explicado à Análise de Qualidade"
             )
         else:
             status = "AWAITING_VALIDATION"
@@ -173,7 +173,7 @@ def add_reviews(report: dict, session: Session, digest: str) -> dict:
             "unexplained_quantity": material["negative_balance"],
             "pending_reviews": 0,
             "routing_provisional": False,
-            "next_step": "Sem registros nos depósitos investigados; encaminhar à Qualidade 4.2",
+            "next_step": "Sem registros nos depósitos investigados; encaminhar à Qualidade",
         })
 
     report["workflow"] = {

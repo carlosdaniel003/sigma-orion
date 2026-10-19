@@ -157,13 +157,13 @@ def quality_report(
                 if provisional else "Análise do item finalizada"
             )
         elif not selected:
-            status, next_step = "SCRAP_4_3", "Sem registros em Q239 ou Q273; encaminhar a Scrap 4.3"
+            status, next_step = "SCRAP_4_3", "Sem registros em Q239 ou Q273; encaminhar para análise de Scrap"
             provisional = upstream_pending > 0
         elif confirmations > 0:
             status = "SCRAP_4_3"
             next_step = (
-                "Encaminhamento provisório a Scrap 4.3; revisões pendentes"
-                if provisional else "Falta ainda sem explicação; encaminhar a Scrap 4.3"
+                "Encaminhamento provisório para Scrap; revisões pendentes"
+                if provisional else "Falta ainda sem explicação; encaminhar para análise de Scrap"
             )
         else:
             status, next_step = "AWAITING_QUALITY", "Aguardar validação da Qualidade/CQ"
@@ -244,7 +244,7 @@ def quality_report(
             "Reprovação/refugo justificado explica a causa, mas não acrescenta estoque. "
             "Somente a quantidade atribuída à falta ainda não explicada é creditada. "
             "Encaminhamentos com validações pendentes são provisórios e não "
-            "significam que Scrap 4.3 foi executado."
+            "significam que a análise de Scrap foi executada."
         ),
     }
 
@@ -283,7 +283,7 @@ def register_quality_review(
         if selected:
             break
     if selected is None:
-        raise ValueError("Registro de Qualidade não pertence aos PNs encaminhados pela etapa 4.1.")
+        raise ValueError("Registro de Qualidade não pertence aos PNs encaminhados pela Divergência de Estoque.")
     material, candidate = selected
     depot = candidate["depot"]
     if depot == "Q239" and decision not in {"RELEASED", "REJECTED", "NO_EVIDENCE"}:
