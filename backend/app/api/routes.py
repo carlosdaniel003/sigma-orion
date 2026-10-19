@@ -33,7 +33,9 @@ from app.services.dpp_scenario_service import get_latest_monthly_scenario, get_m
 from app.services.dpp_stock_divergence_service import investigate_stock_divergence
 from app.services.dpp_stock_review_service import add_reviews, register_review
 from app.services.dpp_quality_service import quality_report, register_quality_review
-from app.services.dpp_monthly_gap_service import recalculate_monthly_gap
+from app.services.dpp_monthly_gap_service import (
+    recalculate_monthly_gap, prepare_monthly_gap_application, apply_monthly_gap_application,
+)
 from app.services.dpp_investigation_excel_service import export_investigation_excel
 from app.services.dpp_service import analyze_dpp_file
 from app.services.dpp_test_service import test_monthly_dpp_reconstruction
@@ -359,6 +361,47 @@ async def recalculate_monthly_gap_route(
         return recalculate_monthly_gap(
             scenario=scenario, stock_content=await stock.read(),
             stock_filename=stock.filename or "",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/dpp/monthly/gap/prepare")
+async def prepare_monthly_gap_route(
+    scenario_id: str = Form(...),
+    stock: UploadFile = File(...),
+) -> dict:
+    """Preview all blockers and impact, without changing the DPP."""
+    scenario = get_monthly_scenario(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail="Cenário não encontrado ou expirado.")
+    try:
+        return prepare_monthly_gap_application(
+            scenario=scenario, stock_content=await stock.read(),
+            stock_filename=stock.filename or "",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/dpp/monthly/gap/apply")
+async def apply_monthly_gap_route(
+    scenario_id: str = Form(...),
+    stock: UploadFile = File(...),
+    approval_token: str = Form(...),
+    confirm: bool = Form(False),
+    accept_unresolved: bool = Form(False),
+) -> dict:
+    """Explicitly fork an approved DPP, rejecting pending/stale validations."""
+    scenario = get_monthly_scenario(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail="Cenário não encontrado ou expirado.")
+    try:
+        return apply_monthly_gap_application(
+            scenario=scenario, stock_content=await stock.read(),
+            stock_filename=stock.filename or "",
+            approval_token=approval_token, confirm=confirm,
+            accept_unresolved=accept_unresolved,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
