@@ -20,6 +20,7 @@ from app.services.dpp_monthly_base import (
     _headers,
     _normalize,
 )
+from app.services.dpp_approved_gap_excel_service import append_approved_stock, write_approved_gap_sheet
 from app.services.dpp_projection_service import (
     BALANCE_NEGATIVE_FIELD,
     BALANCE_POSITIVE_FIELD,
@@ -107,7 +108,14 @@ def _formula_for_field(
         if any(column is None for column in component_columns):
             return None
         refs = [f"{get_column_letter(int(column))}{row}" for column in component_columns]
-        return "=" + "+".join(refs)
+        formula = "=" + "+".join(refs)
+        material_column = field_columns.get("material")
+        if material_column is None:
+            raise ValueError("Coluna Material necessária à auditoria do gap aplicado.")
+        return append_approved_stock(
+            formula, material=material,
+            material_ref=f"{get_column_letter(material_column)}{row}",
+        )
 
     if field == "balance":
         positive = field_columns.get(BALANCE_POSITIVE_FIELD)
@@ -276,6 +284,7 @@ def _apply_canonical_projection(workbook, scenario: dict, progress=None) -> dict
         sheet.cell(context["real_row"], column).value = float(model.get("real") or 0.0) if model else 0.0
 
     _prepare_consolidado_sheet(workbook, scenario)
+    write_approved_gap_sheet(workbook, scenario)
     _apply_gap_formulas(context, scenario)
 
     canonical_columns = [

@@ -7,6 +7,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.formula import ArrayFormula
 
 from app.services.dpp_consolidation_service import _material_key
+from app.services.dpp_approved_gap_excel_service import append_approved_stock
 from app.services.dpp_monthly_base import (
     SOURCE_SHEET,
     _find_column,
@@ -219,6 +220,10 @@ def _expected_formulas(layout: dict, row: int, material: dict) -> dict[str, str 
         + f"{get_column_letter(layout['explosion_col'])}{row}"
         + "+"
         + f"{get_column_letter(layout['stock_op_col'])}{row}"
+    )
+    stock_total = append_approved_stock(
+        stock_total, material=material,
+        material_ref=f"{get_column_letter(layout['material_col'])}{row}",
     )
     balance = (
         f"={get_column_letter(layout['stock_total_col'])}{row}-"
