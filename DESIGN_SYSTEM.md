@@ -295,6 +295,10 @@ Na interface **web** das investigações de Estoque e Qualidade, o usuário soli
 - Comparações complementares do DPP Final ficam num painel recolhível e usam agrupamentos responsivos, não grade de planilha.
 - A exportação **Excel mantém integralmente** suas três abas, cálculos, estilos e rastreabilidade. Nenhuma mudança visual web autoriza alteração dos relatórios.
 - Verificar foco por teclado, rótulos do formulário, ausência de overflow horizontal nas filas e desempenho com muitos PNs.
+- **Refino de leitura aprovado em 2026-10-19:** usar com moderação o azul da marca para cabeçalhos e interações, ícones SVG de traço simples em títulos operacionais e espaçamentos da escala já existente para distinguir blocos. Usar somente cor derivada de `--orion-blue` com `color-mix`, superfícies neutras e, quando apropriado, uma única cor adicional em gráfico quantitativo que tenha legenda/contexto. Evitar novas cores estáticas, sombras, gradientes, efeitos glow e badges coloridos.
+- É permitido exibir barras **proporcionais reais** (PNs com registros sobre PNs investigados; quantidade bruta encontrada sobre déficit do PN), sempre rotuladas como **evidência ainda não validada**, nunca como recuperação/aprovação. Não adicionar animação contínua nem percentuais inventados. A exibição deve funcionar em tema claro e escuro.
+- O progresso de navegação entre Cenário, Estoque e Qualidade é apresentado como **etapas de leitura**, não como execução ou confirmação automática; os atalhos devem levar a seções existentes na mesma página.
+- Para reduzir a fadiga de leitura, consolidar explicações repetidas em uma nota curta e separar visualmente: resumo, achados quantitativos, ações pendentes, cards de PN e detalhes opcionais, preservando a rastreabilidade em cada PN.
 
 ## 12. Tabelas
 

@@ -184,7 +184,8 @@
   background: var(--orion-blue);
 }
 .dpp-dashboard-view .orion-visual-track-cq > span {
-  background: var(--orion-success);
+  /* Uma segunda tonalidade de azul diferencia fontes sem sugerir material liberado. */
+  background: color-mix(in srgb, var(--orion-blue) 68%, var(--orion-text-secondary));
 }
 /* Group one unit's gaps together, then separate actionable queues visually. */
 .dpp-dashboard-view .orion-investigation-subheading { margin-top: var(--space-5, 24px); }

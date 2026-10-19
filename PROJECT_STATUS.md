@@ -679,3 +679,12 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Filas e cards podem ser paginados independentemente (10/25/50), com espaço flexível e colunas responsivas (notebook em uma coluna; monitor grande em duas).
 - Exclusividade da apresentação: os relatórios Excel **continuam idênticos**, com abas `Resumo`, `PNs e divergências` e `Confirmar com área`; quantitativos e registros do Excel permanecem completos, inclusive sem achados.
 - Testes de apresentação determinística no Node adicionados ao pipeline de frontend para assegurar ordenação de pendências, filtros, ausência de PNs sem registros na lista e agregação sem misturar UM.
+
+### Refinamento de contraste e leitura do Dashboard DPP (2026-10-19)
+
+- Atualização **somente no frontend**: títulos com ícones SVG pequenos e acessíveis (decorativos `aria-hidden`), maior separação entre as seções, superfícies em tons derivados dos tokens do ORION e destaque contido no resumo dos PNs encontrados.
+- Novo indicador visual da proporção de **PNs encontrados versus PNs investigados**, com rótulos e valores absolutos. Barras de PN individuais exibem a parcela teórica da falta para a qual existem registros, sem qualquer inferência de disponibilidade.
+- A tela distingue visualmente o cenário inicial, resumo operacional, filas de confirmação com Almoxarifado/CQ, cards encontrados e comparações complementares. Os links entre seções e o retorno ao resumo reduzem rolagem manual.
+- Espaçamento e rearranjo responsivo seguem os tokens existentes; ícones não denotam sucesso, risco ou status. Cores semânticas passivas continuam proibidas.
+- Não houve alteração no backend, cálculos, registros SQLite, dados do DPP ou nos geradores de Excel. As três abas e a estrutura dos relatórios permanecem integralmente as mesmas.
+- Testes Node cobrem limites das barras de proporção, inclusive casos sem déficit; CI frontend executa os testes e o build Vite.

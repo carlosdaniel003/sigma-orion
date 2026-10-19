@@ -72,7 +72,7 @@
 
 ## dashboard.investigations_summary — Resumo das investigações
 
-**O que mostra:** Em um só lugar, os PNs com SALDO negativo, os PNs encontrados nos depósitos M221/P277, os encaminhados à Qualidade e os encontrados em Q239/Q273, com falta inicial, quantidade encontrada e gap restante por unidade de medida.
+**O que mostra:** Em um só lugar, os PNs com SALDO negativo, os PNs encontrados nos depósitos M221/P277, os encaminhados à Qualidade e os encontrados em Q239/Q273, com falta inicial, quantidade encontrada e gap restante por unidade de medida. A interface web apresenta também barras comparativas de achados (proporção observada, não liberação confirmada), uma trilha visual Cenário → Estoque → Qualidade e atalhos para as áreas de confirmação.
 
 **Origem:** Cenário ORION vigente, investigação de Divergência de Estoque validada para o pacote atual e investigação de Qualidade correspondente. Quantidades são extraídas dos resultados integrais do backend, apresentados na web em KPIs e grupos por UM; sem consulta, indicadores dependentes são mostrados como ainda não disponíveis.
 

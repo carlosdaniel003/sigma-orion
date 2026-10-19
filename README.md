@@ -101,7 +101,7 @@ OPEN é usado como evidência auxiliar e não altera estoque.
 
 ### Visual operacional do Dashboard (web)
 
-O Dashboard web apresenta indicadores principais, resumo do estoque e Qualidade, filas de validação por área e cards expansíveis apenas de PNs encontrados nos depósitos investigados. Comparações complementares continuam acessíveis num painel recolhível. Os detalhes completos de todos os PNs, inclusive os sem registros, permanecem nos relatórios Excel **sem nenhuma modificação de formato**.
+O Dashboard web apresenta indicadores principais, resumo do estoque e Qualidade, filas de validação por área e cards expansíveis apenas de PNs encontrados nos depósitos investigados. Cabeçalhos com poucos ícones SVG, barras de achados explicitamente não validados e agrupamentos com cores derivadas da marca ORION diferenciam os níveis de leitura. Comparações complementares continuam acessíveis num painel recolhível. Os detalhes completos de todos os PNs, inclusive os sem registros, permanecem nos relatórios Excel **sem nenhuma modificação de formato**.
 
 ## Dashboard
 
