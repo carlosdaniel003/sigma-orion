@@ -1,0 +1,312 @@
+/*
+ * Visual hierarchy for DPP web only.
+ * Uses existing ORION theme tokens and functional evidence graphics.
+ * No spreadsheet, business calculation or stored decision is affected.
+ */
+.dpp-dashboard-view .orion-stock-investigation.orion-investigation-ui {
+  margin-block: var(--space-6, 32px);
+  padding: clamp(16px, 1.9vw, 28px);
+  border: 1px solid var(--orion-border);
+  background: var(--orion-surface);
+}
+.dpp-dashboard-view .orion-investigation-overview {
+  border-color: color-mix(in srgb, var(--orion-blue) 31%, var(--orion-border));
+}
+.dpp-dashboard-view .orion-visual-dashboard-header {
+  margin-bottom: var(--space-5, 24px);
+}
+.dpp-dashboard-view .orion-visual-dashboard-header > div > p {
+  max-width: 740px;
+  line-height: 1.55;
+}
+.dpp-dashboard-view .orion-visual-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  flex-wrap: wrap;
+}
+.dpp-dashboard-view .orion-visual-heading > h2,
+.dpp-dashboard-view .orion-visual-heading > h3 { margin: 0; }
+.dpp-dashboard-view .orion-visual-heading > h2 { font-size: clamp(21px, 2vw, 28px); }
+.dpp-dashboard-view .orion-visual-icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid color-mix(in srgb, var(--orion-blue) 25%, var(--orion-border));
+  background: color-mix(in srgb, var(--orion-blue) 11%, var(--orion-surface));
+  color: var(--orion-blue);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.dpp-dashboard-view .orion-visual-icon-feature {
+  width: 44px;
+  height: 44px;
+}
+.dpp-dashboard-view .orion-visual-small-heading {
+  display: inline-flex;
+  gap: var(--space-2, 8px);
+  align-items: center;
+  color: var(--orion-text);
+  font-size: 15px;
+}
+.dpp-dashboard-view .orion-visual-small-heading > svg {
+  color: var(--orion-blue);
+  flex: none;
+}
+.dpp-dashboard-view .dashboard-plan-metrics {
+  gap: var(--space-3, 12px);
+}
+.dpp-dashboard-view .dashboard-plan-metrics > div {
+  border: 1px solid var(--orion-border) !important;
+  background: var(--orion-surface-elevated);
+  padding: var(--space-4, 16px) var(--space-5, 24px);
+  gap: var(--space-3, 12px);
+}
+.dpp-dashboard-view .dashboard-plan-metrics > .orion-visual-feature-metric {
+  background: color-mix(in srgb, var(--orion-blue) 10%, var(--orion-surface));
+  border-color: color-mix(in srgb, var(--orion-blue) 32%, var(--orion-border)) !important;
+}
+.dpp-dashboard-view .dashboard-plan-metrics > .orion-visual-feature-metric strong {
+  color: var(--orion-text);
+}
+.dpp-dashboard-view .dashboard-plan-overview {
+  padding: var(--space-4, 16px);
+  margin-bottom: var(--space-5, 24px);
+}
+.dpp-dashboard-view .dashboard-complementary-details {
+  margin-bottom: var(--space-6, 32px);
+  background: var(--orion-surface);
+}
+.dpp-dashboard-view .dashboard-complementary-details > summary {
+  padding: var(--space-4, 16px) var(--space-5, 24px);
+  color: var(--orion-text);
+  background: var(--orion-surface-elevated);
+}
+.dpp-dashboard-view .dashboard-complementary-details > summary:hover {
+  background: color-mix(in srgb, var(--orion-blue) 8%, var(--orion-surface));
+}
+/* A thin, labeled journey provides orientation, not a fake status. */
+.dpp-dashboard-view .orion-visual-journey {
+  margin-block: var(--space-5, 24px);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  color: var(--orion-text-secondary);
+}
+.dpp-dashboard-view .orion-visual-journey > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: 10px 12px;
+  background: var(--orion-surface-elevated);
+  border: 1px solid var(--orion-border);
+  font-size: 12px;
+  color: var(--orion-text);
+}
+.dpp-dashboard-view .orion-visual-journey > span svg { color: var(--orion-blue); }
+.dpp-dashboard-view .orion-visual-journey > svg { color: var(--orion-text-secondary); }
+/* Strong metric separation without decorative pill badges. */
+.dpp-dashboard-view .orion-investigation-overview-metrics {
+  display: grid;
+  gap: var(--space-3, 12px);
+  margin-block: var(--space-5, 24px);
+  border: 0;
+}
+.dpp-dashboard-view .orion-investigation-overview-metric,
+.dpp-dashboard-view .orion-investigation-overview-metric:nth-child(n),
+.dpp-dashboard-view .orion-investigation-overview-metric:nth-last-child(-n+3) {
+  padding: var(--space-4, 16px);
+  border: 1px solid var(--orion-border);
+  background: var(--orion-surface-elevated);
+  min-width: 0;
+}
+.dpp-dashboard-view .orion-investigation-overview-metric:nth-child(2) {
+  background: color-mix(in srgb, var(--orion-blue) 9%, var(--orion-surface));
+  border-color: color-mix(in srgb, var(--orion-blue) 30%, var(--orion-border));
+}
+.dpp-dashboard-view .orion-investigation-overview-metric dt {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.dpp-dashboard-view .orion-investigation-overview-metric dd {
+  font-size: clamp(22px, 2vw, 29px);
+}
+.dpp-dashboard-view .orion-investigation-overview-metric small {
+  color: var(--orion-text-secondary);
+  line-height: 1.4;
+}
+.dpp-dashboard-view .orion-visual-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4, 16px) var(--space-5, 24px);
+  padding: var(--space-5, 24px);
+  margin-bottom: var(--space-6, 32px);
+  border: 1px solid var(--orion-border);
+  background: var(--orion-surface-elevated);
+}
+.dpp-dashboard-view .orion-visual-coverage-grid > small {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--orion-text-secondary);
+  line-height: 1.5;
+}
+.dpp-dashboard-view .orion-visual-coverage {
+  min-width: 0;
+}
+.dpp-dashboard-view .orion-visual-coverage-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: var(--space-3, 12px);
+  font-size: 12px;
+  color: var(--orion-text-secondary);
+}
+.dpp-dashboard-view .orion-visual-coverage-heading > strong {
+  color: var(--orion-text);
+  font-size: 14px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dpp-dashboard-view .orion-visual-track,
+.dpp-dashboard-view .orion-visual-pn-track {
+  height: 7px;
+  background: color-mix(in srgb, var(--orion-text-secondary) 20%, var(--orion-surface));
+  overflow: hidden;
+}
+.dpp-dashboard-view .orion-visual-track > span,
+.dpp-dashboard-view .orion-visual-pn-track > span {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  background: var(--orion-blue);
+}
+.dpp-dashboard-view .orion-visual-track-cq > span {
+  background: var(--orion-success);
+}
+/* Group one unit's gaps together, then separate actionable queues visually. */
+.dpp-dashboard-view .orion-investigation-subheading { margin-top: var(--space-5, 24px); }
+.dpp-dashboard-view .orion-investigation-unit-grid { gap: var(--space-5, 24px); }
+.dpp-dashboard-view .orion-investigation-unit-group {
+  padding: var(--space-5, 24px);
+  background: var(--orion-surface-elevated);
+}
+.dpp-dashboard-view .orion-investigation-gap-sequence {
+  gap: var(--space-5, 24px) var(--space-4, 16px);
+}
+.dpp-dashboard-view .orion-investigation-gap-stage { gap: var(--space-2, 8px); }
+.dpp-dashboard-view .orion-investigation-gap-stage strong { font-size: clamp(18px, 1.8vw, 23px); }
+.dpp-dashboard-view .orion-investigation-priority-summary {
+  margin-top: var(--space-6, 32px);
+  padding-top: var(--space-5, 24px);
+}
+.dpp-dashboard-view .orion-investigation-priority-links a {
+  background: color-mix(in srgb, var(--orion-blue) 6%, var(--orion-surface));
+  border-color: color-mix(in srgb, var(--orion-blue) 20%, var(--orion-border));
+  padding: var(--space-4, 16px);
+  gap: var(--space-2, 8px);
+}
+.dpp-dashboard-view .orion-investigation-priority-links a:hover {
+  background: color-mix(in srgb, var(--orion-blue) 13%, var(--orion-surface));
+}
+.dpp-dashboard-view .orion-investigation-shortcuts a {
+  padding-inline: var(--space-4, 16px);
+}
+/* Stronger hierarchy for each warehouse/CQ module. */
+.dpp-dashboard-view .orion-investigation-ui .orion-stock-investigation-header {
+  padding-bottom: var(--space-5, 24px);
+  border-bottom: 1px solid var(--orion-border);
+  margin-bottom: var(--space-5, 24px);
+  gap: var(--space-5, 24px);
+}
+.dpp-dashboard-view .orion-investigation-ui .orion-investigation-local-summary {
+  gap: var(--space-3, 12px);
+  margin-block: var(--space-5, 24px);
+  border: 0;
+}
+.dpp-dashboard-view .orion-investigation-local-summary > div,
+.dpp-dashboard-view .orion-investigation-local-summary > div:nth-child(n) {
+  padding: var(--space-4, 16px);
+  border: 1px solid var(--orion-border);
+  background: var(--orion-surface-elevated);
+}
+.dpp-dashboard-view .orion-investigation-local-summary > div:nth-child(2) {
+  background: color-mix(in srgb, var(--orion-blue) 9%, var(--orion-surface));
+  border-color: color-mix(in srgb, var(--orion-blue) 27%, var(--orion-border));
+}
+.dpp-dashboard-view .orion-investigation-ui .orion-investigation-queue {
+  margin-top: var(--space-6, 32px);
+  padding: var(--space-5, 24px);
+  background: color-mix(in srgb, var(--orion-blue) 5%, var(--orion-surface));
+  border: 1px solid color-mix(in srgb, var(--orion-blue) 20%, var(--orion-border));
+}
+.dpp-dashboard-view .orion-investigation-queue-list { margin-top: var(--space-4, 16px); }
+.dpp-dashboard-view .orion-investigation-queue-list > li { padding: var(--space-4, 16px) var(--space-5, 24px); }
+.dpp-dashboard-view .orion-investigation-queue-list > li:nth-child(even) {
+  background: color-mix(in srgb, var(--orion-text-secondary) 4%, var(--orion-surface));
+}
+.dpp-dashboard-view .orion-investigation-card-section {
+  margin-top: var(--space-6, 32px);
+  padding-top: var(--space-5, 24px);
+  border-top: 1px solid var(--orion-border);
+}
+.dpp-dashboard-view .orion-investigation-found-grid { gap: var(--space-4, 16px); }
+.dpp-dashboard-view .orion-investigation-pn-card summary {
+  padding: var(--space-5, 24px);
+  background: var(--orion-surface-elevated);
+}
+.dpp-dashboard-view .orion-investigation-pn-card summary:hover {
+  background: color-mix(in srgb, var(--orion-blue) 6%, var(--orion-surface));
+}
+.dpp-dashboard-view .orion-investigation-pn-card[open] summary {
+  background: color-mix(in srgb, var(--orion-blue) 8%, var(--orion-surface));
+}
+.dpp-dashboard-view .orion-investigation-pn-facts { gap: var(--space-4, 16px); }
+.dpp-dashboard-view .orion-visual-pn-track { margin-top: var(--space-4, 16px); height: 5px; }
+.dpp-dashboard-view .orion-visual-pn-track-label {
+  display: block;
+  margin-top: var(--space-2, 8px);
+  font-size: 11px;
+  color: var(--orion-text-secondary);
+}
+.dpp-dashboard-view .orion-investigation-card-body { padding: var(--space-5, 24px); }
+.dpp-dashboard-view .orion-visual-backlink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-4, 16px);
+  color: var(--orion-text);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dpp-dashboard-view .orion-visual-backlink svg { color: var(--orion-blue); }
+.dpp-dashboard-view .orion-visual-backlink:focus-visible {
+  outline: 2px solid var(--orion-blue);
+  outline-offset: 4px;
+}
+/* Keep Orion's monochrome light theme readable: blue in backgrounds, dark icons. */
+:root[data-theme='light'] .dpp-dashboard-view .orion-visual-icon,
+:root[data-theme='light'] .dpp-dashboard-view .orion-visual-small-heading > svg,
+:root[data-theme='light'] .dpp-dashboard-view .orion-visual-journey > span svg {
+  color: var(--orion-text);
+}
+@media (max-width: 900px) {
+  .dpp-dashboard-view .orion-visual-coverage-grid { grid-template-columns: minmax(0, 1fr); }
+  .dpp-dashboard-view .orion-investigation-overview-metrics { gap: var(--space-2, 8px); }
+  .dpp-dashboard-view .orion-investigation-pn-card summary,
+  .dpp-dashboard-view .orion-investigation-card-body { padding: var(--space-4, 16px); }
+}
+@media (max-width: 650px) {
+  .dpp-dashboard-view .orion-visual-journey { gap: var(--space-2, 8px); }
+  .dpp-dashboard-view .orion-visual-journey > span { padding: 8px 10px; }
+  .dpp-dashboard-view .orion-investigation-ui .orion-investigation-queue { padding: var(--space-4, 16px); }
+  .dpp-dashboard-view .orion-investigation-overview-metric,
+  .dpp-dashboard-view .orion-investigation-overview-metric:nth-child(n) { padding: var(--space-3, 12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dpp-dashboard-view .orion-visual-track > span,
+  .dpp-dashboard-view .orion-visual-pn-track > span { transition: none; }
+}
