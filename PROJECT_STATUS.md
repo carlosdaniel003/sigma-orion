@@ -688,3 +688,12 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Espaçamento e rearranjo responsivo seguem os tokens existentes; ícones não denotam sucesso, risco ou status. Cores semânticas passivas continuam proibidas.
 - Não houve alteração no backend, cálculos, registros SQLite, dados do DPP ou nos geradores de Excel. As três abas e a estrutura dos relatórios permanecem integralmente as mesmas.
 - Testes Node cobrem limites das barras de proporção, inclusive casos sem déficit; CI frontend executa os testes e o build Vite.
+
+### Correção de estilo anti-interface genérica (2026-10-19)
+
+- Revisão dirigida por `DESIGN_SYSTEM.md` e pela captura enviada pelo usuário: retirados os ícones SVG de cabeçalhos que estavam em quadrados com fundo/borda azul. O exemplo do ícone de Estoque era uma ornamentação, não um controle funcional.
+- Retiradas trilhas visuais redundantes com ícones e setas, além das barras quantitativas repetidas em cada card de PN. Ícones SVG menores sobrevivem somente em atalhos de navegação efetivos (Estoque, Qualidade e voltar ao resumo).
+- Ajustada a apresentação de métricas do cenário e das investigações para faixas com divisores internos em vez de múltiplas caixas individuais com bordas e fundos azulados. Filas de trabalho usam seções neutras e divisores, mantendo foco no PN e na ação.
+- As duas barras agregadas de PNs encontrados na visão geral foram mantidas por conterem informação medida, explicitamente não validada; preservados os textos e valores absolutos.
+- Mantidos tema claro/escuro e comportamento responsivo. Não houve mudanças no backend, lógica determinística, dados do DPP, decisões ou exportações Excel.
+- Teste estático adicional verifica que não reaparecem tiles decorativos de ícones nem trilha ilustrativa redundante no Dashboard.
