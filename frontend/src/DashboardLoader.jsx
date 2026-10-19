@@ -4,6 +4,7 @@ import Dashboard from './Dashboard'
 import StockDivergenceInvestigation from './StockDivergenceInvestigation'
 import InvestigationOverview from './InvestigationOverview'
 import QualityInvestigation from './QualityInvestigation'
+import DppGapProjection from './DppGapProjection'
 import ModuleInfoHint from './ModuleInfoHint'
 import OrionWorking from './OrionWorking'
 import './dashboard-visual-rhythm.css'
@@ -585,6 +586,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
           <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
           <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
           <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
+          <DppGapProjection scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
         </>
       )}
 
