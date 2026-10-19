@@ -33,6 +33,7 @@ from app.services.dpp_scenario_service import get_latest_monthly_scenario, get_m
 from app.services.dpp_stock_divergence_service import investigate_stock_divergence
 from app.services.dpp_stock_review_service import add_reviews, register_review
 from app.services.dpp_quality_service import quality_report, register_quality_review
+from app.services.dpp_monthly_gap_service import recalculate_monthly_gap
 from app.services.dpp_investigation_excel_service import export_investigation_excel
 from app.services.dpp_service import analyze_dpp_file
 from app.services.dpp_test_service import test_monthly_dpp_reconstruction
@@ -341,6 +342,24 @@ async def review_quality_route(
                 scenario=scenario, stock_content=content,
                 stock_filename=stock.filename or "", session=session,
             )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/dpp/monthly/gap/recalculate")
+async def recalculate_monthly_gap_route(
+    scenario_id: str = Form(...),
+    stock: UploadFile = File(...),
+) -> dict:
+    """Recalculate a read-only whole-DPP gap from current Stock and CQ validations."""
+    scenario = get_monthly_scenario(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail="Cenário não encontrado ou expirado. Gere o DPP novamente.")
+    try:
+        return recalculate_monthly_gap(
+            scenario=scenario, stock_content=await stock.read(),
+            stock_filename=stock.filename or "",
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
