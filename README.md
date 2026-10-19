@@ -77,6 +77,12 @@ Depois de registrar as confirmações de Divergência de Estoque e Análise de Q
 
 Esta projeção **não substitui o SALDO original nem altera o Excel mensal exportado**. Não executa a etapa posterior de Scrap. O DPP Final anterior é usado apenas para comparar e validar, não como entrada dos cálculos.
 
+### Confirmação e aplicação no DPP mensal
+
+O botão **Conferir e aplicar ao DPP** abre uma revisão do efeito consolidado das duas investigações sobre o DPP em construção. Se houver qualquer validação pendente em Estoque ou CQ, a ação final é bloqueada. A conferência explicita PNs sem registros e faltas ainda sem explicação; o analista precisa reconhecer essas lacunas e confirmar antes da aplicação.
+
+O backend valida novamente o mesmo cenário, STK e últimas decisões. A aplicação só ocorre se nada mudou desde a prévia. O ORION cria uma **nova versão auditável do DPP** (preservando e persistindo a anterior). O novo cenário e o Excel exportado refletem a recuperação comprovada em STK TTL, SALDO e Amount, sem alterar o SAP bruto: a origem dos acréscimos fica na aba oculta `ORION_CONFIRMACOES`. Apenas a disponibilidade confirmada e adicional ao DPP afeta saldo; causas justificadas não viram estoque. O DPP Final pronto permanece exclusivamente referência de validação.
+
 ## Fluxo mensal atual
 
 ```text

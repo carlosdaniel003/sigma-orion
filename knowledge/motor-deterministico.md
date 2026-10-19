@@ -218,3 +218,7 @@ Uma futura LLM não deve substituir o motor Python, alterar fatos calculados par
 ## Recálculo projetado de todo o DPP mensal
 
 O serviço dpp_monthly_gap_service.py percorre a população inteira de materiais, consulta somente as revisões efetivas das investigações de Estoque e Qualidade para os PNs críticos em UN e produz campos projetados separados dos valores determinísticos originais. Comprovação disponível fora do cenário reduz a falta física; justificativas reduzem apenas a falta ainda sem explicação. As quantidades são limitadas por déficit do PN e consolidadas por UM. Não se escreve no SALDO, NEC, STK TTL, REAL ou no Excel mensal até aprovação explícita de uma regra de materialização.
+
+## Materialização autorizada de gap no DPP
+
+O cálculo projetado não é materializado automaticamente. O serviço de aprovação recompõe as análises Estoque e Qualidade atuais, conta validações pendentes e valida o token de conferência. A aplicação confirmada cria um novo cenário, copiando as fontes e o REAL existentes e armazenando somente os acréscimos físicos comprovados em `approved_gap_added_stock`, separados de justificativas e do STK SAP bruto. A função de cálculo soma esse componente a STK TTL, deriva SALDO/Amount e reclassifica os materiais. O exportador canônico grava uma aba oculta ORION_CONFIRMACOES com a origem quantitativa e referencia essa aba pela fórmula de STK TTL do PN afetado; a barreira de fidelidade repete a fórmula esperada e valida o arquivo. A versão anterior do cenário é preservada no estado persistido.

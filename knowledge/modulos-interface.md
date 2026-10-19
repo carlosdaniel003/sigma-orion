@@ -86,6 +86,14 @@
 
 **Finalidade:** Recalcular e auditar o efeito das confirmações do analista sem inventar disponibilidade nem misturar unidades. Os dados originais do DPP permanecem imutáveis; a projeção não executa Scrap posterior nem altera SALDO/NEC/REAL/STK TTL/Excel.
 
+## dashboard.monthly_gap_approval — Conferência e aplicação ao DPP
+
+**O que mostra:** Prévia explícita, por unidade de medida, das quantidades efetivamente liberadas em Estoque e CQ; quantos registros ainda exigem validação; e quantos PNs seguem sem explicação. Depois de aprovada, mostra a nova versão do DPP com origem e data de aplicação.
+
+**Origem:** Reavaliação do backend sobre cenário mensal ORION, mesmo snapshot do STK e confirmações atuais persistidas no SQLite. As quantidades não são fornecidas pelo navegador.
+
+**Finalidade:** Alterar a versão de trabalho do DPP somente quando todos os depósitos encontrados nos dois processos tiverem decisão humana válida e o analista confirmar a operação. PNs não localizados permanecem faltantes, com reconhecimento explícito; não são confundidos com estoque inexistente confirmado. A aplicação cria nova versão e nova identidade do DPP, atualiza STK TTL/SALDO/Amount e os derivados matemáticos, preservando SAP bruto, NEC, REAL e cenário anterior. O Excel aprovado contém trilha de comprovação em aba técnica oculta, sem modificar o layout da aba principal.
+
 ## dashboard.stock_divergence — Divergência de Estoque
 
 **O que mostra:** Consulta os PNs críticos do Cenário ORION nos depósitos M221 e P277 da aba ORIGINAL do STK SAP, registros e linhas de origem. Permite validar quantidade disponível, quantidade indisponível justificada e contabilização no DPP, preservando o histórico no SQLite. Resume o déficit inicial, o gap após recuperação e a falta sem justificativa por PN, inclusive PNs sem registro nesses depósitos. Após a consulta, o botão **Baixar Excel** gera um relatório de três abas: Resumo (indicadores de Estoque e Qualidade), PNs e divergências (saldo, depósitos e gap por PN) e Confirmar com área (registros M221/P277, ações e validações com histórico na mesma linha). Na web, o analista vê primeiro a fila de PNs encontrados a confirmar com PCM/Almoxarifado, depois cards expansíveis por PN encontrado (busca e filtros); estes cards preservam o déficit, a quantidade encontrada, a projeção do gap, origem por depósito e ação de validação. Os PNs sem registro não ocupam a lista principal. Os cards podem ser paginados em 10, 25 ou 50 PNs. O Excel permanece completo, com as mesmas três abas.

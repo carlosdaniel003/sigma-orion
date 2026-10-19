@@ -715,3 +715,17 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O Dashboard inclui Gap recalculado do DPP após Estoque e Qualidade, com botão Recalcular gap e atualização automática após mudanças nas revisões registradas. A tela resume toda a população e detalha apenas os PNs com alteração confirmada.
 - Não executa a investigação posterior de Scrap, não altera NEC/REAL/STK TTL/SALDO oficial, nem modifica o Excel do DPP ou os relatórios de investigação. O resultado é uma projeção separada e auditável, não uma materialização silenciosa em exportação.
 - Testes cobrem limites, preservação do cenário, PNs não localizados, UMs fora do escopo e as revisões reais pelas APIs.
+
+
+### Aplicação confirmada do gap ao DPP de julho (2026-10-19)
+
+- Separadas duas ações: **Atualizar prévia** (somente leitura) e **Conferir e aplicar ao DPP** (prévia de aprovação com diálogo nativo, confirmação inequívoca).
+- Novas rotas `POST /api/dpp/monthly/gap/prepare` e `POST /api/dpp/monthly/gap/apply`. O servidor recompõe as validações atuais de Estoque e CQ pelo cenário e fingerprint STK; nunca aceita números de ajuste do navegador.
+- Aplicação bloqueada por qualquer candidato encontrado em M221/P277 ou Q239/Q273 sem decisão humana registrada. PNs sem nenhum registro não se tornam automaticamente validados: continuam com falta real e sem ajuste. Quando existem PNs sem explicação, há ciência explícita adicional na janela; não se inventa disponibilidade.
+- O token de aprovação é derivado de cenário, STK, resultado completo e IDs das revisões efetivas de ambos os processos. Mudanças entre conferência e aplicação invalidam o token. Confirmar não é disparado automaticamente.
+- A aplicação aprovada **cria um novo ID de cenário mensal**, preservando o anterior como uma versão histórica recuperável após reinício. O cenário anterior é imutável sob esse fluxo; o novo contém metadados de aprovação (data UTC, STK SHA256, origem, quantidade/UM e quantidade não explicada).
+- O motor determinístico do novo cenário acrescenta exclusivamente a disponibilidade **confirmada e fora do DPP** como componente `approved_gap_added_stock` em STK TTL. Atualiza, por consequência, SALDO/Amount, status dos PNs e indicadores do cenário completo. NEC, REAL, EXPLOSÃO e os valores brutos do STK SAP permanecem iguais. Quantidade indisponível/reprovada/refugo CQ justificada fica no histórico, sem acrescentar saldo.
+- O Excel mensal **da versão aprovada** mantém o layout existente do DPP; a fórmula de STK TTL passa a buscar acréscimos na aba técnica oculta `ORION_CONFIRMACOES` contendo PN, Estoque confirmado, CQ liberado, total adicional e referência de auditoria. SALDO/Amount continuam fórmulas dependentes, reaplicadas e auditadas pelo pipeline canônico. O Excel anterior não é alterado.
+- A aplicação original é protegida contra execução repetida e falha caso a persistência da aprovação não esteja disponível; sem mensagem falsa de sucesso.
+- O frontend exibe o estado `GAP_APLICADO`, a origem do cenário e os quantitativos da aplicação. Mantido o design sóbrio de acordo com `DESIGN_SYSTEM.md` (sem ícones encaixotados).
+- Testes de ponta a ponta incluem bloqueio por Estoque/CQ, confirmação obrigatória, ciência sobre faltas não resolvidas, invalidação por revisão nova, dupla aplicação, persistência após reinício, recálculo do cenário e auditoria das fórmulas do Excel exportado.

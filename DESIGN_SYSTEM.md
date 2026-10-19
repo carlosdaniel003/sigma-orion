@@ -300,6 +300,13 @@ Na interface **web** das investigações de Estoque e Qualidade, o usuário soli
 - O acesso a Estoque e Qualidade é feito por **atalhos funcionais com texto**, que podem conter ícones SVG pequenos sem moldura ornamental. Não renderizar uma trilha ilustrada de etapas quando ela repetir esses atalhos e não indicar progresso real.
 - Para reduzir a fadiga de leitura, consolidar explicações repetidas em uma nota curta e separar visualmente: resumo, achados quantitativos, ações pendentes, lista de PNs encontrados e detalhes opcionais, preservando a rastreabilidade em cada PN. Gráficos de proporção por PN não devem se repetir nos cards quando os números do PN já fornecem essa informação: prefira um gráfico agregado na visão geral.
 
+### Janela de confirmação de aplicação do gap
+
+- Diálogo nativo acessível com foco modal e cancelamento possível; botão final só habilitado após prévia válida, zero validações pendentes e autorização explícita.
+- Texto numérico e quantitativo separado por unidade de medida, com origem, PNs ainda sem explicação e quantidade não recuperada. Não usar cards ornamentais, badges coloridos, ícones encaixotados nem efeitos decorativos.
+- A interface de aprovação não apresenta falsa equivalência entre justificativa e estoque adicional.
+- Se houver pendências, mostrar razões e manter aplicação bloqueada; nunca esconder erro ou substituir a decisão do analista.
+
 ## 12. Tabelas
 
 Tabelas são componentes de primeira classe no ORION.

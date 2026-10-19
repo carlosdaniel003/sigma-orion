@@ -113,3 +113,14 @@ O gap físico de PN crítico inicia em max(0, -SALDO original). Apenas quantidad
 - Justificativas não tornam material disponível; a investigação posterior de Scrap não participa do cálculo.
 - O cálculo considera todos os PNs do DPP, sem somar unidades diferentes. Materiais de UM fora de UN permanecem sem recuperação automática.
 - SALDO original e planilha mensal não são automaticamente substituídos pela projeção.
+
+## REGRA-014 — Aplicação autorizada do gap ao DPP
+
+- A prévia de gap é leitura; não altera cenário ou arquivo.
+- Só aplicar a recuperação validada de Estoque e CQ quando **nenhum registro encontrado estiver pendente de validação** e o analista confirmar expressamente o resumo.
+- Confirmação prévia e operação final utilizam o mesmo STK/fingerprint, cenário e versões efetivas das revisões. Divergências entre os dois momentos bloqueiam a aplicação; não reaplicar duas vezes.
+- PNs sem depósitos conhecidos permanecem não resolvidos e sem ajuste, exigindo ciência explícita na janela quando existir falta não explicada.
+- Gerar nova identidade de cenário; persistir cenário original e novo; preservar o SALDO anterior e a origem das decisões.
+- A disponibilidade confirmada e não contabilizada reduz o déficit físico ao entrar em STK TTL como componente adicional ORION. Em seguida, SALDO e Amount são recalculados pelo motor. Não somar justificativa como disponibilidade; não modificar valor bruto do STK SAP.
+- Excel canônico da versão aprovada acrescenta aba técnica oculta de validações e referencia-a na fórmula de STK TTL. Fórmulas de SALDO e Amount continuam auditáveis e a aba DPP não muda de layout.
+- Não aplicar investigação posterior de Scrap nem alterar NEC e REAL.
