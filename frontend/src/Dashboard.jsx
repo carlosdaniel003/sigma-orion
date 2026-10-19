@@ -3,6 +3,7 @@ import ModuleInfoHint from './ModuleInfoHint'
 import './dashboard.css'
 import './dashboard-state.css'
 import './dashboard-comparison-metrics.css'
+import './dashboard-operational-cards.css'
 
 const NUMERIC_TOLERANCE = 1e-4
 
@@ -171,18 +172,27 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
         <EmptyDashboard onNavigate={onNavigate} />
       ) : (
         <>
-          <EvolutionPanel initial={initialState} finalState={finalState} />
-
-          <AiBridge initial={initialState} finalState={finalState} />
-
-          <ScenarioComparison data={data} finalDppAnalysis={finalDppAnalysis} />
-
-          <PlanningPanel data={data} />
-
-          <section className="dashboard-grid-main dashboard-footer-grid">
-            <QualityPanel data={data} />
-            <DecisionGuide />
+          <section className="panel dashboard-plan-overview" aria-label="Indicadores do DPP">
+            <div className="dashboard-plan-metrics">
+              <div><span>PGD do mês</span><strong>{formatNumber(data.pgdTotal)} un.</strong><small>Referência de produção</small></div>
+              <div><span>REAL planejado</span><strong>{formatNumber(data.realTotal)} un.</strong><small>Definido pelo cenário ORION</small></div>
+              <div><span>Gap PGD × REAL</span><strong>{formatNumber(Math.abs(data.gap))} un.</strong><small>{gapDescription(data.gap)}</small></div>
+              <div><span>Materiais críticos</span><strong>{formatNumber(data.criticalMaterials.length)}</strong><small>PNs UN com SALDO negativo</small></div>
+            </div>
           </section>
+          <details className="dashboard-complementary-details">
+            <summary>Ver indicadores complementares, comparação com DPP Final e metodologia</summary>
+            <div className="dashboard-complementary-content">
+              <PlanningPanel data={data} />
+              <EvolutionPanel initial={initialState} finalState={finalState} />
+              <ScenarioComparison data={data} finalDppAnalysis={finalDppAnalysis} />
+              <section className="dashboard-grid-main dashboard-footer-grid">
+                <QualityPanel data={data} />
+                <DecisionGuide />
+              </section>
+              <AiBridge initial={initialState} finalState={finalState} />
+            </div>
+          </details>
         </>
       )}
     </>
@@ -358,13 +368,8 @@ function ScenarioComparison({ data, finalDppAnalysis }) {
         </span>
       </div>
 
-      <div className="scenario-comparison-grid" role="table" aria-label="Comparação entre cenário ORION e DPP Final">
-        <div className="scenario-comparison-head" role="row">
-          <span role="columnheader">Indicador</span>
-          <span role="columnheader">Cenário ORION</span>
-          <span role="columnheader">DPP Final</span>
-          <span role="columnheader">Análise</span>
-        </div>
+      <div className="scenario-comparison-grid dashboard-comparison-cards" role="list"
+        aria-label="Comparação entre cenário ORION e DPP Final">
         {rows.map((row) => (
           <ComparisonMetricRow key={row.label} {...row} hasFinal={hasFinal} />
         ))}
@@ -376,23 +381,23 @@ function ScenarioComparison({ data, finalDppAnalysis }) {
 function ComparisonMetricRow({ label, description, orionValue, orionDetail, finalValue, finalDetail, divergence, hasFinal }) {
   const matches = hasFinal && divergence === 'Sem divergência'
   return (
-    <div className="scenario-comparison-row" role="row">
-      <div className="scenario-comparison-label" role="cell">
+    <article className="scenario-comparison-row" role="listitem">
+      <div className="scenario-comparison-label">
         <strong>{label}</strong>
         <small>{description}</small>
       </div>
-      <div className="scenario-comparison-value orion" role="cell">
+      <div className="scenario-comparison-value orion">
         <strong>{orionValue}</strong>
         <small>{orionDetail}</small>
       </div>
-      <div className="scenario-comparison-value final" role="cell">
+      <div className="scenario-comparison-value final">
         <strong>{hasFinal ? finalValue : '—'}</strong>
         <small>{hasFinal ? finalDetail : 'Aguardando leitura automática do DPP Final'}</small>
       </div>
-      <div className={`scenario-comparison-divergence ${!hasFinal ? 'pending' : matches ? 'ok' : 'warning'}`} role="cell">
+      <div className={`scenario-comparison-divergence ${!hasFinal ? 'pending' : matches ? 'ok' : 'warning'}`}>
         <strong>{!hasFinal ? 'Aguardando comparação' : divergence}</strong>
       </div>
-    </div>
+    </article>
   )
 }
 
@@ -421,13 +426,8 @@ function EvolutionPanel({ initial, finalState }) {
       </div>
 
       {finalState ? (
-        <div className="dpp-evolution-list" role="table" aria-label="Evolução do DPP entre Cenário ORION e DPP Final">
-          <div className="dpp-evolution-head" role="row">
-            <span role="columnheader">Indicador</span>
-            <span role="columnheader">Cenário ORION</span>
-            <span role="columnheader">DPP Final</span>
-            <span role="columnheader">Diferença · Final − ORION</span>
-          </div>
+        <div className="dpp-evolution-list dashboard-evolution-cards" role="list"
+          aria-label="Evolução do DPP entre Cenário ORION e DPP Final">
           <EvolutionRow label="Materiais críticos" orion={initial.critical} final={finalState.critical} delta={criticalDelta} />
           <EvolutionRow label="OPCs" orion={initial.opc} final={finalState.opc} delta={opcDelta} />
           <EvolutionRow label="REAL" orion={initial.real} final={finalState.real} delta={realDelta} />
@@ -443,14 +443,14 @@ function EvolutionPanel({ initial, finalState }) {
 function EvolutionRow({ label, orion, final, delta }) {
   const neutral = sameNumber(delta, 0)
   return (
-    <div className="dpp-evolution-row" role="row">
-      <strong role="rowheader">{label}</strong>
-      <span className="evolution-value orion" role="cell">{formatNumber(orion)}</span>
-      <span className="evolution-value final" role="cell">{formatNumber(final)}</span>
-      <small className={neutral ? 'neutral' : 'attention'} role="cell">
+    <article className="dpp-evolution-row" role="listitem">
+      <strong>{label}</strong>
+      <span className="evolution-value orion">{formatNumber(orion)}</span>
+      <span className="evolution-value final">{formatNumber(final)}</span>
+      <small className={neutral ? 'neutral' : 'attention'}>
         {neutral ? 'Igual' : formatSignedNumber(delta)}
       </small>
-    </div>
+    </article>
   )
 }
 
