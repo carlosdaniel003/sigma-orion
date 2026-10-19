@@ -667,3 +667,15 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Confirmar com área contém lista operacional de achados individuais no STK ORIGINAL para o analista solicitar confirmação a PCM/Almoxarifado ou Qualidade/CQ; identifica material, centro, depósito, quantidade, linha, decisão, justificativa e histórico de revisões na mesma aba.
 - Q273 com Q239 prioritário continua informativo e não entra em somas de CQ. Não se supõe Scrap confirmado na ausência de registro; SALDO/REAL/NEC e DPP final permanecem intactos.
 - As duas exportações são reconstruídas pelo backend com os estados atuais de Estoque e Qualidade no mesmo cenário e snapshot STK; o botão de download exporta toda a população independentemente da página visível.
+
+
+### Refatoração visual do Dashboard do DPP (2026-10-19)
+
+- Escopo **exclusivamente frontend**: a página web do DPP, as seções Divergência de Estoque e Análise de Qualidade. Nenhum endpoint, cálculo, fonte, regra de classificação, banco SQLite, cache persistente ou geração de Excel foi alterado.
+- O cabeçalho do cenário passa a mostrar quatro KPIs legíveis: PGD, REAL, gap PGD×REAL e PNs críticos. Comparação ORION×DPP Final e demais análises permanecem acessíveis em um agrupamento expansível, usando cards responsivos, sem tabela visual.
+- **Resumo operacional**: KPIs do fluxo completo (negativos, encontrados, pendentes por área, encaminhados ao CQ) e grupos quantitativos por unidade de medida. Não apresentar dados de investigação não consultada como zero.
+- **Divergência de Estoque**: fila de confirmação com PCM/Almoxarifado para registros encontrados e não validados; lista somente de PNs encontrados em M221/P277, com cards expansíveis por PN, busca/filtro, quantidade encontrada, cobertura teórica, recuperação aplicada, gap recalculado, falta residual, evidências e formulário original de validação.
+- **Análise de Qualidade**: fila análoga para Qualidade/CQ; lista somente de PNs encontrados em Q239/Q273, com gaps por PN, decisões de liberação/reprovação/refugo, busca e validação na mesma UI. Ausência de registro é contada no resumo, não tratada como scrap confirmado.
+- Filas e cards podem ser paginados independentemente (10/25/50), com espaço flexível e colunas responsivas (notebook em uma coluna; monitor grande em duas).
+- Exclusividade da apresentação: os relatórios Excel **continuam idênticos**, com abas `Resumo`, `PNs e divergências` e `Confirmar com área`; quantitativos e registros do Excel permanecem completos, inclusive sem achados.
+- Testes de apresentação determinística no Node adicionados ao pipeline de frontend para assegurar ordenação de pendências, filtros, ausência de PNs sem registros na lista e agregação sem misturar UM.

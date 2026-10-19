@@ -284,6 +284,18 @@ Somente criar um container quando houver necessidade funcional de agrupamento, i
 
 Antes de criar um badge, card ou caixa, verificar se texto, marcador, alinhamento, espaço, divisor ou tipografia já resolvem o problema.
 
+### Exceção funcional aprovada: Dashboard operacional do DPP (2026-10-19)
+
+Na interface **web** das investigações de Estoque e Qualidade, o usuário solicitou substituir as tabelas extensas por **resumo de métricas, filas de confirmação e painéis expansíveis por PN encontrado**. Isso é uma exceção operacional deliberada à preferência geral por tabelas, não um padrão global para todas as telas.
+
+- Na primeira leitura, mostrar PNs negativos, encontrados, pendências de área e gaps por unidade de medida.
+- As filas mostram apenas PNs **efetivamente encontrados** em M221/P277 ou Q239/Q273, com quantidade e ação explícitas; PNs sem registros permanecem contabilizados no resumo e no Excel.
+- Cards/agrupamentos de PN devem ser contidos, sem badges decorativos, sombras, cápsulas ou cores de status passivos.
+- Notebook: priorizar uma coluna de PNs com espaço legível; em monitores amplos, aproveitar duas colunas. Métricas e ações reorganizam-se em larguras menores.
+- Comparações complementares do DPP Final ficam num painel recolhível e usam agrupamentos responsivos, não grade de planilha.
+- A exportação **Excel mantém integralmente** suas três abas, cálculos, estilos e rastreabilidade. Nenhuma mudança visual web autoriza alteração dos relatórios.
+- Verificar foco por teclado, rótulos do formulário, ausência de overflow horizontal nas filas e desempenho com muitos PNs.
+
 ## 12. Tabelas
 
 Tabelas são componentes de primeira classe no ORION.
