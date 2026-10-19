@@ -194,6 +194,20 @@ def test_full_month_application_requires_human_confirmations_and_two_phase_previ
             audited = finalize_and_audit_dpp_formulas(content, new_scenario)
             assert audited
 
+            # Direct download must match the background job's canonical exporter.
+            direct = client.post(
+                "/api/dpp/monthly/export",
+                data={"scenario_id": new_sid},
+                files={"base_dpp": ("DPP JUN_2026.xlsx", BytesIO(_template_bytes()), MIME)},
+            )
+            assert direct.status_code == 200, direct.text
+            direct_book = load_workbook(BytesIO(direct.content), data_only=False)
+            try:
+                assert direct_book["ORION_CONFIRMACOES"]["B2"].value == 4
+                assert "ORION_CONFIRMACOES" in direct_book["DPP"][f"N{a}"].value
+            finally:
+                direct_book.close()
+
             scenarios._SCENARIOS.clear()
             assert scenarios.restore_persisted_monthly_scenario() is True
             assert scenarios.get_latest_monthly_scenario()["scenario_id"] == new_sid
