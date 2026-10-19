@@ -586,7 +586,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
           <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
           <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
           <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
-          <DppGapProjection scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
+          <DppGapProjection scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl}
+            onApplied={setGeneratedScenario} />
         </>
       )}
 
