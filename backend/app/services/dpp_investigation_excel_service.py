@@ -408,6 +408,19 @@ def _stock_action_rows(stock):
 def _quality_action_rows(quality):
     rows = []
     for m in quality.get("materials", []):
+        if not m.get("candidates"):
+            rows.append([
+                "Sem registro no CQ", m["material"], m.get("description"),
+                "Sem Q239/Q273", "", m.get("unit"), 0,
+                "STK ORIGINAL · nenhum registro Q239/Q273",
+                "Sem confirmação", "Não se aplica", 0, 0, 0, 0,
+                m.get("unexplained_after_quality"),
+                _status_label(m.get("workflow_status")),
+                ("Nenhum registro no CQ. Confirmar a ausência de informação "
+                 "com a Qualidade antes de agir sobre o encaminhamento; "
+                 "isso não comprova refugo."),
+                "", "", "Sem validações registradas",
+            ])
         for candidate in m.get("candidates", []):
             validated = candidate.get("validation") or {}
             pending = not validated
@@ -500,7 +513,7 @@ def export_investigation_excel(
              "Justificativa", "Data confirmação", "Histórico de revisões"],
             [31, 24, 36, 20, 13, 10, 26, 35, 25, 19, 20, 21, 24, 20, 22, 27, 65, 58, 25, 70],
             _quality_action_rows(quality), title="QUALIDADE · CONFIRMAR COM O CQ",
-            subtitle="Registros Q239/Q273 sob verificação; Q273 informativo aparece separado como não aplicável.",
+            subtitle="PNs encontrados no CQ, sem registros e Q273 informativos, com ações diferenciadas.",
             note="Peça confirmação da Qualidade/CQ por PN e depósito. Ausência de registro NÃO comprova refugo.",
             status_column=16)
     output = BytesIO()
