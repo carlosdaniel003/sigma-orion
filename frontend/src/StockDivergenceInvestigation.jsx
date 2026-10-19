@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
+import OrionVisualIcon from './OrionVisualIcon'
+import { evidenceCoveragePercent } from './investigation-visual-metrics'
 import { downloadInvestigationExcel } from './investigation-excel'
 import StockDepotReviewForm from './StockDepotReviewForm'
 import InvestigationPagination, { useInvestigationPagination } from './InvestigationPagination'
@@ -151,7 +153,8 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
       id="orion-stock-investigation" aria-label="Divergência de Estoque">
       <div className="orion-stock-investigation-header">
         <div>
-          <div className="module-heading-with-info">
+          <div className="module-heading-with-info orion-visual-heading">
+            <span className="orion-visual-icon"><OrionVisualIcon name="stock" /></span>
             <h3>Divergência de Estoque</h3>
             <ModuleInfoHint moduleKey="dashboard.stock_divergence" />
           </div>
@@ -182,7 +185,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <div><span>Encaminhados à Qualidade</span><strong>{formatQuantity(result.summary.items_to_quality)}</strong></div>
           </div>
           <section className="orion-investigation-queue" id="orion-stock-actions">
-            <h4>Confirmar com Almoxarifado</h4>
+            <h4 className="orion-visual-small-heading"><OrionVisualIcon name="action" size={18} /> Confirmar com Almoxarifado</h4>
             <p className="orion-investigation-section-description">
               {pending.length ? 'O analista deve confirmar os registros encontrados com PCM / Almoxarifado antes de considerar disponibilidade ou justificar baixa.'
                 : 'Nenhum registro encontrado aguarda confirmação.'}
@@ -216,7 +219,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
           </div>}
 
           <section className="orion-investigation-card-section" aria-label="PNs encontrados no Estoque">
-            <h4>PNs encontrados nos depósitos</h4>
+            <h4 className="orion-visual-small-heading"><OrionVisualIcon name="stock" size={18} /> PNs encontrados nos depósitos</h4>
             <p className="orion-investigation-section-description">
               {found.length} PN(s) encontrados em M221/P277. Os {result.summary.materials_without_candidates} PNs sem registros permanecem no resumo e no Excel.
             </p>
@@ -247,6 +250,10 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
                         <div><dt>Encontrado</dt><dd>{qty(material.candidate_quantity, material.unit)}</dd></div>
                         <div><dt>Gap recalculado</dt><dd>{qty(material.projected_gap_remaining, material.unit)}</dd></div>
                       </dl>
+                      <div className="orion-visual-pn-track" aria-hidden="true">
+                        <span style={{ width: evidenceCoveragePercent(material.candidate_quantity, material.negative_balance) + '%' }} />
+                      </div>
+                      <span className="orion-visual-pn-track-label">Cobertura encontrada · depende de validação</span>
                     </summary>
                     <div className="orion-investigation-card-body">
                       <dl className="orion-investigation-detail-facts">
@@ -280,7 +287,10 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
               <InvestigationPagination value={listPage} label="PNs encontrados em Estoque" />
             </> : <p>Nenhum PN encontrado nos depósitos investigados. Consulte o Excel para as faltas sem registro.</p>}
           </section>
-          <p className="orion-stock-investigation-note">Quantidade encontrada não equivale à disponibilidade confirmada. O gap só muda mediante validação registrada.</p>
+          <p className="orion-stock-investigation-note">Encontrado não significa disponível. Só a validação registrada pode alterar o gap projetado.</p>
+          <a className="orion-visual-backlink" href="#orion-investigation-overview">
+            <OrionVisualIcon name="up" size={16} /> Voltar ao resumo operacional
+          </a>
         </>
       )}
     </section>

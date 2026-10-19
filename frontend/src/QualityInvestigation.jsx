@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
+import OrionVisualIcon from './OrionVisualIcon'
+import { evidenceCoveragePercent } from './investigation-visual-metrics'
 import QualityReviewForm from './QualityReviewForm'
 import InvestigationPagination, { useInvestigationPagination } from './InvestigationPagination'
 import { qualityFound, pendingRecords, filterFound } from './investigation-view-model'
@@ -152,7 +154,8 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
       id="orion-quality-investigation" aria-label="Análise de Qualidade">
       <div className="orion-stock-investigation-header">
         <div>
-          <div className="module-heading-with-info">
+          <div className="module-heading-with-info orion-visual-heading">
+            <span className="orion-visual-icon"><OrionVisualIcon name="quality" /></span>
             <h3>Análise de Qualidade</h3>
             <ModuleInfoHint moduleKey="dashboard.quality_investigation" />
           </div>
@@ -184,7 +187,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
           <div><span>Sem registros nesses depósitos</span><strong>{fmt(report.summary.materials_without_quality_records)}</strong></div>
         </div>
         <section className="orion-investigation-queue" id="orion-quality-actions">
-          <h4>Confirmar com Qualidade / CQ</h4>
+          <h4 className="orion-visual-small-heading"><OrionVisualIcon name="action" size={18} /> Confirmar com Qualidade / CQ</h4>
           <p className="orion-investigation-section-description">
             {pending.length ? 'O analista deve solicitar a decisão do CQ para cada registro e confirmar a quantidade efetiva antes de justificar a falta ou recalcular o gap.'
               : 'Nenhum registro encontrado aguarda confirmação da Qualidade.'}
@@ -219,7 +222,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
         </div>}
 
         <section className="orion-investigation-card-section" aria-label="PNs encontrados no CQ">
-          <h4>PNs encontrados em Qualidade</h4>
+          <h4 className="orion-visual-small-heading"><OrionVisualIcon name="quality" size={18} /> PNs encontrados em Qualidade</h4>
           <p className="orion-investigation-section-description">
             {found.length} PN(s) encontrados em Q239/Q273. Os {report.summary.materials_without_quality_records} PNs sem registros permanecem no resumo e no Excel, sem serem classificados como refugo confirmado.
           </p>
@@ -250,6 +253,13 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                       <div><dt>Encontrado no CQ</dt><dd>{qty(material.candidates.reduce((acc,c) => acc + Number(c.quantity || 0),0), material.unit)}</dd></div>
                       <div><dt>Gap após CQ</dt><dd>{qty(material.physical_gap_after_quality, material.unit)}</dd></div>
                     </dl>
+                    <div className="orion-visual-pn-track" aria-hidden="true">
+                      <span style={{ width: evidenceCoveragePercent(
+                        material.candidates.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
+                        material.gap_from_41,
+                      ) + '%' }} />
+                    </div>
+                    <span className="orion-visual-pn-track-label">Cobertura encontrada no CQ · depende de validação</span>
                   </summary>
                   <div className="orion-investigation-card-body">
                     <dl className="orion-investigation-detail-facts">
@@ -283,7 +293,10 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <InvestigationPagination value={listPage} label="PNs encontrados em Qualidade" />
           </> : <p>Nenhum PN encontrado em Q239/Q273. Consulte o Excel para as faltas sem registro.</p>}
         </section>
-        <p className="orion-stock-investigation-note">Reprovação/refugo não recupera estoque. Encaminhamento não comprova scrap e não executa outra análise.</p>
+        <p className="orion-stock-investigation-note">Reprovação ou refugo não recupera estoque. O encaminhamento não comprova scrap.</p>
+        <a className="orion-visual-backlink" href="#orion-investigation-overview">
+          <OrionVisualIcon name="up" size={16} /> Voltar ao resumo operacional
+        </a>
       </>}
     </section>
   )
