@@ -109,6 +109,24 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         assert "PN-CQ" not in by_pn
         assert "PN-V" in by_pn
         assert by_pn["PN-V"][15] == "Encaminhar a Scrap"
+        pending = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
+        no_cq = next(row for row in pending if row[1] == "PN-V")
+        assert no_cq[0] == "Sem registro no CQ"
+        assert no_cq[3] == "Sem Q239/Q273"
+        assert no_cq[6] == 0
+        assert "não comprova refugo" in no_cq[16]
+        summary = dict(
+            (row[0], row[1]) for row in
+            book["Resumo"].iter_rows(min_row=6, max_col=2, values_only=True)
+            if row[0]
+        )
+        assert summary["PNs críticos (SALDO negativo)"] == 2
+        assert summary["PNs com registros em Estoque"] == 1
+        assert summary["PNs encaminhados à Qualidade"] == 1
+        assert summary["PNs sem registros em Qualidade"] == 1
+        assert summary["UN · Falta inicial (PNs críticos)"] == 14
+        assert summary["UN · Quantidade M221/P277 encontrada (bruta)"] == 12
+        assert summary["UN · Falta sem justificativa em Estoque"] == 14
         assert "DPP JUN_2026.06.02.xlsx" in [
             row[1] for row in book["Resumo"].iter_rows(min_row=5, values_only=True)
         ]
@@ -139,6 +157,7 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
                    and row[0] == "Informativo · não somar" for row in details)
         assert any(row[1] == "PN-CQ" and row[3] == "Q239"
                    and row[6] == 7 and "ORIGINAL · linhas 3" in row[7] for row in details)
+        assert next(row for row in details if row[1] == "PN-CQ" and row[3] == "Q239")[0] == "Confirmar com Qualidade/CQ"
         book.close()
 
 
