@@ -1123,3 +1123,16 @@ Esta regra atual **substitui, apenas na apresentação web**, a exceção anteri
 - **Pacote do mês** e **ORION × DPP Final** não sofrem alteração.
 - Usar `<dialog>` nativo para fechamento por Escape, contenção de foco e navegação por teclado; manter cantos retos, tokens existentes, sem glassmorphism, gradientes, glow ou elementos ilustrativos adicionais.
 - Os cálculos e persistência são independentes desta navegação. Exportações Excel permanecem organizadas em cinco abas por painel.
+
+
+### Consolidação visual do Dashboard e correção dos diálogos (2026-10-20)
+
+Esta decisão **substitui** a regra anterior de exibir o painel de Gap recalculado e a seção recolhível de indicadores complementares na interface principal. Não implica remoção de dados, cálculos ou documentação de conhecimento.
+
+- O **Cenário inicial do DPP** mantém só quatro métricas; o **Resumo operacional** mantém só seis.
+- **Divergência de Estoque** e **Análise de Qualidade** permanecem como cinco indicadores clicáveis cada. Os PNs e a confirmação manual ficam nos diálogos; não trazer de volta listas externas ou paginação.
+- Retirar da árvore visual do Dashboard os painéis **Ver indicadores complementares**, **Gap recalculado do DPP** e **Comparativo completo das colunas do DPP**. Preservar o **Plano consolidado por modelo ORION × DPP Final** e seus filtros/detalhes.
+- O **Pacote do mês** mantém tipografia e hierarquia industrial. Na visualização compacta, os arquivos devem ser exibidos **lado a lado**, em grade responsiva, com seus nomes completos acessíveis no título da linha, sem simular um novo tipo de card.
+- A distância entre as seções principais passa a usar `--space-3` (12 px), com `--space-2` em telas menores. Evitar somar margens internas e margens do contêiner; manter o recuo apenas para blocos realmente separados.
+- Dialogs operacionais usam `<dialog>` nativo em portal para `document.body`. Para impedir o fechamento involuntário em `React.StrictMode`, os efeitos de montagem e desmontagem podem chamar `showModal()/close()`, mas **somente ações explícitas de Fechar, Escape ou clique no backdrop** limpam a seleção do KPI. A simples limpeza do efeito nunca deve disparar `onClose` do componente.
+- Preservar acessibilidade de teclado, contenção de foco nativa, cantos retos, cores dos estados validados/pendentes estabelecidos anteriormente e os temas claro/escuro.
