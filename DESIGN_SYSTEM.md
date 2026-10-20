@@ -1162,3 +1162,15 @@ Estas regras **substituem** a antiga definição de tema escuro predominantement
 - Os textos secundários da **sidebar no tema escuro** também passam a azul-marinho `#08111F`, tal como o nome SIGMA-S ★RION, substituindo o cinza da revisão anterior.
 - Nos modais de Estoque e Qualidade, o cabeçalho contendo **Fechar** fica `position: sticky; top: 0` com fundo opaco do tema e índice superior ao conteúdo, evitando que a ação desapareça com a rolagem dos PNs. Não prender os formulários nem desabilitar Escape ou busca.
 - Implementação centralizada em `orion-inverted-dark.css` (carregado por último no tema), `BrandLogo.jsx`, `brand.css`, `sidebar-theme.css` e `investigation-kpi-panel.css`. Não duplicar temas dentro dos módulos.
+
+
+### Revisão visual após inspeção de capturas reais — tema escuro (2026-10-20)
+
+Esta diretriz **revoga a inversão ciano de toda a superfície definida na seção “Inversão azul do tema escuro”**. A captura real demonstrou que aplicar `#46D9FF` simultaneamente ao fundo, painéis, tabelas e cards elimina a hierarquia visual e não produz um modo escuro adequado para uso industrial.
+
+- **Tema claro:** não alterar. Sidebar preta com imagem sutil da Mondial, conteúdo claro e métricas neutras.
+- **Sidebar do tema escuro:** manter o azul da estrela `#46D9FF`, o logotipo e textos azul-marinho, fotografia da Mondial, e acionamento pelo wordmark completo. A sidebar é a área identitária que contrasta com o restante do produto.
+- **Área principal do tema escuro:** restaurar os tokens técnicos normativos da seção 6.1: fundo `#0D1826`, painel `#142235`, elevado `#1B2D43`, borda `#2B4057`, texto principal `#F4F8FC`, secundário `#91A4B8`.
+- **Ciano como acento funcional:** `#46D9FF` representa marca, controles primários, foco e estados interativos; nunca preencher todos os cards e a página simultaneamente com ciano. Em ações ciano, o texto fica no tom do fundo azul-marinho, para contraste.
+- **Escopo:** os mesmos tokens funcionam em Dashboard, Agente, Testes do DPP, Base de Conhecimento e modais. Não criar versões divergentes por tela. Não alterar o comportamento de cálculo, exportações Excel, estrutura dos indicadores nem o CSS do tema claro.
+- **Implementação:** `frontend/src/orion-dark-refinement.css` concentra os ajustes finais de hierarquia. A antiga folha `orion-inverted-dark.css` foi eliminada, juntamente com overrides de inversão de formulários que não cabem em superfícies escuras. O arquivo `sidebar-theme.css` continua responsável exclusivamente pela sidebar.
