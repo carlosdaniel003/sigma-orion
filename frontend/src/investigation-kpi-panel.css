@@ -1,0 +1,42 @@
+/* Exceção funcional aprovada: cards KPI acionam modais com evidência e validação humana. */
+.orion-investigation-ui .orion-kpi-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--space-2); margin-block:var(--space-5); }
+.orion-kpi-tile { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); min-width:0; min-height:114px; padding:var(--space-4); background:var(--orion-surface); color:var(--orion-text); border:1px solid var(--orion-border); border-radius:0; box-shadow:none; font:inherit; text-align:left; cursor:pointer; }
+.orion-kpi-tile > span { color:var(--orion-text-secondary); font-size:12px; }
+.orion-kpi-tile > strong { font-size:26px; font-variant-numeric:tabular-nums; line-height:1.1; }
+.orion-kpi-tile > small { font-size:11px; color:var(--orion-text-secondary); margin-top:auto; }
+.orion-kpi-tile:hover { background:var(--orion-surface-elevated); }
+.orion-kpi-tile:focus-visible { outline:2px solid var(--orion-blue); outline-offset:2px; }
+.orion-investigation-dialog { width:min(95vw,1100px); max-width:95vw; max-height:90vh; padding:0; border:1px solid var(--orion-border); border-radius:0; color:var(--orion-text); background:var(--orion-surface); box-shadow:none; overflow-y:auto; }
+.orion-investigation-dialog::backdrop { background:rgba(0,0,0,.70); }
+.orion-investigation-dialog-heading { display:flex; align-items:start; justify-content:space-between; gap:var(--space-4); padding:var(--space-5); border-bottom:1px solid var(--orion-border); }
+.orion-investigation-dialog-heading h3 { font-size:20px; margin:0 0 8px; }
+.orion-investigation-dialog-heading p { margin:0; font-size:12px; color:var(--orion-text-secondary); }
+.orion-investigation-dialog-heading button { flex-shrink:0; }
+.orion-investigation-dialog-search { padding:var(--space-3) var(--space-5); display:flex; gap:var(--space-3); align-items:center; border-bottom:1px solid var(--orion-border); }
+.orion-investigation-dialog-search input { min-width:0; width:min(100%,470px); padding:var(--space-2) var(--space-3); font:inherit; color:var(--orion-text); background:var(--orion-surface); border:1px solid var(--orion-border); border-radius:0; }
+.orion-investigation-dialog-search span { font-size:12px; color:var(--orion-text-secondary); white-space:nowrap; }
+.orion-investigation-dialog-content { padding:0 var(--space-5) var(--space-5); }
+.orion-investigation-record { padding:var(--space-4) 0; border-bottom:1px solid var(--orion-border); }
+.orion-investigation-record > header { display:flex; gap:var(--space-2) var(--space-4); align-items:baseline; flex-wrap:wrap; }
+.orion-investigation-record > header strong { font-size:15px; }
+.orion-investigation-record > header span, .orion-investigation-record > header small { color:var(--orion-text-secondary); font-size:12px; }
+.orion-investigation-record-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:var(--space-3); margin:var(--space-3) 0; }
+.orion-investigation-record-facts dt { font-size:11px; color:var(--orion-text-secondary); }
+.orion-investigation-record-facts dd { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; margin:4px 0 0; }
+.orion-investigation-record-note { font-size:12px; color:var(--orion-text-secondary); margin:var(--space-3) 0; }
+.orion-investigation-record-depots { display:grid; gap:var(--space-2); }
+.orion-investigation-record-depot { display:flex; justify-content:space-between; align-items:center; gap:var(--space-3); padding:var(--space-3); border:1px solid var(--orion-border); border-inline-start-width:3px; }
+.orion-investigation-record-depot--reviewed { border-inline-start-color:var(--orion-blue); }
+.orion-investigation-record-depot--pending { border-inline-start-color:var(--orion-warning); }
+.orion-investigation-record-depot > div { min-width:0; display:flex; flex-direction:column; gap:5px; }
+.orion-investigation-record-depot strong { font-size:13px; }
+.orion-investigation-record-depot span { font-size:12px; color:var(--orion-text-secondary); }
+.orion-investigation-record-depot small { font-size:12px; font-weight:600; }
+.orion-investigation-record-depot--reviewed small { color:var(--orion-blue); }
+.orion-investigation-record-depot--pending small { color:var(--orion-warning); }
+.orion-investigation-dialog .orion-stock-review-anchor { padding:var(--space-4); margin:var(--space-4) 0; border:1px solid var(--orion-border); background:var(--orion-surface-elevated); scroll-margin-top:20px; }
+.orion-investigation-dialog :focus-visible { outline:2px solid var(--orion-blue); outline-offset:2px; }
+@media(max-width:1200px) { .orion-investigation-ui .orion-kpi-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:700px) { .orion-investigation-ui .orion-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .orion-investigation-dialog-heading, .orion-investigation-dialog-search { padding:var(--space-3); } .orion-investigation-dialog-content { padding-inline:var(--space-3); } .orion-investigation-record-depot { align-items:stretch; flex-direction:column; } }
+@container (max-width:760px) { .orion-investigation-ui .orion-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@container (max-width:410px) { .orion-investigation-ui .orion-kpi-grid { grid-template-columns:1fr; } }
