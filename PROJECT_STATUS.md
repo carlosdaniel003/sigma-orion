@@ -789,3 +789,11 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Na sidebar escura, rótulos secundários deixam de ser cinza para usar o mesmo azul-marinho do wordmark; scrollbar invisível em Firefox/Chromium/WebKit, preservando rolagem por wheel/touch/teclado.
 - O cabeçalho dos diálogos de PN fica `sticky` em `top:0`, preservando o botão **Fechar** após rolar conteúdo extenso.
 - Sem alterações em cálculo DPP, consultas STK, persistência ou exportações Excel; foto Mondial continua pendente de arquivo autorizado do usuário.
+
+
+### Refinamento do tema escuro com base em capturas reais (2026-10-20)
+
+- Usuário confirmou a imagem da Mondial instalada; o modo claro com sidebar preta foi considerado visualmente adequado e não foi alterado.
+- A inversão anterior (ciano em fundo e painéis simultaneamente) não apresentou hierarquia adequada nas capturas. Foi removida a folha `orion-inverted-dark.css`.
+- O modo escuro reintroduz fundo `#0D1826`, painéis `#142235`, superfícies elevadas `#1B2D43`, textos principais `#F4F8FC` e auxiliares `#91A4B8`, em `orion-dark-refinement.css`; ciano `#46D9FF` permanece na sidebar, na identidade e nas ações primárias.
+- O comportamento do wordmark, a scrollbar oculta, o fechamento fixo de modais, a foto da sidebar, o Dashboard de KPIs, a investigação e as exportações foram preservados.
