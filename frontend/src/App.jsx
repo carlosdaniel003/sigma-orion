@@ -2,11 +2,8 @@ import { useLayoutEffect, useState } from 'react'
 import AgentOrion from './AgentOrion'
 import WorkspaceNavigation from './WorkspaceNavigation'
 import DashboardLoader from './DashboardLoader'
-import DppColumnComparison from './DppColumnComparison'
 import FinalModelPlan from './FinalModelPlan'
 import './final-model-plan-detail.css'
-import ScenarioDivergenceController from './ScenarioDivergenceController'
-import EvolutionDivergenceController from './EvolutionDivergenceController'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
 import KnowledgeBase from './KnowledgeBase'
@@ -76,10 +73,7 @@ function App() {
             finalDppAnalysis={finalDppAnalysis}
             onFinalDppAnalysis={setFinalDppAnalysis}
           />
-          <EvolutionDivergenceController finalDppAnalysis={finalDppAnalysis} />
-          <ScenarioDivergenceController finalDppAnalysis={finalDppAnalysis} />
           <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
-          <DppColumnComparison finalDppAnalysis={finalDppAnalysis} apiUrl={API_URL} />
         </section>
 
         {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
