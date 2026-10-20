@@ -205,23 +205,23 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
                   onClick={() => setSelectedId(candidate.candidate_id)}>
                   {candidate.validation ? 'Revisar validação' : 'Validar manualmente'}
                 </button>
-              </>} />
+              </>}>
+              {selected?.material.material === material.material && (
+                <div ref={scrollRef} className="orion-stock-review-anchor">
+                  <StockDepotReviewForm key={selected.candidate.candidate_id}
+                    scenario={scenario} stockFile={stockFile} material={selected.material}
+                    candidate={selected.candidate} apiUrl={apiUrl} onCancel={() => setSelectedId('')}
+                    onSaved={payload => {
+                      setStockInvestigation({ packageKey, reportKey, result: payload })
+                      setSelectedId('')
+                      setConfirmation('Validação registrada. SALDO oficial inalterado.')
+                    }} />
+                </div>
+              )}
+            </InvestigationRecord>
           ))}
-          {selected && <div ref={scrollRef} className="orion-stock-review-anchor">
-            <StockDepotReviewForm key={selected.candidate.candidate_id}
-              scenario={scenario} stockFile={stockFile} material={selected.material}
-              candidate={selected.candidate} apiUrl={apiUrl} onCancel={() => setSelectedId('')}
-              onSaved={payload => {
-                setStockInvestigation({ packageKey, reportKey, result: payload })
-                setSelectedId('')
-                setConfirmation('Validação registrada. SALDO oficial inalterado.')
-              }} />
-          </div>}
         </>}
       </InvestigationModal>}
-      {result && <p className="orion-stock-investigation-note">
-        Amarelo: registro aguardando validação. Azul: decisão humana registrada. Sem registro não equivale a material disponível.
-      </p>}
     </section>
   )
 }
