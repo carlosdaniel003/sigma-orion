@@ -91,13 +91,16 @@ test('compact shared monthly package keeps full filename tooltip and responsive 
 })
 
 
-test('the ORION star exclusively controls sidebar expansion, including mobile', () => {
+test('the full ORION wordmark controls expansion, with only the star visible when collapsed', () => {
   const sidebar = source('WorkspaceNavigation.jsx')
   const brand = source('BrandLogo.jsx')
   const navigation = source('navigation.css')
   assert.match(sidebar, /<BrandLogo collapsed=\{collapsed\} onToggle=\{\(\) => setCollapsed/)
   assert.doesNotMatch(sidebar, /shell-mobile-close|<button className="shell-icon-button" type="button" aria-label=\{collapsed/)
-  assert.match(brand, /className="brand-star-toggle"/)
+  assert.match(brand, /className="brand-logo-wrap brand-wordmark-toggle"/)
+  assert.match(brand, /className="brand-logo-full"/)
+  assert.match(brand, /className="brand-logo-star"/)
+  assert.match(source('brand.css'), /\.shell-sidebar\[data-collapsed='true'\] \.brand-logo-full \{ display: none; \}/)
   assert.match(brand, /aria-expanded=\{!collapsed\}/)
   assert.match(brand, /aria-controls="workspace-navigation"/)
   assert.match(brand, /onClick=\{onToggle\}/)
@@ -111,8 +114,31 @@ test('sidebar palettes remain isolated and Mondial background is optional', () =
   assert.match(theme, /:root\[data-theme='dark'\] \.shell-sidebar/)
   assert.match(theme, /background-color: #000000 !important/)
   assert.match(theme, /background-color: #46D9FF !important/)
-  assert.match(theme, /--sidebar-muted: #43556B/)
+  assert.match(theme, /--sidebar-muted: #08111F/)
+  assert.match(theme, /scrollbar-width: none/)
+  assert.match(theme, /::-webkit-scrollbar/)
   assert.match(theme, /\/assets\/mondial-sidebar\.jpg/)
   assert.match(theme, /pointer-events: none/)
   assert.match(main, /import '\.\/sidebar-theme\.css'/)
+})
+
+
+test('investigation modal close remains visible when PN results scroll', () => {
+  const modal = source('investigation-kpi-panel.css')
+  assert.match(modal, /\.orion-investigation-dialog-heading \{ position:sticky; top:0; z-index:3;/)
+  assert.match(modal, /background:var\(--orion-surface\)/)
+  assert.match(modal, /\.orion-investigation-dialog \{[^}]*overflow-y:auto;/)
+})
+
+test('inverted dark palette changes all shared tokens without changing the light theme', () => {
+  const dark = source('orion-inverted-dark.css')
+  const main = source('main.jsx')
+  assert.match(main, /import '\.\/orion-inverted-dark\.css'/)
+  assert.match(dark, /:root\[data-theme='dark'\] \{/)
+  assert.match(dark, /--orion-bg: #46D9FF/)
+  assert.match(dark, /--orion-surface: #46D9FF/)
+  assert.match(dark, /--orion-text: #08111F/)
+  assert.match(dark, /--orion-text-secondary: #28546B/)
+  assert.match(dark, /background: var\(--orion-inverted-ink\) !important/)
+  assert.doesNotMatch(dark, /:root\[data-theme='light'\]/)
 })
