@@ -29,11 +29,9 @@ export default function WorkspaceNavigation({ activeWorkspace, activeView, activ
     <>
       <aside className="shell-sidebar" data-collapsed={collapsed} aria-label="Áreas do SIGMA-S ORION">
         <div className="shell-sidebar-head">
-          <button className="shell-brand" type="button" aria-label="Ir para o Dashboard do DPP"
-            onClick={() => onDppView('dashboard')}><BrandLogo /></button>
-          <button type="button" className="shell-mobile-close shell-icon-button" aria-label="Fechar navegação" onClick={() => setCollapsed(true)}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
-          </button>
+          <div className="shell-brand">
+            <BrandLogo collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
+          </div>
         </div>
         <nav id="workspace-navigation" className="shell-navigation" aria-label="Navegação principal"
           onClick={() => { if (window.matchMedia('(max-width: 760px)').matches) setCollapsed(true) }}>
@@ -62,11 +60,6 @@ export default function WorkspaceNavigation({ activeWorkspace, activeView, activ
         </div>
       </aside>
       <header className="shell-topbar">
-        <button className="shell-icon-button" type="button" aria-label={collapsed ? 'Expandir navegação' : 'Recolher navegação'}
-          title={collapsed ? 'Expandir navegação' : 'Recolher navegação'} aria-expanded={!collapsed}
-          aria-controls="workspace-navigation" onClick={() => setCollapsed((value) => !value)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 4.5h17v15h-17ZM9 4.5v15" /></svg>
-        </button>
         <span className="shell-view-title">{title}</span>
         {activeWorkspace === 'knowledge' && (
           <label className="knowledge-topbar-search" aria-label="Pesquisar em toda a Base de conhecimento">
