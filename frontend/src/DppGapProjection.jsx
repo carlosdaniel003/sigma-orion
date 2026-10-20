@@ -44,6 +44,8 @@ export default function DppGapProjection({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeGroup, setActiveGroup] = useState('')
+  const [approvedGroup, setApprovedGroup] = useState('')
+  const approvedModalRef = useRef(null)
   const [preparing, setPreparing] = useState(false)
   const [applying, setApplying] = useState(false)
   const [approval, setApproval] = useState(null)
@@ -78,6 +80,12 @@ export default function DppGapProjection({
       modalRef.current.showModal()
     }
   }, [approval])
+
+  useEffect(() => {
+    const dialog = approvedModalRef.current
+    if (approvedGroup && dialog && !dialog.open) dialog.showModal()
+    if (!approvedGroup && dialog?.open) dialog.close()
+  }, [approvedGroup])
 
   const result = snapshot?.signature === signature ? snapshot.data : null
   const applied = useMemo(() => (result?.materials || []).filter(item =>
@@ -183,15 +191,42 @@ export default function DppGapProjection({
             </div>
           </header>
           <div className="orion-dpp-gap-overview">
-            <Count label="Materiais recalculados" value={approved.materials_total} />
-            <Count label="PNs com explicações registradas" value={approved.materials_with_applied_explanations} />
-            <Count label="PNs ainda sem explicação" value={approved.unresolved_materials} />
-            <Count label="Validações pendentes na aprovação" value={approved.pending_validations_at_approval} />
+            <Count label="Materiais recalculados" value={approved.materials_total}
+              onClick={() => setApprovedGroup('Materiais recalculados')} />
+            <Count label="PNs com explicações registradas" value={approved.materials_with_applied_explanations}
+              onClick={() => setApprovedGroup('PNs com explicações registradas')} />
+            <Count label="PNs ainda sem explicação" value={approved.unresolved_materials}
+              onClick={() => setApprovedGroup('PNs ainda sem explicação')} />
+            <Count label="Validações pendentes na aprovação" value={approved.pending_validations_at_approval}
+              onClick={() => setApprovedGroup('Validações pendentes na aprovação')} />
           </div>
           <p className="orion-dpp-gap-caption">
             Cenário original preservado: {approved.original_scenario_id}. Aplicação registrada em {approved.approved_at_utc}.
             O novo Excel mensal será gerado com esta versão, sem alterar os valores brutos do STK SAP.
           </p>
+          <dialog ref={approvedModalRef} className="orion-dpp-gap-dialog"
+            aria-label={approvedGroup || 'Auditoria do DPP aplicado'}
+            onClose={() => setApprovedGroup('')}>
+            <div className="orion-stock-review-heading">
+              <h3>{approvedGroup}</h3>
+              <button type="button" className="secondary-button"
+                onClick={() => approvedModalRef.current?.close()}>Fechar</button>
+            </div>
+            <p>Registro de aplicação do DPP de {scenario.reference_month}. O cenário original permanece preservado.</p>
+            <dl className="orion-dpp-gap-dialog-facts">
+              <div><dt>Materiais recalculados</dt><dd>{display(approved.materials_total)}</dd></div>
+              <div><dt>PNs com explicações</dt><dd>{display(approved.materials_with_applied_explanations)}</dd></div>
+              <div><dt>PNs ainda sem explicação</dt><dd>{display(approved.unresolved_materials)}</dd></div>
+              <div><dt>Validações pendentes quando aprovado</dt><dd>{display(approved.pending_validations_at_approval)}</dd></div>
+            </dl>
+            <div className="orion-dpp-gap-dialog-units">
+              <strong>Acréscimos e faltas por unidade</strong>
+              {(approved.recovered_by_unit || []).map(item => (
+                <p key={item.unit}>{item.unit}: Estoque +{display(item.from_stock)} · CQ +{display(item.from_quality)} · Sem explicação {display(item.still_unexplained)}</p>
+              ))}
+            </div>
+            <p>Cenário de origem: {approved.original_scenario_id}. Aplicado em: {approved.approved_at_utc}.</p>
+          </dialog>
           <div className="orion-dpp-gap-units">
             {(approved.recovered_by_unit || []).map(item => (
               <div key={item.unit} className="orion-dpp-gap-approved-unit">
