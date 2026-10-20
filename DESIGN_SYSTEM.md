@@ -1108,3 +1108,18 @@ Um usuário acostumado com Excel/Power BI entende em poucos segundos:
 ```
 
 Se a resposta for não, simplificar a interface antes de acrescentar novos elementos visuais.
+
+
+### Revisão de navegação por indicadores e modais (2026-10-20)
+
+Esta regra atual **substitui, apenas na apresentação web**, a exceção anterior de filas paginadas e cards de PN expansíveis no corpo dos módulos de Estoque e Qualidade.
+
+- **Cenário inicial do DPP** é um componente com cabeçalho e quatro indicadores: PGD, REAL, gap PGD × REAL e materiais críticos.
+- **Resumo operacional** contém somente seis métricas: PNs negativos, encontrados em Estoque, aguardando Almoxarifado, encaminhados à Qualidade, encontrados em CQ e aguardando Qualidade.
+- **Divergência de Estoque** e **Análise de Qualidade** apresentam cada um **exatamente cinco controles quadrados clicáveis**, alinhados aos respectivos cinco indicadores/abas Excel. Não exibir filas, cards de PN, tabelas ou paginação fora dos modais.
+- Os modais de indicador apresentam todos os PNs da categoria (inclusive ausentes dos depósitos), a descrição, quantidades, unidade, evidências STK e ação humana quando existe candidato para validação. Permitir pesquisa local, sem paginação. Manter os formulários e histórico de revisão existentes; nunca disponibilizar botão de confirmação para PN sem evidência de depósito.
+- **Exceção cromática explícita para decisão humana:** somente nos modais de investigação, registros candidatos ainda **sem revisão humana** usam borda lateral amarela `var(--orion-warning)`; candidatos com **decisão registrada pelo humano** usam borda azul `var(--orion-blue)`. O estado é atribuído por `candidate.validation`, nunca por presença de saldo. PNs sem registros usam apenas borda neutra. Manter texto de estado explícito e legível em tema claro e escuro; não converter esses marcadores em badges decorativos ou fundos pastéis.
+- **Gap recalculado do DPP:** indicadores de materiais e pendências abrem modais de detalhamento por PN; a análise por unidade fica dentro do modal, não no corpo do painel. Preservar a confirmação final do DPP em seu diálogo separado.
+- **Pacote do mês** e **ORION × DPP Final** não sofrem alteração.
+- Usar `<dialog>` nativo para fechamento por Escape, contenção de foco e navegação por teclado; manter cantos retos, tokens existentes, sem glassmorphism, gradientes, glow ou elementos ilustrativos adicionais.
+- Os cálculos e persistência são independentes desta navegação. Exportações Excel permanecem organizadas em cinco abas por painel.
