@@ -154,7 +154,11 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
 
   return (
     <>
-      <header className="page-header dashboard-header">
+
+
+      {!scenario ? (
+        <>
+          <header className="page-header dashboard-header">
         <div>
           <span className="eyebrow">VISÃO OPERACIONAL</span>
           <div className="module-heading-with-info dashboard-primary-heading">
@@ -167,12 +171,24 @@ function Dashboard({ scenario, onNavigate, finalDppAnalysis }) {
           </p>
         </div>
       </header>
-
-      {!scenario ? (
-        <EmptyDashboard onNavigate={onNavigate} />
+          <EmptyDashboard onNavigate={onNavigate} />
+        </>
       ) : (
         <>
-          <section className="panel dashboard-plan-overview" aria-label="Indicadores do DPP">
+          <section className="panel dashboard-plan-overview" aria-label="Cenário inicial do DPP">
+            <header className="page-header dashboard-header">
+        <div>
+          <span className="eyebrow">VISÃO OPERACIONAL</span>
+          <div className="module-heading-with-info dashboard-primary-heading">
+            <h2>Cenário inicial do DPP</h2>
+            <ModuleInfoHint moduleKey="dashboard.overview" />
+          </div>
+          <p>
+            Planejamento calculado pelo ORION, antes das confirmações das áreas.
+            {scenario && <> Cenário analisado: <strong>{formatMonth(scenario.reference_month)}</strong>.</>}
+          </p>
+        </div>
+      </header>
             <div className="dashboard-plan-metrics">
               <div><span>PGD do mês</span><strong>{formatNumber(data.pgdTotal)} un.</strong><small>Referência de produção</small></div>
               <div><span>REAL planejado</span><strong>{formatNumber(data.realTotal)} un.</strong><small>Definido pelo cenário ORION</small></div>
