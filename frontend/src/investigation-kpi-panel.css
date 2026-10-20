@@ -40,3 +40,13 @@
 @media(max-width:700px) { .orion-investigation-ui .orion-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .orion-investigation-dialog-heading, .orion-investigation-dialog-search { padding:var(--space-3); } .orion-investigation-dialog-content { padding-inline:var(--space-3); } .orion-investigation-record-depot { align-items:stretch; flex-direction:column; } }
 @container (max-width:760px) { .orion-investigation-ui .orion-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @container (max-width:410px) { .orion-investigation-ui .orion-kpi-grid { grid-template-columns:1fr; } }
+
+/* Cor informa somente o registro de validação humana, nunca presença no SAP. */
+.orion-investigation-record--pending { border-inline-start:3px solid var(--orion-warning); padding-inline-start:var(--space-3); }
+.orion-investigation-record--reviewed { border-inline-start:3px solid var(--orion-blue); padding-inline-start:var(--space-3); }
+.orion-investigation-record--unlocated { border-inline-start:3px solid var(--orion-border); padding-inline-start:var(--space-3); }
+.orion-investigation-record--pending > header small { color:var(--orion-text); }
+.orion-investigation-record--reviewed > header small { color:var(--orion-text); }
+.orion-investigation-record-depot--reviewed small,
+.orion-investigation-record-depot--pending small { color:var(--orion-text); }
+.orion-investigation-dialog .orion-dpp-gap-units { margin:var(--space-4) 0 var(--space-5); }
