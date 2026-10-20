@@ -37,7 +37,7 @@
 /* The star blue (#46D9FF) is the actual dark-theme sidebar surface. */
 :root[data-theme='dark'] .shell-sidebar {
   --sidebar-ink: #08111F;
-  --sidebar-muted: #43556B; /* Remains grey, adjusted for readable contrast on cyan. */
+  --sidebar-muted: #08111F; /* Same navy as the SIGMA-S ORION wordmark. */
   --sidebar-hover: rgba(8, 17, 31, 0.11);
   --sidebar-divider: rgba(8, 17, 31, 0.22);
   --sidebar-star: #08111F; /* Inverted so the toggle does not disappear into its own background. */
@@ -53,7 +53,7 @@
 .shell-sidebar .brand-logo,
 :root[data-theme='light'] .shell-sidebar .brand-logo,
 .shell-sidebar .brand-logo-word,
-.shell-sidebar .brand-star-toggle {
+.shell-sidebar .brand-wordmark-toggle {
   color: var(--sidebar-ink) !important;
 }
 .shell-sidebar .brand-logo-star .orion-brand-star-symbol {
@@ -72,11 +72,22 @@
 .shell-sidebar .shell-sidebar-footer {
   border-top-color: var(--sidebar-divider) !important;
 }
-.shell-sidebar .brand-star-toggle:hover {
+.shell-sidebar .brand-wordmark-toggle:hover {
   background: var(--sidebar-hover) !important;
 }
-.shell-sidebar .brand-star-toggle:focus-visible,
+.shell-sidebar .brand-wordmark-toggle:focus-visible,
 .shell-sidebar .shell-nav-item:focus-visible {
   outline: 2px solid var(--sidebar-ink) !important;
   outline-offset: -2px;
+}
+
+/* Hide the scroll-track, never disable scrolling by wheel, touch, or keyboard. */
+.shell-sidebar .shell-navigation {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.shell-sidebar .shell-navigation::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
