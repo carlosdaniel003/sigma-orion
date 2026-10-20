@@ -3,7 +3,6 @@ import { useDppWorkspace } from './DppWorkspaceContext'
 import { buildStockInvestigationReportKey, fileIdentity } from './dpp-workspace-state'
 import { pendingRecords, qualityFound, stockFound } from './investigation-view-model'
 import ModuleInfoHint from './ModuleInfoHint'
-import OrionVisualIcon from './OrionVisualIcon'
 import './investigation-cards.css'
 
 function display(value) {
@@ -58,12 +57,7 @@ export default function InvestigationOverview({ scenario, stockFile }) {
             <h3>Resumo operacional</h3>
             <ModuleInfoHint moduleKey="dashboard.investigations_summary" />
           </div>
-          <p>Seis indicadores do cenário e das validações atuais. Os detalhes ficam nos painéis de Estoque e Qualidade.</p>
         </div>
-        <nav className="orion-investigation-shortcuts" aria-label="Ir para investigação">
-          <a href="#orion-stock-investigation"><OrionVisualIcon name="stock" size={16} /> Estoque</a>
-          <a href="#orion-quality-investigation"><OrionVisualIcon name="quality" size={16} /> Qualidade</a>
-        </nav>
       </header>
       <dl className="orion-investigation-overview-metrics">
         {metrics.map(metric => <OverviewMetric key={metric.label} {...metric} />)}
