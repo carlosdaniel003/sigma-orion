@@ -78,7 +78,7 @@ Cada aba contém uma linha por PN que pertence ao indicador, incluindo descriç�
 
 ### Gap recalculado do DPP em construção
 
-Depois de registrar as confirmações de Divergência de Estoque e Análise de Qualidade, o ORION recompõe a projeção do déficit de **todos os materiais** da base mensal. Somente disponibilidade e liberação validadas como adicionais ao DPP reduzem a falta física; justificativas explicam a falta restante sem virarem estoque. O resultado aparece no Dashboard com botão Recalcular gap e também é atualizado quando as revisões humanas mudam.
+Depois de registrar as confirmações de Divergência de Estoque e Análise de Qualidade, o ORION recompõe a projeção do déficit de **todos os materiais** da base mensal. Somente disponibilidade e liberação validadas como adicionais ao DPP reduzem a falta física; justificativas explicam a falta restante sem virarem estoque. O serviço permanece disponível no backend e continua fundamentando a projeção quando solicitado, mas o painel **Gap recalculado do DPP** foi retirado da interface do Dashboard por decisão de apresentação. O fluxo de validação nos modais de Estoque e Qualidade permanece ativo.
 
 Esta projeção **não substitui o SALDO original nem altera o Excel mensal exportado**. Não executa a etapa posterior de Scrap. O DPP Final anterior é usado apenas para comparar e validar, não como entrada dos cálculos.
 
@@ -118,7 +118,9 @@ OPEN é usado como evidência auxiliar e não altera estoque.
 
 ### Visual operacional do Dashboard (web)
 
-O Dashboard concentra a leitura inicial em quatro indicadores do Cenário ORION e seis indicadores do Resumo Operacional. Estoque e Qualidade apresentam exclusivamente cinco cards de indicadores cada, que abrem modais nativos com todos os PNs da categoria, dados completos, decisões humanas e formulários de validação. Registros pendentes usam marcador amarelo e decisões humanas já registradas usam azul, apenas nesses detalhes operacionais. PNs sem registros permanecem neutros. O Gap recalculado apresenta quatro indicadores clicáveis, deslocando detalhamentos de materiais e unidades para modais. Pacote do mês e comparação ORION × DPP Final não mudam; as cinco abas de cada Excel preservam suas próprias categorias.
+O Dashboard mostra quatro indicadores do Cenário Inicial, seis do Resumo Operacional e cinco cards clicáveis de investigação em cada módulo (Estoque e Qualidade). Os cards abrem modais com PNs e validações humanas, marcando candidatos pendentes em amarelo e confirmados em azul. O **Pacote do mês** conserva a identidade visual, mas distribui as fontes em uma grade compacta e responsiva. O **Plano consolidado por modelo ORION × DPP Final** permanece disponível.
+
+Foram retirados da interface: **Ver indicadores complementares**, **Gap recalculado do DPP** e **Comparativo completo das colunas do DPP**. A retirada é apenas de apresentação: não apaga serviços, regras, resultados registrados ou as cinco abas de exportação Excel de cada investigação. O modal foi isolado da hierarquia visual via portal e não confunde o fechamento de limpeza do React com um fechamento solicitado pelo analista.
 
 ## Dashboard
 
