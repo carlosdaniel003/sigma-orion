@@ -761,3 +761,14 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O Gap recalculado move detalhamento por PN e unidade para modais acionados pelos quatro KPIs. Confirmação de aplicação permanece separada e auditável. A versão já aprovada oferece diálogo de auditoria por indicador.
 - Não modifica Pacote do mês, ORION × DPP Final, regras determinísticas, endpoints, SQLite, confirmações de área, backend nem as exportações Excel.
 - Esta seção prevalece sobre a documentação histórica de paginação e filas da página web.
+
+
+### Dashboard enxuto e abertura robusta dos modais (2026-10-20)
+
+- Esta é a decisão visual **vigente**, que substitui referências históricas deste documento a um painel de Gap recalculado visível, às métricas complementares recolhíveis e ao comparativo completo de colunas no Dashboard.
+- Retirados **do frontend renderizado**: `DppGapProjection`, `DppColumnComparison` e o grupo recolhível `Ver indicadores complementares`. Serviços Python, endpoint de projeção, histórico de decisões, documentos de conhecimento e os cálculos de DPP permanecem no repositório; a ação de aplicação do gap existente naquele painel não fica mais acessível por esse Dashboard.
+- Mantido **sem alterações funcionais** o `FinalModelPlan` (Plano consolidado por modelo ORION × DPP Final), incluindo busca, filtros e explicação das divergências.
+- O Pacote do mês usa, **apenas em modo compacto**, grade responsiva com quatro, três, duas ou uma coluna conforme a área útil; nomes completos de arquivos podem ser lidos por tooltip. A versão completa de carregamento mantém sua lista.
+- A composição visual do Dashboard foi simplificada: Cenário inicial com quatro métricas, Resumo Operacional com seis, investigações com cinco cards cada, mais o pacote e o plano consolidado. Margens duplicadas e o espaçamento antigo de 24–40 px entre módulos foram reduzidos para 8–12 px por meio de tokens existentes.
+- A não abertura dos diálogos estava ligada ao `onClose` nativo disparado pelo `close()` na limpeza do efeito durante o ciclo de desenvolvimento do React StrictMode. O componente agora usa `createPortal`, `useLayoutEffect` e trata Fechar/Escape/backdrop explicitamente; a limpeza interna do efeito não reseta a categoria selecionada.
+- Os relatórios de cinco abas por área, controles de validação humana e regras do STK ORIGINAL não foram alterados.
