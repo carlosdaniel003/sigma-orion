@@ -64,7 +64,7 @@ def test_stock_excel_includes_every_critical_pn_and_auditable_depots(monkeypatch
         book = spreadsheet(upload(
             client, "/api/dpp/investigations/stock-divergence/export", current, stock,
         ))
-        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área"]
+        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área", "Divergência de Estoque", "Análise de Qualidade"]
         info = [cell[1] for cell in book["Resumo"].iter_rows(min_row=5, values_only=True)]
         assert "DPP JUN_2026.06.02.xlsx" in info
         assert "STK JULHO.xlsx" in info
@@ -87,6 +87,17 @@ def test_stock_excel_includes_every_critical_pn_and_auditable_depots(monkeypatch
         assert any(row[1] == "PN-CQ" and row[3] == "M221" and row[6] == 12
                    and "ORIGINAL · linhas 2" in row[7] for row in details)
         assert all(row[3] not in {"Q239", "Q273"} for row in details if row[1])
+        inventory = {row[0]: row for row in book["Divergência de Estoque"].iter_rows(min_row=6, values_only=True) if row[0]}
+        assert set(inventory) == {"PN-CQ", "PN-V"}
+        assert inventory["PN-CQ"][5] == 12  # M221 raw finding, not released stock
+        assert inventory["PN-CQ"][9] == 0   # no human confirmation yet
+        assert inventory["PN-V"][12] == 4   # missing without stock records
+        assert "STK ORIGINAL" in inventory["PN-CQ"][16] or "ORIGINAL linhas" in inventory["PN-CQ"][16]
+        cq_inventory = {row[0]: row for row in book["Análise de Qualidade"].iter_rows(min_row=6, values_only=True) if row[0]}
+        assert "PN-V" in cq_inventory
+        assert "PN-CQ" not in cq_inventory  # stock validation is pending
+        assert book["Divergência de Estoque"].freeze_panes == "C6"
+        assert book["Análise de Qualidade"].auto_filter.ref is not None
         assert book["PNs e divergências"].freeze_panes == "C6"
         assert book["Confirmar com área"].auto_filter.ref is not None
         book.close()
@@ -102,7 +113,7 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         book = spreadsheet(upload(
             client, "/api/dpp/investigations/quality/export", current, stock,
         ))
-        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área"]
+        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área", "Divergência de Estoque", "Análise de Qualidade"]
         items = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
         by_pn = {row[0]: row for row in items if row[0]}
         # PN-CQ has pending stock review; quality cannot precede it.
@@ -158,6 +169,12 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         assert any(row[1] == "PN-CQ" and row[3] == "Q239"
                    and row[6] == 7 and "ORIGINAL · linhas 3" in row[7] for row in details)
         assert next(row for row in details if row[1] == "PN-CQ" and row[3] == "Q239")[0] == "Confirmar com Qualidade/CQ"
+        detailed_quality = {row[0]: row for row in book["Análise de Qualidade"].iter_rows(min_row=6, values_only=True) if row[0]}
+        assert detailed_quality["PN-CQ"][4] == 7    # active Q239
+        assert detailed_quality["PN-CQ"][5] == 0    # Q273 does not enter the active quantity
+        assert detailed_quality["PN-CQ"][6] == 3    # Q273 is only informative
+        assert detailed_quality["PN-CQ"][14] == 1   # pending CQ
+        assert "informativo" in detailed_quality["PN-CQ"][19]
         book.close()
 
 
