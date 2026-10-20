@@ -22,6 +22,7 @@ import './knowledge-audit.css'
 import './knowledge-navigation.css'
 import './industrial-neutral-language.css'
 import './sidebar-theme.css'
+import './orion-inverted-dark.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
