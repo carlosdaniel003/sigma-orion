@@ -64,7 +64,7 @@ def test_stock_excel_includes_every_critical_pn_and_auditable_depots(monkeypatch
         book = spreadsheet(upload(
             client, "/api/dpp/investigations/stock-divergence/export", current, stock,
         ))
-        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área", "Divergência de Estoque", "Análise de Qualidade"]
+        assert book.sheetnames == ["Resumo", "Divergência de Estoque", "Análise de Qualidade", "PNs e divergências", "Confirmar com área"]
         info = [cell[1] for cell in book["Resumo"].iter_rows(min_row=5, values_only=True)]
         assert "DPP JUN_2026.06.02.xlsx" in info
         assert "STK JULHO.xlsx" in info
@@ -113,7 +113,7 @@ def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
         book = spreadsheet(upload(
             client, "/api/dpp/investigations/quality/export", current, stock,
         ))
-        assert book.sheetnames == ["Resumo", "PNs e divergências", "Confirmar com área", "Divergência de Estoque", "Análise de Qualidade"]
+        assert book.sheetnames == ["Resumo", "Divergência de Estoque", "Análise de Qualidade", "PNs e divergências", "Confirmar com área"]
         items = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
         by_pn = {row[0]: row for row in items if row[0]}
         # PN-CQ has pending stock review; quality cannot precede it.
