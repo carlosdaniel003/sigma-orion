@@ -1136,3 +1136,15 @@ Esta decisão **substitui** a regra anterior de exibir o painel de Gap recalcula
 - A distância entre as seções principais passa a usar `--space-3` (12 px), com `--space-2` em telas menores. Evitar somar margens internas e margens do contêiner; manter o recuo apenas para blocos realmente separados.
 - Dialogs operacionais usam `<dialog>` nativo em portal para `document.body`. Para impedir o fechamento involuntário em `React.StrictMode`, os efeitos de montagem e desmontagem podem chamar `showModal()/close()`, mas **somente ações explícitas de Fechar, Escape ou clique no backdrop** limpam a seleção do KPI. A simples limpeza do efeito nunca deve disparar `onClose` do componente.
 - Preservar acessibilidade de teclado, contenção de foco nativa, cantos retos, cores dos estados validados/pendentes estabelecidos anteriormente e os temas claro/escuro.
+
+
+### Sidebar cromática e estrela como acionador único (2026-10-20)
+
+Estas decisões substituem exclusivamente a paleta e os controles anteriores da navegação lateral, sem modificar o tema das páginas, cabeçalhos ou módulos do Dashboard.
+
+- No **tema claro**, a sidebar tem fundo preto `#000000`, textos/ícones primários brancos e informação secundária branca com transparência. A inversão não se propaga para a área de conteúdo.
+- No **tema escuro**, a sidebar usa o azul da estrela ORION, `#46D9FF`, como superfície. Itens secundários **permanecem cinzas**, em tom `#43556B` para legibilidade sobre azul; títulos e seleção usam `#08111F`. A própria estrela passa a usar `#08111F` **apenas neste fundo azul**, por contraste. Esses tons são exceções locais e não alteram `--orion-blue` nem outros tokens globais.
+- A **estrela do próprio logotipo**, substituta da letra O de ORION, é o único controle para abrir/recolher a navegação. Remover o botão do topo e o botão de fechamento móvel, sem criar um novo botão decorativo. `BrandLogo.jsx` fornece o botão com `aria-label`, `aria-expanded` e `aria-controls`; a sidebar mantém 64 px quando recolhida.
+- O wordmark completo continua visível com a sidebar expandida; quando recolhida, a estrela permanece centralizada e operável por teclado ou toque. Na navegação móvel o mesmo controle funciona em ambos os estados, mantendo os itens navegáveis.
+- A foto licenciada da Mondial fica em `frontend/public/assets/mondial-sidebar.jpg` (JPG 1159×640); a camada `::before` usa `background-size: cover`, escala de cinza e opacidade `0.12` no tema claro/`0.095` no escuro para manter contraste e permitir reconhecer a imagem discretamente. A foto é **opcional**, sem interferir na sidebar se ainda não tiver sido anexada.
+- As novas regras ficam isoladas em `frontend/src/sidebar-theme.css`, importado após as demais folhas para garantir especificidade, sem alterar o tema da aplicação.
