@@ -21,6 +21,7 @@ import './dpp-test-product.css'
 import './knowledge-audit.css'
 import './knowledge-navigation.css'
 import './industrial-neutral-language.css'
+import './sidebar-theme.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
