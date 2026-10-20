@@ -772,3 +772,11 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A composição visual do Dashboard foi simplificada: Cenário inicial com quatro métricas, Resumo Operacional com seis, investigações com cinco cards cada, mais o pacote e o plano consolidado. Margens duplicadas e o espaçamento antigo de 24–40 px entre módulos foram reduzidos para 8–12 px por meio de tokens existentes.
 - A não abertura dos diálogos estava ligada ao `onClose` nativo disparado pelo `close()` na limpeza do efeito durante o ciclo de desenvolvimento do React StrictMode. O componente agora usa `createPortal`, `useLayoutEffect` e trata Fechar/Escape/backdrop explicitamente; a limpeza interna do efeito não reseta a categoria selecionada.
 - Os relatórios de cinco abas por área, controles de validação humana e regras do STK ORIGINAL não foram alterados.
+
+
+### Sidebar ORION e background Mondial (2026-10-20)
+
+- Na sidebar, tema claro invertido para fundo preto e texto/ícones primários brancos, tema escuro alterado para azul da estrela `#46D9FF` com textos cinza de apoio, principais escuros e estrela invertida para garantir contraste. Nenhum token global foi alterado.
+- A estrela da marca em `BrandLogo.jsx` virou o único toggle da sidebar (botão acessível), removendo o botão de alternância do cabeçalho e o botão de fechamento móvel. Permanece acessível no rail de 64 px e no menu aberto.
+- `sidebar-theme.css` implementa a imagem de fundo em camada separada, com opacidade controlada por tema e sem interceptar cliques. O JPG **não foi inserido** porque o usuário ainda não anexou o arquivo. A integração já aponta para `frontend/public/assets/mondial-sidebar.jpg` e a pasta inclui instruções de upload.
+- Os módulos do Dashboard, motor Python, planilhas e fluxos operacionais permanecem intactos. A navegação fica íntegra mesmo sem o arquivo de imagem.
