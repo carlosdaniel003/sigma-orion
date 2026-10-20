@@ -729,3 +729,13 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A aplicação original é protegida contra execução repetida e falha caso a persistência da aprovação não esteja disponível; sem mensagem falsa de sucesso.
 - O frontend exibe o estado `GAP_APLICADO`, a origem do cenário e os quantitativos da aplicação. Mantido o design sóbrio de acordo com `DESIGN_SYSTEM.md` (sem ícones encaixotados).
 - Testes de ponta a ponta incluem bloqueio por Estoque/CQ, confirmação obrigatória, ciência sobre faltas não resolvidas, invalidação por revisão nova, dupla aplicação, persistência após reinício, recálculo do cenário e auditoria das fórmulas do Excel exportado.
+
+
+### Abas explicativas de Estoque e Qualidade nos relatórios Excel (2026-10-20)
+
+- Os botões **Baixar Excel** de Divergência de Estoque e Análise de Qualidade agora geram **cinco abas**: as três originais (Resumo, PNs e divergências, Confirmar com área) e duas novas (Divergência de Estoque, Análise de Qualidade).
+- Ambos os downloads incluem as duas investigações recalculadas pelo backend a partir do mesmo cenário, do STK SAP ORIGINAL e do histórico SQLite. As abas operacionais originais permanecem disponíveis para revisão granular do processo correspondente ao botão acionado.
+- A aba **Divergência de Estoque** apresenta todos os PNs críticos, inclusive os sem registros em M221/P277, saldo inicial, falta, quantidades brutas por depósito, cobertura não validada, disponibilidade adicional aplicada, justificativas, faltas remanescentes, pendências e linhas de origem no STK.
+- A aba **Análise de Qualidade** apresenta apenas PNs efetivamente encaminhados pelo Estoque, Q239 e Q273 ativos, Q273 meramente informativo quando Q239 tem prioridade, liberação adicional aplicada, reprovação/refugo justificado, faltas remanescentes, pendências em CQ/Estoque e linhas de origem.
+- O Resumo ganhou descrições dos depósitos, dos critérios de atribuição ao déficit, das regras de prioridade Q239/Q273 e da diferença entre evidência SAP e liberação validada.
+- Não houve alteração de regras do motor, decisões SQLite, fontes, endpoints, planilha DPP canônica ou automação de Scrap. As novas abas são somente leitura e não representam ajuste automático do SALDO oficial.
