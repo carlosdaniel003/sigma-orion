@@ -117,7 +117,7 @@
   font-weight: 500 !important;
 }
 
-/* Shared package is a divided operational list, not a grid of semantic cards. */
+/* Full picker retains an operational list; compact dashboard picker uses rows of source labels. */
 .dpp-dashboard-view .bulk-package-status,
 .dpp-dashboard-view .bulk-package-status.ready,
 .dpp-dashboard-view .bulk-package-status.missing,
@@ -129,9 +129,9 @@
   color: var(--orion-text) !important;
 }
 
-.dpp-dashboard-view .bulk-file-checks {
-  grid-template-columns: 1fr !important;
-  gap: 0 !important;
+.dpp-dashboard-view .bulk-file-picker:not(.compact) .bulk-file-checks {
+  grid-template-columns: 1fr;
+  gap: 0;
 }
 
 .dpp-dashboard-view .bulk-file-check,
