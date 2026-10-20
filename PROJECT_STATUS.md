@@ -780,3 +780,12 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A estrela da marca em `BrandLogo.jsx` virou o único toggle da sidebar (botão acessível), removendo o botão de alternância do cabeçalho e o botão de fechamento móvel. Permanece acessível no rail de 64 px e no menu aberto.
 - `sidebar-theme.css` implementa a imagem de fundo em camada separada, com opacidade controlada por tema e sem interceptar cliques. O JPG **não foi inserido** porque o usuário ainda não anexou o arquivo. A integração já aponta para `frontend/public/assets/mondial-sidebar.jpg` e a pasta inclui instruções de upload.
 - Os módulos do Dashboard, motor Python, planilhas e fluxos operacionais permanecem intactos. A navegação fica íntegra mesmo sem o arquivo de imagem.
+
+
+### Inversão do tema escuro e acessibilidade da sidebar (2026-10-20)
+
+- Implementada inversão visual do tema escuro, **globalmente**: fundo/painéis azul ORION `#46D9FF`, texto principal azul-marinho `#08111F`, secundário azul-petróleo `#28546B`, bordas `#2A7894` e elevado `#83E8FF`. Estilo `frontend/src/orion-inverted-dark.css` é carregado após as demais folhas; controles primários, foco e marcação de validação possuem contraste azul-marinho. Tema claro permanece inalterado.
+- `BrandLogo.jsx` usa um botão único envolvendo **todo o wordmark** da marca para abrir/recolher a sidebar quando expandida; no rail recolhido a mesma ação exibe só a estrela. Mantidos `aria-controls` e `aria-expanded`.
+- Na sidebar escura, rótulos secundários deixam de ser cinza para usar o mesmo azul-marinho do wordmark; scrollbar invisível em Firefox/Chromium/WebKit, preservando rolagem por wheel/touch/teclado.
+- O cabeçalho dos diálogos de PN fica `sticky` em `top:0`, preservando o botão **Fechar** após rolar conteúdo extenso.
+- Sem alterações em cálculo DPP, consultas STK, persistência ou exportações Excel; foto Mondial continua pendente de arquivo autorizado do usuário.
