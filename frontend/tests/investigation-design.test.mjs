@@ -20,8 +20,7 @@ test('module headings contain no ornamental boxed SVG icons', () => {
 
 test('only the operational shortcuts use SVG; PN records stay inside KPI modals', () => {
   const summary = source('InvestigationOverview.jsx')
-  assert.match(summary, /href="#orion-stock-investigation"/)
-  assert.match(summary, /href="#orion-quality-investigation"/)
+  assert.doesNotMatch(summary, /href="#orion-stock-investigation"|href="#orion-quality-investigation"/)
   assert.doesNotMatch(summary, /className="orion-visual-journey"/)
   for (const file of ['StockDivergenceInvestigation.jsx', 'QualityInvestigation.jsx']) {
     const content = source(file)
