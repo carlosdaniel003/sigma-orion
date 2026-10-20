@@ -65,7 +65,7 @@ QUALITY_TABS = [
 
 
 def pn_rows(book, tab):
-    return {row[0]: row for row in book[tab].iter_rows(min_row=6, values_only=True) if row[0]}
+    return {row[0]: row for row in book[tab].iter_rows(min_row=6, values_only=True) if row[0] and row[0] != "Nenhum registro para os critérios desta investigação."}
 
 
 def test_stock_excel_tabs_match_each_dashboard_indicator(monkeypatch):
