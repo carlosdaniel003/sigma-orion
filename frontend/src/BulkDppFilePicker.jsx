@@ -173,7 +173,7 @@ function BulkDppFilePicker({
                   <span className="bulk-check-icon">{file ? '✓' : required ? '!' : '–'}</span>
                   <div>
                     <strong>{FILE_LABELS[key]}</strong>
-                    <small>{file ? file.name : required ? 'Não encontrado — adicione este arquivo ao pacote' : 'Opcional / não carregado'}</small>
+                    <small title={file?.name || undefined}>{file ? file.name : required ? 'Não encontrado — adicione este arquivo ao pacote' : 'Opcional / não carregado'}</small>
                   </div>
                 </div>
               )
