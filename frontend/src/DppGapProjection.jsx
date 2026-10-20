@@ -315,7 +315,8 @@ export default function DppGapProjection({
                     { label: 'Validações pendentes', value: display(item.pending_validations) },
                   ]}
                   status={item.provisional ? 'Projeção provisória, confirmação pendente' : ''}
-                  note={item.critical ? 'Material crítico considerado pelo fluxo de Estoque e Qualidade.' : 'Material fora do escopo de recuperação automática destas investigações.'} />
+                  note={item.critical ? 'Material crítico considerado pelo fluxo de Estoque e Qualidade.' : 'Material fora do escopo de recuperação automática destas investigações.'}
+                  noRecordsMessage={null} />
               ))}
             </>}
           </InvestigationModal>}
