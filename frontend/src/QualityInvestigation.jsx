@@ -195,7 +195,13 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                 { label: 'Gap físico após CQ', value: qty(material.physical_gap_after_quality, material.unit) },
                 { label: 'Falta sem explicação', value: qty(material.unexplained_after_quality, material.unit) },
               ]}
-              note={material.next_step}
+              note={[material.next_step,
+                ...(material.additional_q273_evidence || []).map(candidate =>
+                  'Q273 informativo: ' + qty(candidate.quantity, candidate.unit) +
+                  ' · Centro ' + (candidate.center || '—') +
+                  ' · STK ORIGINAL, linhas ' + (candidate.source_rows || []).join(', ') +
+                  ' (Q239 prioritário, não somar nem validar nesta etapa).'),
+              ].filter(Boolean).join(' | ')}
               status={material.routing_provisional ? 'Conclusão provisória; há revisões pendentes' : undefined}
               candidates={material.candidates || []}
               renderCandidate={candidate => <>
