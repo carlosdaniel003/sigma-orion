@@ -739,3 +739,14 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A aba **Análise de Qualidade** apresenta apenas PNs efetivamente encaminhados pelo Estoque, Q239 e Q273 ativos, Q273 meramente informativo quando Q239 tem prioridade, liberação adicional aplicada, reprovação/refugo justificado, faltas remanescentes, pendências em CQ/Estoque e linhas de origem.
 - O Resumo ganhou descrições dos depósitos, dos critérios de atribuição ao déficit, das regras de prioridade Q239/Q273 e da diferença entre evidência SAP e liberação validada.
 - Não houve alteração de regras do motor, decisões SQLite, fontes, endpoints, planilha DPP canônica ou automação de Scrap. As novas abas são somente leitura e não representam ajuste automático do SALDO oficial.
+
+
+### Revisão do escopo de abas do Excel por indicador (2026-10-20)
+
+- Esta regra **substitui** a proposta imediatamente anterior de cinco abas integradas e as versões antigas com três abas genéricas. O usuário solicitou que cada botão **Baixar Excel** exporte exatamente os cinco indicadores do *seu próprio painel* e os PNs que formam suas contagens.
+- **Divergência de Estoque:** `PNs Críticos`, `PNs Encontrados`, `Aguardando Almoxarifado`, `Sem Registros`, `Encaminhados à Qualidade`.
+- **Análise de Qualidade:** `PNs Recebidos`, `Encontrados Q239`, `Encontrados Q273`, `Aguardando CQ`, `Sem Registros nesses depósitos`.
+- Cada aba tem uma linha por PN, todos os materiais da categoria e colunas de descrição, UM, déficit, depósitos, quantidades brutas, confirmação humana, parcela aplicada ao gap, falta remanescente, evidência com centro/linhas STK ORIGINAL, status, próxima ação e histórico de decisões.
+- Aguardando Almoxarifado / CQ corresponde à contagem de PNs únicos com ao menos um candidato ativo pendente (`!candidate.validation`), inclusive os que já foram provisoriamente encaminhados, tal como o frontend.
+- Indicadores não são necessariamente disjuntos; um PN pode estar em mais de uma aba. `Encontrados Q273` usa apenas depósito ativo Q273 quando não existe Q239. Q273 com Q239 prioritário continua descrito no histórico/evidência, mas é informativo, sem somar ou atribuir ao déficit.
+- Os PNs do Excel são derivados do backend e independem da paginação, filtros e busca do frontend. Nenhuma movimentação SAP, nova fonte, recálculo do DPP final nem mudança de fórmula é feita na exportação.
