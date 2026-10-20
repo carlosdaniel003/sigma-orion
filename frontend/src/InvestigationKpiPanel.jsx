@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import './investigation-kpi-panel.css'
 
 /** Five operational indicators, each opening its own complete PN cohort. */
@@ -26,7 +27,9 @@ export function InvestigationModal({ title, items, onClose, children, modalKey, 
     setQuery('')
   }, [modalKey])
 
-  useEffect(() => {
+  // StrictMode replays effect cleanup during development. Native close events
+  // from that cleanup must never clear the user's selected KPI.
+  useLayoutEffect(() => {
     const dialog = ref.current
     if (dialog && !dialog.open) dialog.showModal()
     return () => { if (dialog?.open) dialog.close() }
@@ -39,14 +42,14 @@ export function InvestigationModal({ title, items, onClose, children, modalKey, 
       .some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(normalized)))
     : items
 
-  return (
+  return createPortal(
     <dialog ref={ref} className="orion-investigation-dialog"
-      aria-label={title} onClose={onClose}
+      aria-label={title} onCancel={event => { event.preventDefault(); onClose() }}
       onClick={event => {
         if (event.target !== ref.current) return
         const rect = ref.current.getBoundingClientRect()
         if (event.clientX < rect.left || event.clientX > rect.right ||
-          event.clientY < rect.top || event.clientY > rect.bottom) ref.current.close()
+          event.clientY < rect.top || event.clientY > rect.bottom) onClose()
       }}>
       <header className="orion-investigation-dialog-heading">
         <div>
@@ -54,7 +57,7 @@ export function InvestigationModal({ title, items, onClose, children, modalKey, 
           <p>{items.length.toLocaleString('pt-BR')} PN(s) nesta categoria. {subtitle}</p>
         </div>
         <button type="button" className="secondary-button"
-          onClick={() => ref.current?.close()}>Fechar</button>
+          onClick={onClose}>Fechar</button>
       </header>
       <div className="orion-investigation-dialog-search">
         <input type="search" value={query}
@@ -67,7 +70,8 @@ export function InvestigationModal({ title, items, onClose, children, modalKey, 
         {!visible.length && <p>Nenhum PN corresponde à pesquisa ou a categoria está vazia.</p>}
         {children(visible)}
       </div>
-    </dialog>
+    </dialog>,
+    document.body,
   )
 }
 
