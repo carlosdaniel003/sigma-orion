@@ -64,4 +64,15 @@ def test_required_module_help_is_referenced_by_frontend() -> None:
         content = path.read_text(encoding="utf-8")
         references.update(re.findall(r'(?:moduleKey|infoKey)="([^"]+)"', content))
 
-    assert REQUIRED_MODULE_KEYS <= references
+    # Help remains indexed for historical/explanatory reference even when
+    # its old complementary Dashboard panel is no longer rendered.
+    hidden_dashboard_panels = {
+        "dashboard.agent_bridge",
+        "dashboard.planning",
+        "dashboard.evolution",
+        "dashboard.guide",
+        "dashboard.quality",
+        "dashboard.scenario_comparison",
+    }
+    assert hidden_dashboard_panels <= set(load_module_info())
+    assert (REQUIRED_MODULE_KEYS - hidden_dashboard_panels) <= references
