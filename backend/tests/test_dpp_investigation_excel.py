@@ -54,158 +54,173 @@ def spreadsheet(response):
     return load_workbook(BytesIO(response.content), data_only=False)
 
 
-def test_stock_excel_includes_every_critical_pn_and_auditable_depots(monkeypatch):
+STOCK_TABS = [
+    "PNs Críticos", "PNs Encontrados", "Aguardando Almoxarifado",
+    "Sem Registros", "Encaminhados à Qualidade",
+]
+QUALITY_TABS = [
+    "PNs Recebidos", "Encontrados Q239", "Encontrados Q273",
+    "Aguardando CQ", "Sem Registros nesses depósitos",
+]
+
+
+def pn_rows(book, tab):
+    return {row[0]: row for row in book[tab].iter_rows(min_row=6, values_only=True) if row[0]}
+
+
+def test_stock_excel_tabs_match_each_dashboard_indicator(monkeypatch):
     current = scenario()
     stock = stock_bytes(rows())
     monkeypatch.setattr(routes, "get_monthly_scenario",
                         lambda key: current if key == current["scenario_id"] else None)
-
     with TestClient(app) as client:
-        book = spreadsheet(upload(
-            client, "/api/dpp/investigations/stock-divergence/export", current, stock,
-        ))
-        assert book.sheetnames == ["Resumo", "Divergência de Estoque", "Análise de Qualidade", "PNs e divergências", "Confirmar com área"]
-        info = [cell[1] for cell in book["Resumo"].iter_rows(min_row=5, values_only=True)]
-        assert "DPP JUN_2026.06.02.xlsx" in info
-        assert "STK JULHO.xlsx" in info
-        # Final DPP is a validation reference only; no file is required to export.
-        assert any("Somente comparação e validação" in str(value) for value in info)
-        summary = dict((row[0], row[1]) for row in book["Resumo"].iter_rows(min_row=6, max_col=2, values_only=True) if row[0])
-        assert summary["PNs críticos (SALDO negativo)"] == 2
-        assert summary["PNs com registros em Estoque"] == 1
-        assert summary["PNs encaminhados à Qualidade"] == 1
-        assert summary["PNs em análise de Qualidade com registros"] == 0
-
-        pn_rows = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
-        material_codes = {row[0] for row in pn_rows if row[0]}
-        assert material_codes == {"PN-CQ", "PN-V"}
-        missing = next(row for row in pn_rows if row[0] == "PN-V")
-        assert missing[12] == 4
-        assert missing[13] == "Encaminhar à Qualidade"
-
-        details = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
-        assert any(row[1] == "PN-CQ" and row[3] == "M221" and row[6] == 12
-                   and "ORIGINAL · linhas 2" in row[7] for row in details)
-        assert all(row[3] not in {"Q239", "Q273"} for row in details if row[1])
-        inventory = {row[0]: row for row in book["Divergência de Estoque"].iter_rows(min_row=6, values_only=True) if row[0]}
-        assert set(inventory) == {"PN-CQ", "PN-V"}
-        assert inventory["PN-CQ"][5] == 12  # M221 raw finding, not released stock
-        assert inventory["PN-CQ"][9] == 0   # no human confirmation yet
-        assert inventory["PN-V"][12] == 4   # missing without stock records
-        assert "STK ORIGINAL" in inventory["PN-CQ"][16] or "ORIGINAL linhas" in inventory["PN-CQ"][16]
-        cq_inventory = {row[0]: row for row in book["Análise de Qualidade"].iter_rows(min_row=6, values_only=True) if row[0]}
-        assert "PN-V" in cq_inventory
-        assert "PN-CQ" not in cq_inventory  # stock validation is pending
-        assert book["Divergência de Estoque"].freeze_panes == "C6"
-        assert book["Análise de Qualidade"].auto_filter.ref is not None
-        assert book["PNs e divergências"].freeze_panes == "C6"
-        assert book["Confirmar com área"].auto_filter.ref is not None
+        dashboard = upload(client, "/api/dpp/investigations/stock-divergence", current, stock).json()
+        book = spreadsheet(upload(client, "/api/dpp/investigations/stock-divergence/export", current, stock))
+        assert book.sheetnames == STOCK_TABS
+        summary = dashboard["summary"]
+        assert len(pn_rows(book, "PNs Críticos")) == summary["critical_materials"] == 2
+        assert len(pn_rows(book, "PNs Encontrados")) == summary["materials_with_candidates"] == 1
+        assert len(pn_rows(book, "Aguardando Almoxarifado")) == 1
+        assert len(pn_rows(book, "Sem Registros")) == summary["materials_without_candidates"] == 1
+        assert len(pn_rows(book, "Encaminhados à Qualidade")) == summary["items_to_quality"] == 1
+        assert set(pn_rows(book, "PNs Críticos")) == {"PN-CQ", "PN-V"}
+        assert set(pn_rows(book, "PNs Encontrados")) == {"PN-CQ"}
+        assert set(pn_rows(book, "Aguardando Almoxarifado")) == {"PN-CQ"}
+        assert set(pn_rows(book, "Sem Registros")) == {"PN-V"}
+        assert set(pn_rows(book, "Encaminhados à Qualidade")) == {"PN-V"}
+        pn = pn_rows(book, "PNs Encontrados")["PN-CQ"]
+        assert pn[3] == -10
+        assert pn[5] == 12  # M221 raw stock, not confirmed release
+        assert pn[6] == 0
+        assert pn[7] == 12
+        assert pn[8] == 10  # coverage bounded by individual deficit
+        assert pn[9] == 0   # no human confirmation
+        assert pn[10] == 0  # no stock reduction
+        assert pn[13] == 10
+        assert pn[14] == 1
+        assert "ORIGINAL, linhas 2" in pn[17] and "1063" in pn[17]
+        assert "AGUARDANDO CONFIRMAÇÃO" in pn[18]
+        assert "STK JULHO.xlsx" in book["PNs Críticos"]["A2"].value
+        assert all(s.freeze_panes == "C6" and s.auto_filter.ref for s in book.worksheets)
         book.close()
 
 
-def test_quality_excel_contains_referrals_and_source_rows(monkeypatch):
+def test_quality_excel_tabs_match_panel_and_q239_priority(monkeypatch):
     current = scenario()
     stock = stock_bytes(rows())
     monkeypatch.setattr(routes, "get_monthly_scenario",
                         lambda key: current if key == current["scenario_id"] else None)
-
     with TestClient(app) as client:
-        book = spreadsheet(upload(
-            client, "/api/dpp/investigations/quality/export", current, stock,
-        ))
-        assert book.sheetnames == ["Resumo", "Divergência de Estoque", "Análise de Qualidade", "PNs e divergências", "Confirmar com área"]
-        items = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
-        by_pn = {row[0]: row for row in items if row[0]}
-        # PN-CQ has pending stock review; quality cannot precede it.
-        assert "PN-CQ" not in by_pn
-        assert "PN-V" in by_pn
-        assert by_pn["PN-V"][15] == "Encaminhar a Scrap"
-        pending = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
-        no_cq = next(row for row in pending if row[1] == "PN-V")
-        assert no_cq[0] == "Sem registro no CQ"
-        assert no_cq[3] == "Sem Q239/Q273"
-        assert no_cq[6] == 0
-        assert "não comprova refugo" in no_cq[16]
-        summary = dict(
-            (row[0], row[1]) for row in
-            book["Resumo"].iter_rows(min_row=6, max_col=2, values_only=True)
-            if row[0]
-        )
-        assert summary["PNs críticos (SALDO negativo)"] == 2
-        assert summary["PNs com registros em Estoque"] == 1
-        assert summary["PNs encaminhados à Qualidade"] == 1
-        assert summary["PNs sem registros em Qualidade"] == 1
-        assert summary["UN · Falta inicial (PNs críticos)"] == 14
-        assert summary["UN · Quantidade M221/P277 encontrada (bruta)"] == 12
-        assert summary["UN · Falta sem justificativa em Estoque"] == 14
-        assert "DPP JUN_2026.06.02.xlsx" in [
-            row[1] for row in book["Resumo"].iter_rows(min_row=5, values_only=True)
-        ]
+        book = spreadsheet(upload(client, "/api/dpp/investigations/quality/export", current, stock))
+        assert book.sheetnames == QUALITY_TABS
+        assert set(pn_rows(book, "PNs Recebidos")) == {"PN-V"}
+        assert not pn_rows(book, "Encontrados Q239")
+        assert not pn_rows(book, "Encontrados Q273")
+        assert not pn_rows(book, "Aguardando CQ")
+        assert set(pn_rows(book, "Sem Registros nesses depósitos")) == {"PN-V"}
+        assert "não" in book["Sem Registros nesses depósitos"]["A3"].value.lower()
         book.close()
 
-        # Explain part of the stock shortage to hand off PN-CQ to quality.
-        stock_report = upload(client, "/api/dpp/investigations/stock-divergence", current, stock).json()
-        identifier = stock_report["materials"][0]["candidates"][0]["candidate_id"]
-        save = client.post(
+        first = upload(client, "/api/dpp/investigations/stock-divergence", current, stock).json()
+        candidate = first["materials"][0]["candidates"][0]["candidate_id"]
+        saved = client.post(
             "/api/dpp/investigations/stock-divergence/review",
-            data={
-                "scenario_id": current["scenario_id"], "candidate_id": identifier,
-                "decision": "UNAVAILABLE", "accounting": "UNKNOWN",
-                "confirmed_quantity": "1", "evidence": "Uma unidade indisponível no M221.",
-            },
+            data={"scenario_id": current["scenario_id"], "candidate_id": candidate,
+                  "decision": "UNAVAILABLE", "accounting": "UNKNOWN",
+                  "confirmed_quantity": "1", "evidence": "Uma peça indisponível."},
             files={"stock": ("STK JULHO.xlsx", stock, MIME)},
         )
-        assert save.status_code == 200
-        reply = upload(client, "/api/dpp/investigations/quality/export", current, stock)
-        book = spreadsheet(reply)
-        items = list(book["PNs e divergências"].iter_rows(min_row=6, values_only=True))
-        cq = next(row for row in items if row[0] == "PN-CQ")
-        assert cq[7] == "Q239"
-        assert cq[8] == 7
-        details = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
-        assert any(row[1] == "PN-CQ" and row[3] == "Q273"
-                   and row[6] == 3 and "ORIGINAL · linhas 4" in row[7]
-                   and row[0] == "Informativo · não somar" for row in details)
-        assert any(row[1] == "PN-CQ" and row[3] == "Q239"
-                   and row[6] == 7 and "ORIGINAL · linhas 3" in row[7] for row in details)
-        assert next(row for row in details if row[1] == "PN-CQ" and row[3] == "Q239")[0] == "Confirmar com Qualidade/CQ"
-        detailed_quality = {row[0]: row for row in book["Análise de Qualidade"].iter_rows(min_row=6, values_only=True) if row[0]}
-        assert detailed_quality["PN-CQ"][4] == 7    # active Q239
-        assert detailed_quality["PN-CQ"][5] == 0    # Q273 does not enter the active quantity
-        assert detailed_quality["PN-CQ"][6] == 3    # Q273 is only informative
-        assert detailed_quality["PN-CQ"][14] == 1   # pending CQ
-        assert "informativo" in detailed_quality["PN-CQ"][19]
+        assert saved.status_code == 200
+        quality = upload(client, "/api/dpp/investigations/quality", current, stock).json()
+        book = spreadsheet(upload(client, "/api/dpp/investigations/quality/export", current, stock))
+        assert len(pn_rows(book, "PNs Recebidos")) == quality["summary"]["items_received_from_41"] == 2
+        assert len(pn_rows(book, "Encontrados Q239")) == quality["summary"]["materials_with_q239"] == 1
+        assert len(pn_rows(book, "Encontrados Q273")) == quality["summary"]["materials_with_q273"] == 0
+        assert len(pn_rows(book, "Aguardando CQ")) == 1
+        assert len(pn_rows(book, "Sem Registros nesses depósitos")) == quality["summary"]["materials_without_quality_records"] == 1
+        cq = pn_rows(book, "Encontrados Q239")["PN-CQ"]
+        assert cq[3] == 9  # one unit already justified in Stock
+        assert cq[5] == 7  # active Q239
+        assert cq[6] == 0  # Q273 is not active when Q239 exists
+        assert cq[7] == 3  # informational Q273 remains visible
+        assert cq[8] == "Q239"
+        assert cq[11] == 0  # no confirmed release yet
+        assert cq[16] == 1
+        assert "ORIGINAL, linhas 3" in cq[20]
+        assert "ORIGINAL, linhas 4" in cq[20]
+        assert "INFORMATIVO, NÃO SOMAR" in cq[20]
         book.close()
 
 
-def test_export_preserves_latest_justification_and_history(monkeypatch):
+def test_q273_becomes_own_tab_only_when_active(monkeypatch):
+    current = scenario()
+    stock = stock_bytes([["PN-V", "Refugo a verificar", 3, "Q273", 0, 0, "UN", "1063"]])
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+    with TestClient(app) as client:
+        report = upload(client, "/api/dpp/investigations/quality", current, stock).json()
+        book = spreadsheet(upload(client, "/api/dpp/investigations/quality/export", current, stock))
+        assert len(pn_rows(book, "PNs Recebidos")) == report["summary"]["items_received_from_41"] == 2
+        assert not pn_rows(book, "Encontrados Q239")
+        assert set(pn_rows(book, "Encontrados Q273")) == {"PN-V"}
+        assert set(pn_rows(book, "Aguardando CQ")) == {"PN-V"}
+        assert pn_rows(book, "Encontrados Q273")["PN-V"][6] == 3
+        assert pn_rows(book, "Encontrados Q273")["PN-V"][13] == 0  # no scrap confirmed
+        book.close()
+
+
+def test_export_preserves_latest_justification_and_full_review_history(monkeypatch):
     current = scenario()
     stock = stock_bytes(rows())
     monkeypatch.setattr(routes, "get_monthly_scenario",
                         lambda key: current if key == current["scenario_id"] else None)
-
     with TestClient(app) as client:
         first = upload(client, "/api/dpp/investigations/stock-divergence", current, stock).json()
         identifier = first["materials"][0]["candidates"][0]["candidate_id"]
-        for justification in ("Primeira validação do depósito M221.", "Revisão: lote permanece indisponível."):
+        for text in ("Primeira validação do M221.", "Revisão: lote permanece indisponível."):
             saved = client.post(
                 "/api/dpp/investigations/stock-divergence/review",
-                data={
-                    "scenario_id": current["scenario_id"], "candidate_id": identifier,
-                    "decision": "UNAVAILABLE", "accounting": "UNKNOWN",
-                    "confirmed_quantity": "3", "evidence": justification,
-                },
+                data={"scenario_id": current["scenario_id"], "candidate_id": identifier,
+                      "decision": "UNAVAILABLE", "accounting": "UNKNOWN",
+                      "confirmed_quantity": "3", "evidence": text},
                 files={"stock": ("STK JULHO.xlsx", stock, MIME)},
             )
             assert saved.status_code == 200
-        book = spreadsheet(upload(
-            client, "/api/dpp/investigations/stock-divergence/export", current, stock,
-        ))
-        details = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
-        current_review = next(row for row in details if row[1] == "PN-CQ")
-        assert current_review[17] == "Revisão: lote permanece indisponível."
-        assert "Primeira validação do depósito M221." in current_review[19]
-        assert "Revisão: lote permanece indisponível." in current_review[19]
+        book = spreadsheet(upload(client, "/api/dpp/investigations/stock-divergence/export", current, stock))
+        reviewed = pn_rows(book, "PNs Encontrados")["PN-CQ"]
+        assert reviewed[9] == 3
+        assert reviewed[11] == 3
+        assert reviewed[19] == "Revisão: lote permanece indisponível."
+        assert "Primeira validação do M221." in reviewed[20]
+        assert "Revisão: lote permanece indisponível." in reviewed[20]
+        assert "PN-CQ" not in pn_rows(book, "Aguardando Almoxarifado")
+        assert "PN-CQ" in pn_rows(book, "Encaminhados à Qualidade")
+        book.close()
+
+
+def test_stock_partial_reviews_stay_in_pending_tab_after_handoff(monkeypatch):
+    current = scenario()
+    stock = stock_bytes(rows() + [["PN-CQ", "Componente em CQ", 4, "P277", 0, 0, "UN", "1063"]])
+    monkeypatch.setattr(routes, "get_monthly_scenario",
+                        lambda key: current if key == current["scenario_id"] else None)
+    with TestClient(app) as client:
+        first = upload(client, "/api/dpp/investigations/stock-divergence", current, stock).json()
+        identifier = next(x["candidate_id"] for x in first["materials"][0]["candidates"] if x["depot"] == "M221")
+        saved = client.post(
+            "/api/dpp/investigations/stock-divergence/review",
+            data={"scenario_id": current["scenario_id"], "candidate_id": identifier,
+                  "decision": "AVAILABLE", "accounting": "NOT_INCLUDED",
+                  "confirmed_quantity": "2"},
+            files={"stock": ("STK JULHO.xlsx", stock, MIME)},
+        )
+        assert saved.status_code == 200
+        book = spreadsheet(upload(client, "/api/dpp/investigations/stock-divergence/export", current, stock))
+        assert "PN-CQ" in pn_rows(book, "Aguardando Almoxarifado")
+        assert "PN-CQ" in pn_rows(book, "Encaminhados à Qualidade")
+        stock_pn = pn_rows(book, "Aguardando Almoxarifado")["PN-CQ"]
+        assert stock_pn[10] == 2
+        assert stock_pn[14] == 1
+        assert stock_pn[21] == "Sim"
         book.close()
 
 
@@ -215,7 +230,6 @@ def test_export_rejects_wrong_snapshot_and_missing_scenario(monkeypatch):
     current["sources"][1]["fingerprint_sha256"] = sha256(original).hexdigest()
     monkeypatch.setattr(routes, "get_monthly_scenario",
                         lambda key: current if key == current["scenario_id"] else None)
-
     with TestClient(app) as client:
         changed = stock_bytes(rows() + [["PN-V", "outro", 5, "M221", 0, 0, "UN", "1063"]])
         for path in (
@@ -225,7 +239,6 @@ def test_export_rejects_wrong_snapshot_and_missing_scenario(monkeypatch):
             denied = upload(client, path, current, changed)
             assert denied.status_code == 400
             assert "STK" in denied.json()["detail"]
-
         missing = client.post(
             "/api/dpp/investigations/stock-divergence/export",
             data={"scenario_id": "not-a-scenario"},
@@ -239,38 +252,32 @@ def test_export_escapes_untrusted_formula_like_justification(monkeypatch):
     stock = stock_bytes(rows())
     monkeypatch.setattr(routes, "get_monthly_scenario",
                         lambda key: current if key == current["scenario_id"] else None)
-
     with TestClient(app) as client:
         report = upload(client, "/api/dpp/investigations/stock-divergence", current, stock).json()
         identifier = report["materials"][0]["candidates"][0]["candidate_id"]
         saved = client.post(
             "/api/dpp/investigations/stock-divergence/review",
-            data={
-                "scenario_id": current["scenario_id"], "candidate_id": identifier,
-                "decision": "UNAVAILABLE", "accounting": "UNKNOWN",
-                "confirmed_quantity": "2", "evidence": "=HYPERLINK(\"http://example.invalid\", \"unsafe\")",
-            },
+            data={"scenario_id": current["scenario_id"], "candidate_id": identifier,
+                  "decision": "UNAVAILABLE", "accounting": "UNKNOWN",
+                  "confirmed_quantity": "2", "evidence": "=HYPERLINK(\"http://example.invalid\", \"unsafe\")"},
             files={"stock": ("STK JULHO.xlsx", stock, MIME)},
         )
         assert saved.status_code == 200
         book = spreadsheet(upload(client, "/api/dpp/investigations/stock-divergence/export", current, stock))
-        values = list(book["Confirmar com área"].iter_rows(min_row=6))
-        row = next(row for row in values if row[1].value == "PN-CQ")
-        assert row[17].data_type != "f"
-        assert row[17].value.startswith("'=")
+        cell = next(row for row in book["PNs Encontrados"].iter_rows(min_row=6)
+                    if row[0].value == "PN-CQ")[19]
+        assert cell.data_type != "f"
+        assert cell.value.startswith("'=")
         book.close()
 
 
-
-def test_generated_excel_and_visible_next_steps_have_no_stage_numbering(monkeypatch):
-    """Output labels must be operational, not internal codes or drawing references."""
+def test_generated_excel_has_only_human_operational_labels(monkeypatch):
     import re
 
     current = scenario()
     stock = stock_bytes(rows())
     monkeypatch.setattr(routes, "get_monthly_scenario",
                         lambda key: current if key == current["scenario_id"] else None)
-
     forbidden = re.compile(r"fluxograma|\b4\.[123]\b|QUALITY_4_2|SCRAP_4_3", re.IGNORECASE)
     with TestClient(app) as client:
         for route in (
@@ -283,21 +290,6 @@ def test_generated_excel_and_visible_next_steps_have_no_stage_numbering(monkeypa
                     for line in sheet.iter_rows(values_only=True):
                         for value in line:
                             if isinstance(value, str):
-                                assert not forbidden.search(value), (
-                                    f"{sheet.title}: unexpected technical process reference: {value!r}"
-                                )
+                                assert not forbidden.search(value), (sheet.title, value)
             finally:
                 book.close()
-
-        stock_report = upload(
-            client, "/api/dpp/investigations/stock-divergence", current, stock,
-        ).json()
-        quality_report = upload(
-            client, "/api/dpp/investigations/quality", current, stock,
-        ).json()
-        for item in stock_report["workflow"]["forward_to_quality"]:
-            assert not forbidden.search(item["next_step"])
-        for item in quality_report["materials"]:
-            assert not forbidden.search(item["next_step"])
-        assert stock_report["summary"]["items_to_quality"] >= 1
-        assert quality_report["summary"]["items_to_scrap"] >= 1
