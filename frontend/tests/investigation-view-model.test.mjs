@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { investigationUnits, stockFound, qualityFound, pendingRecords, filterFound } from '../src/investigation-view-model.js'
+import { investigationUnits, stockFound, qualityFound, pendingRecords, filterFound, stockCohorts, qualityCohorts } from '../src/investigation-view-model.js'
 
 const stock = {
   materials: [
@@ -50,4 +50,36 @@ test('sem consulta, não presumir números nem listar itens inexistentes', () =>
   assert.deepEqual(stockFound(null), [])
   assert.deepEqual(qualityFound(null), [])
   assert.deepEqual(investigationUnits(null, null), [])
+})
+
+test('as cinco categorias de Estoque correspondem aos PNs e se sobrepõem quando necessário', () => {
+  const report = {
+    ...stock,
+    workflow: { forward_to_quality: [{ material: 'A' }, { material: 'C' }] },
+  }
+  const groups = stockCohorts(report)
+  assert.deepEqual(groups.map(group => group.label), [
+    'PNs críticos', 'PNs encontrados', 'Aguardando Almoxarifado',
+    'Sem registros', 'Encaminhados à Qualidade',
+  ])
+  assert.deepEqual(groups.map(group => group.items.map(item => item.material)), [
+    ['A', 'B', 'C'], ['A', 'B'], ['A'], ['C'], ['A', 'C'],
+  ])
+})
+
+test('as cinco categorias do CQ preservam Q239 prioritário e PNs sem registros', () => {
+  const report = { materials: [
+    { material: 'A', active_depot: 'Q239', candidates: [
+      { candidate_id: 'a', depot: 'Q239' },
+    ], additional_q273_evidence: [{ depot: 'Q273', quantity: 9 }] },
+    { material: 'B', active_depot: 'Q273', candidates: [
+      { candidate_id: 'b', depot: 'Q273', validation: { id: 1 } },
+    ] },
+    { material: 'C', active_depot: null, candidates: [] },
+  ] }
+  const groups = qualityCohorts(report)
+  assert.deepEqual(groups.map(group => group.items.map(item => item.material)), [
+    ['A', 'B', 'C'], ['A'], ['B'], ['A'], ['C'],
+  ])
+  assert.equal(groups[1].items[0].additional_q273_evidence[0].quantity, 9)
 })
