@@ -69,7 +69,12 @@ Consultas factuais simples podem responder diretamente por SQL/Python para reduz
 
 ## Relatórios Excel das investigações
 
-Após as consultas de **Divergência de Estoque** e **Análise de Qualidade** no Dashboard, os botões contextuais **Baixar Excel** geram relatórios integrados de cinco abas: **Resumo**, **PNs e divergências**, **Confirmar com área**, **Divergência de Estoque** e **Análise de Qualidade**. As duas abas nomeadas mostram, em ambos os downloads, o detalhamento por PN de cada investigação, incluindo depósitos, falta física, evidências de origem e pendências de validação. O Dashboard também apresenta um resumo conjunto das investigações. Os relatórios incluem PNs críticos, achados por depósito, gaps recalculados, responsáveis pela confirmação e histórico de revisões no mesmo conjunto de planilhas. São relatórios derivados do cenário ORION em construção e do STK SAP do mesmo pacote, não do DPP Final já consolidado. Os downloads são apenas leitura e não fazem lançamentos no SAP nem alteram o DPP.
+Após as consultas de **Divergência de Estoque** e **Análise de Qualidade** no Dashboard, cada botão **Baixar Excel** gera **cinco abas específicas, com os mesmos nomes e PNs dos cinco indicadores do próprio painel**:
+
+- **Estoque:** `PNs Críticos`, `PNs Encontrados`, `Aguardando Almoxarifado`, `Sem Registros` e `Encaminhados à Qualidade`.
+- **Qualidade:** `PNs Recebidos`, `Encontrados Q239`, `Encontrados Q273`, `Aguardando CQ` e `Sem Registros nesses depósitos`.
+
+Cada aba contém uma linha por PN que pertence ao indicador, incluindo descrição, unidade, quantidades brutas por depósito, cobertura, parcelas comprovadas atribuídas ao déficit, saldos remanescentes, situação, ações, STK ORIGINAL (depósito, centro e linhas) e validações/histórico de revisões. Um PN pode aparecer em mais de uma aba porque os indicadores não são categorias mutuamente exclusivas. Os Q273 paralelos ao Q239 são evidências informativas, não entram no indicador `Encontrados Q273` nem na soma ativa. Os relatórios são derivados do Cenário ORION em construção, do mesmo STK e das decisões registradas no SQLite; não usam o DPP Final como fonte. A exportação não faz lançamentos SAP nem modifica o DPP.
 
 ### Gap recalculado do DPP em construção
 
