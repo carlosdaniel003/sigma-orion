@@ -1,0 +1,71 @@
+/*
+ * SIGMA-S ORION — restrained dark theme.
+ * Dark navy page + lifted navy surfaces restore hierarchy; the ORION cyan
+ * remains an interactive identity accent, not the background of every component.
+ * All selectors are restricted to the dark theme. Light theme is unchanged.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --orion-bg: #0D1826;
+  --orion-surface: #142235;
+  --orion-surface-elevated: #1B2D43;
+  --orion-border: #2B4057;
+  --orion-border-soft: rgba(145, 164, 184, 0.18);
+  --orion-text: #F4F8FC;
+  --orion-text-secondary: #91A4B8;
+  --orion-neutral: #7F93A8;
+  --orion-blue-soft: rgba(70, 217, 255, 0.13);
+  --orion-success-soft: rgba(39, 242, 154, 0.11);
+  --orion-warning-soft: rgba(245, 196, 81, 0.11);
+  --orion-danger-soft: rgba(255, 93, 108, 0.11);
+  --orion-shadow: none;
+}
+:root[data-theme='dark'] :is(button, input, textarea, select) {
+  color-scheme: dark;
+}
+/* Keep the page distinct from its operational panels. */
+:root[data-theme='dark'] :is(.shell-topbar, .orion-investigation-dialog) {
+  background: var(--orion-bg);
+  color: var(--orion-text);
+}
+:root[data-theme='dark'] :is(
+  .dashboard-plan-overview,
+  .orion-investigation-overview,
+  .orion-stock-investigation,
+  .orion-quality-investigation,
+  .bulk-file-picker,
+  .final-model-plan,
+  .orion-investigation-dialog-heading
+) {
+  background: var(--orion-surface);
+  color: var(--orion-text);
+}
+:root[data-theme='dark'] :is(.orion-kpi-tile, .dashboard-plan-metrics > div) {
+  background: var(--orion-surface) !important;
+  color: var(--orion-text);
+}
+:root[data-theme='dark'] .orion-kpi-tile:hover {
+  background: var(--orion-surface-elevated) !important;
+}
+:root[data-theme='dark'] :is(
+  .primary-button,
+  .bulk-file-button,
+  .consolidation-tabs button.active,
+  .agent-composer button
+) {
+  background: var(--orion-blue) !important;
+  color: var(--orion-bg) !important;
+  border-color: var(--orion-blue) !important;
+}
+:root[data-theme='dark'] :is(.secondary-button, .bulk-file-clear, .detail-close) {
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+  border-color: var(--orion-border) !important;
+}
+:root[data-theme='dark'] :is(button, a, input, textarea, select):focus-visible {
+  outline-color: var(--orion-blue) !important;
+}
+:root[data-theme='dark'] :is(input, textarea, select):focus {
+  border-color: var(--orion-blue) !important;
+}
+/* Navigation intentionally remains cyan from sidebar-theme.css, with Mondial photo. */
