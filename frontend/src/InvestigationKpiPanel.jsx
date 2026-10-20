@@ -71,7 +71,7 @@ export function InvestigationModal({ title, items, onClose, children, modalKey }
   )
 }
 
-export function InvestigationRecord({ material, facts, candidates, renderCandidate, note, status }) {
+export function InvestigationRecord({ material, facts, candidates, renderCandidate, note, status, noRecordsMessage = 'Sem registros nos depósitos investigados; não há confirmação a realizar para este PN.' }) {
   return (
     <article className={'orion-investigation-record ' + (candidates?.length
       ? candidates.some(candidate => !candidate.validation)
@@ -99,7 +99,7 @@ export function InvestigationRecord({ material, facts, candidates, renderCandida
             {renderCandidate(candidate)}
           </div>
         ))}
-      </div> : <p className="orion-investigation-record-note">Sem registros nos depósitos investigados; não há confirmação a realizar para este PN.</p>}
+      </div> : noRecordsMessage ? <p className="orion-investigation-record-note">{noRecordsMessage}</p> : null}
     </article>
   )
 }
