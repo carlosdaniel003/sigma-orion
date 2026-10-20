@@ -18,7 +18,7 @@ export function InvestigationKpiGrid({ metrics, onSelect, label }) {
 }
 
 /** Native modal: focus trap/Escape are handled by the browser, not by custom overlays. */
-export function InvestigationModal({ title, items, onClose, children, modalKey }) {
+export function InvestigationModal({ title, items, onClose, children, modalKey, subtitle = 'Amarelo: registro pendente. Azul: validação humana registrada. Quantidade encontrada não significa liberação.' }) {
   const ref = useRef(null)
   const [query, setQuery] = useState('')
 
@@ -51,7 +51,7 @@ export function InvestigationModal({ title, items, onClose, children, modalKey }
       <header className="orion-investigation-dialog-heading">
         <div>
           <h3>{title}</h3>
-          <p>{items.length.toLocaleString('pt-BR')} PN(s) nesta categoria. Quantidades encontradas não representam validação humana.</p>
+          <p>{items.length.toLocaleString('pt-BR')} PN(s) nesta categoria. {subtitle}</p>
         </div>
         <button type="button" className="secondary-button"
           onClick={() => ref.current?.close()}>Fechar</button>
@@ -71,7 +71,7 @@ export function InvestigationModal({ title, items, onClose, children, modalKey }
   )
 }
 
-export function InvestigationRecord({ material, facts, candidates, renderCandidate, note, status, noRecordsMessage = 'Sem registros nos depósitos investigados; não há confirmação a realizar para este PN.' }) {
+export function InvestigationRecord({ material, facts, candidates, renderCandidate, note, status, children, noRecordsMessage = 'Sem registros nos depósitos investigados; não há confirmação a realizar para este PN.' }) {
   return (
     <article className={'orion-investigation-record ' + (candidates?.length
       ? candidates.some(candidate => !candidate.validation)
@@ -100,6 +100,7 @@ export function InvestigationRecord({ material, facts, candidates, renderCandida
           </div>
         ))}
       </div> : noRecordsMessage ? <p className="orion-investigation-record-note">{noRecordsMessage}</p> : null}
+      {children}
     </article>
   )
 }
