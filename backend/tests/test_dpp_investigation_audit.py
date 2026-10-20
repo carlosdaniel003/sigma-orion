@@ -73,22 +73,22 @@ def test_stock_applies_only_deficit_and_preserves_raw_excess(monkeypatch):
         assert data["summary"]["items_to_quality"] == 1  # PN-SEM has no special depot.
 
         book = worksheet(client, "/api/dpp/investigations/stock-divergence/export", current, stock)
-        materials = {row[0]: row for row in book["PNs e divergências"].iter_rows(min_row=5, values_only=True) if row[0]}
+        materials = {row[0]: row for row in book["PNs Críticos"].iter_rows(min_row=6, values_only=True) if row[0]}
         audited = materials["PN-1"]
         assert audited[3] == -5
         assert audited[7] == 14
         assert audited[8] == 5
-        assert audited[9] == 5
+        assert audited[9] == 14  # two independent confirmations, 6 + 8
+        assert audited[10] == 5  # available applied only up to deficit
         assert audited[11] == 0
-        assert audited[13] == "Finalizado"
-        assert materials["PN-SEM"][12] == 2
-        detail = next(r for r in book["Confirmar com área"].iter_rows(min_row=6, values_only=True) if r[1] == "PN-1" and r[3] == "M221")
-        assert detail[10] == 6
-        assert detail[11] == 5
-        summary_rows = [(a, b) for a, b in book["Resumo"].iter_rows(min_row=5, max_col=2, values_only=True)]
-        # Initial shortage for the unit includes both PN-1 and PN-SEM.
-        assert ("UN · Falta inicial (PNs críticos)", 7) in summary_rows
-        assert ("UN · Cobertura potencial em Estoque (não validada)", 5) in summary_rows
+        assert audited[15] == "Finalizado"
+        assert materials["PN-SEM"][13] == 2
+        assert "M221" in audited[17] and "P277" in audited[17]
+        assert "6 UN" in audited[18] and "8 UN" in audited[18]
+        # Per-unit deficit and potential coverage can be audited in the complete cohort.
+        assert sum(row[4] for row in materials.values()) == 7
+        assert sum(row[8] for row in materials.values()) == 5
+        assert len([row for row in book["Encaminhados à Qualidade"].iter_rows(min_row=6, values_only=True) if row[0]]) == 1
         book.close()
 
 
@@ -130,14 +130,12 @@ def test_pending_stock_reviews_create_only_provisional_quality_handoff(monkeypat
         assert "provisória" in quality_item["next_step"]
 
         book = worksheet(client, "/api/dpp/investigations/quality/export", current, stock)
-        item = next(row for row in book["PNs e divergências"].iter_rows(min_row=6, values_only=True) if row[0] == "PN-1")
-        assert item[10] == 5  # applied, not eight confirmed
-        assert item[9] == 5  # potential bounded by incoming gap
-        assert item[17] == "Sim"
-        detail = next(r for r in book["Confirmar com área"].iter_rows(min_row=6, values_only=True)
-                      if r[1] == "PN-1" and r[3] == "Q239")
-        assert detail[10] == 8  # raw confirmation remains auditable
-        assert detail[11] == 5
+        item = next(row for row in book["PNs Recebidos"].iter_rows(min_row=6, values_only=True) if row[0] == "PN-1")
+        assert item[11] == 5  # released applied, not eight confirmed
+        assert item[9] == 5   # potential bounded by incoming gap
+        assert item[24] == "Sim"
+        assert item[10] == 8  # raw confirmation is still visible
+        assert "Q239" in item[20] and "8 UN" in item[21]
         book.close()
 
 
@@ -163,13 +161,11 @@ def test_quality_rejection_explains_only_remaining_missing_amount(monkeypatch):
         assert item["unexplained_after_quality"] == 0
         assert item["workflow_status"] == "FINISHED"
         book = worksheet(client, "/api/dpp/investigations/quality/export", current, stock)
-        report_row = next(row for row in book["PNs e divergências"].iter_rows(min_row=6, values_only=True) if row[0] == "PN-1")
-        assert report_row[11] == 3  # rejection applied
-        assert report_row[14] == 0  # unexplained shortage cleared
-        records = list(book["Confirmar com área"].iter_rows(min_row=6, values_only=True))
-        confirmed = next(row for row in records if row[1] == "PN-1" and row[3] == "Q239")
-        assert confirmed[10] == 5
-        assert confirmed[12] == 3
-        assert any(row[1] == "PN-1" and row[3] == "Q273"
-                   and row[6] == 11 and row[0] == "Informativo · não somar" for row in records)
+        report_row = next(row for row in book["Encontrados Q239"].iter_rows(min_row=6, values_only=True) if row[0] == "PN-1")
+        assert report_row[12] == 3  # rejection applied, not all five raw
+        assert report_row[15] == 0  # unexplained shortage cleared
+        assert report_row[10] == 5  # confirmed raw quantity
+        assert report_row[7] == 11  # Q273 informative only
+        assert "Q273" in report_row[20] and "INFORMATIVO" in report_row[20]
+        assert "PN-1" not in [row[0] for row in book["Encontrados Q273"].iter_rows(min_row=6, values_only=True)]
         book.close()
