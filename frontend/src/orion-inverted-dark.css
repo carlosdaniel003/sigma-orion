@@ -71,3 +71,19 @@
 :root[data-theme='dark'] .orion-constellation-node.active .node-dot {
   fill: var(--orion-inverted-ink) !important;
 }
+
+/* Agent controls and identity labels cannot render cyan text on cyan surfaces. */
+:root[data-theme='dark'] .agent-composer button {
+  background: var(--orion-inverted-ink) !important;
+  color: var(--orion-bg) !important;
+}
+:root[data-theme='dark'] :is(
+  .agent-orion-kicker,
+  .agent-message[data-role='orion'] .agent-message-author,
+  .agent-suggestions button:focus-visible
+) {
+  color: var(--orion-inverted-ink) !important;
+}
+:root[data-theme='dark'] .dpp-test-month-field input:focus {
+  border-color: var(--orion-inverted-ink) !important;
+}
