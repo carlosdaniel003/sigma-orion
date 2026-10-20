@@ -7,27 +7,25 @@ function OrionStar() {
   )
 }
 
-function CompactMark() {
-  return (
-    <svg className="brand-logo brand-logo-compact" viewBox="0 0 42 42" role="img" aria-label="SIGMA-S ORION">
-      <OrionStar />
-    </svg>
-  )
-}
+/** The actual ORION star, not an overlapping invisible logo/toggle surface. */
+function BrandLogo({ collapsed, onToggle }) {
+  const action = collapsed ? 'Expandir navegação' : 'Recolher navegação'
 
-function BrandLogo() {
   return (
-    <span className="brand-logo-wrap" aria-label="SIGMA-S ORION">
-      <svg className="brand-logo brand-logo-full" viewBox="0 0 174 42" role="img" aria-hidden="true">
+    <span className="brand-logo-wrap">
+      <svg className="brand-logo brand-logo-full" viewBox="0 0 174 42" role="img" aria-label="SIGMA-S ORION">
         <g className="brand-logo-wordmark">
           <text className="brand-logo-word brand-logo-sigma" x="3" y="27.2">SIGMA-S</text>
-          <g className="brand-logo-orion-star" transform="translate(92 10) scale(.52)">
-            <OrionStar />
-          </g>
           <text className="brand-logo-word brand-logo-rion" x="118" y="27.2">RION</text>
         </g>
       </svg>
-      <CompactMark />
+      <button type="button" className="brand-star-toggle" aria-label={action}
+        title={action} aria-controls="workspace-navigation" aria-expanded={!collapsed}
+        onClick={onToggle}>
+        <svg className="brand-logo-star" viewBox="0 0 42 42" focusable="false" aria-hidden="true">
+          <OrionStar />
+        </svg>
+      </button>
     </span>
   )
 }
