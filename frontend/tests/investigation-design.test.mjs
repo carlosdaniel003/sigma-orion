@@ -54,3 +54,38 @@ test('the initial DPP headline is plain text followed by the functional info hin
   assert.match(info, /background:\s*transparent/)
   assert.match(info, /border:\s*1px solid var\(--orion-border\)/)
 })
+
+
+test('removed dashboard panels stay unmounted while consolidated model plan remains', () => {
+  assert.doesNotMatch(source('App.jsx'), /<DppColumnComparison\b/)
+  assert.doesNotMatch(source('DashboardLoader.jsx'), /<DppGapProjection\b/)
+  assert.doesNotMatch(source('Dashboard.jsx'), /dashboard-complementary-details|Ver indicadores complementares/)
+  assert.match(source('App.jsx'), /<FinalModelPlan\b/)
+  assert.match(source('Dashboard.jsx'), /<h2>Cenário inicial do DPP<\/h2>/)
+})
+
+test('both KPI dialogs use a portal and never treat effect cleanup as a user close', () => {
+  const modal = source('InvestigationKpiPanel.jsx')
+  assert.match(modal, /createPortal\(/)
+  assert.match(modal, /document\.body/)
+  assert.match(modal, /useLayoutEffect\(/)
+  assert.match(modal, /dialog\.showModal\(\)/)
+  assert.match(modal, /if \(dialog\?\.open\) dialog\.close\(\)/)
+  assert.match(modal, /onCancel=\{event => \{ event\.preventDefault\(\); onClose\(\) \}\}/)
+  assert.doesNotMatch(modal, /onClose=\{onClose\}/)
+  for (const file of ['StockDivergenceInvestigation.jsx', 'QualityInvestigation.jsx']) {
+    const content = source(file)
+    assert.match(content, /<InvestigationKpiGrid\b/)
+    assert.match(content, /<InvestigationModal\b/)
+    assert.match(content, /onSelect=\{openCategory\}/)
+  }
+})
+
+test('compact shared monthly package keeps full filename tooltip and responsive grid', () => {
+  const picker = source('BulkDppFilePicker.jsx')
+  const stylesheet = source('bulk-file-picker.css')
+  assert.match(picker, /title=\{file\?\.name \|\| undefined\}/)
+  assert.match(stylesheet, /\.bulk-file-picker\.compact \.bulk-file-checks/)
+  assert.match(stylesheet, /repeat\(4, minmax\(0, 1fr\)\)/)
+  assert.match(stylesheet, /@container \(max-width: 400px\)/)
+})
