@@ -98,7 +98,7 @@ test('the full ORION wordmark controls expansion, with only the star visible whe
   assert.match(sidebar, /<BrandLogo collapsed=\{collapsed\} onToggle=\{\(\) => setCollapsed/)
   assert.doesNotMatch(sidebar, /shell-mobile-close|<button className="shell-icon-button" type="button" aria-label=\{collapsed/)
   assert.match(brand, /className="brand-logo-wrap brand-wordmark-toggle"/)
-  assert.match(brand, /className="brand-logo-full"/)
+  assert.match(brand, /className="brand-logo brand-logo-full"/)
   assert.match(brand, /className="brand-logo-star"/)
   assert.match(source('brand.css'), /\.shell-sidebar\[data-collapsed='true'\] \.brand-logo-full \{ display: none; \}/)
   assert.match(brand, /aria-expanded=\{!collapsed\}/)
