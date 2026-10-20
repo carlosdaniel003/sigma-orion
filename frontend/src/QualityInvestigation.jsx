@@ -8,7 +8,6 @@ import { downloadInvestigationExcel } from './investigation-excel'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import { fileIdentity, buildStockInvestigationReportKey } from './dpp-workspace-state'
 import './stock-divergence-investigation.css'
-import './quality-investigation.css'
 
 function fmt(value) {
   const parsed = Number(value)
