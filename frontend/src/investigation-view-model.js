@@ -77,3 +77,29 @@ export function filterFound(materials, query, selection) {
       .some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(search))
   })
 }
+
+/** Cohorts are identical to the five server-side Excel tabs and dashboard KPIs. */
+export function stockCohorts(report) {
+  const found = stockFound(report)
+  const missing = report?.unmatched_materials || []
+  const all = [...found, ...missing]
+  const forwarded = new Set((report?.workflow?.forward_to_quality || []).map(item => item.material))
+  return [
+    { key: 'critical', label: 'PNs críticos', items: all },
+    { key: 'found', label: 'PNs encontrados', items: found },
+    { key: 'pending', label: 'Aguardando Almoxarifado', items: found.filter(item => (item.candidates || []).some(candidate => !candidate.validation)) },
+    { key: 'missing', label: 'Sem registros', items: missing },
+    { key: 'forwarded', label: 'Encaminhados à Qualidade', items: all.filter(item => forwarded.has(item.material)) },
+  ]
+}
+
+export function qualityCohorts(report) {
+  const received = report?.materials || []
+  return [
+    { key: 'received', label: 'PNs recebidos', items: received },
+    { key: 'q239', label: 'Encontrados Q239', items: received.filter(item => item.active_depot === 'Q239') },
+    { key: 'q273', label: 'Encontrados Q273', items: received.filter(item => item.active_depot === 'Q273') },
+    { key: 'pending', label: 'Aguardando CQ', items: received.filter(item => (item.candidates || []).some(candidate => !candidate.validation)) },
+    { key: 'missing', label: 'Sem registros nesses depósitos', items: received.filter(item => !item.active_depot) },
+  ]
+}
