@@ -150,7 +150,7 @@ def _rows(sheet, headings, widths, rows, *, title, subtitle, note=None, status_c
                     cell.fill = PatternFill("solid", fgColor=MARKER_COLORS[marker])
                     cell.font = Font(name="Aptos", size=10, color=TEXT, bold=True)
             if isinstance(val, str) and "\n" in val:
-                height = max(height, min(62, 15 * (val.count("\n") + 1)))
+                height = max(height, min(135, 15 * (val.count("\n") + 1)))
         sheet.row_dimensions[index].height = height
     if not rows:
         cell = sheet.cell(header_row + 1, 1, "Nenhum registro para os critérios desta investigação.")
@@ -161,8 +161,9 @@ def _rows(sheet, headings, widths, rows, *, title, subtitle, note=None, status_c
     sheet.print_options.horizontalCentered = True
 
 
-# As abas do Excel refletem o Dashboard: visão geral, PNs e trabalho por área.
-# Código de fluxo e versões de processo nunca aparecem em células.
+# Cada arquivo exportado espelha exatamente os cinco indicadores do respectivo
+# painel. A pertinência do PN ao indicador vem do mesmo relatório usado na web.
+# Um mesmo PN pode constar em várias abas sem duplicar estoque ou justificar o gap.
 DECISION_LABELS = {
     "AVAILABLE": "Disponível",
     "UNAVAILABLE": "Indisponível",
@@ -171,487 +172,274 @@ DECISION_LABELS = {
     "SCRAP_CONFIRMED": "Refugo confirmado",
     "NO_EVIDENCE": "Sem confirmação",
     "UNKNOWN": "A confirmar",
-    "INCLUDED": "Já contabilizado",
-    "NOT_INCLUDED": "Fora do DPP",
+    "INCLUDED": "Já contabilizado no DPP",
+    "NOT_INCLUDED": "Não contabilizado no DPP",
 }
 
-SECTION_NAMES = {
-    "visao": "VISÃO GERAL DO DPP",
-    "estoque": "DIVERGÊNCIA DE ESTOQUE",
-    "qualidade": "ANÁLISE DE QUALIDADE",
-    "totais": "QUANTIDADES POR UNIDADE DE MEDIDA",
-    "origens": "FONTES DO CENÁRIO",
-    "leitura": "COMO INTERPRETAR",
-}
+STOCK_COLUMNS = [
+    "PN", "Descrição", "UM", "SALDO original ORION", "Falta inicial",
+    "M221 encontrado (bruto)", "P277 encontrado (bruto)", "Total encontrado (bruto)",
+    "Cobertura potencial (não validada)", "Quantidade confirmada (bruta)",
+    "Disponível aplicado ao gap", "Indisponível justificada",
+    "Falta física restante", "Falta sem justificativa", "Registros pendentes",
+    "Situação do PN", "Próxima ação", "Evidência e linhas STK ORIGINAL",
+    "Validações atuais por depósito", "Justificativa atual", "Histórico de revisões",
+    "Encaminhamento provisório?",
+]
+STOCK_WIDTHS = [
+    24, 38, 9, 22, 19, 23, 23, 24, 29, 26, 25, 26, 24, 25,
+    20, 28, 66, 75, 80, 65, 90, 24,
+]
+
+QUALITY_COLUMNS = [
+    "PN", "Descrição", "UM", "Falta recebida de Estoque",
+    "Falta física após Estoque", "Q239 ativo (bruto)", "Q273 ativo (bruto)",
+    "Q273 informativo (não somar)", "Depósito CQ priorizado",
+    "Cobertura potencial (não validada)", "Quantidade confirmada (bruta)",
+    "Liberado aplicado ao gap", "Reprovado justificado", "Refugo justificado",
+    "Falta física após CQ", "Falta sem explicação", "Registros pendentes CQ",
+    "Registros pendentes Estoque", "Situação do PN", "Próxima ação",
+    "Evidência e linhas STK ORIGINAL", "Validações atuais por depósito",
+    "Justificativa atual", "Histórico de revisões", "Encaminhamento provisório?",
+]
+QUALITY_WIDTHS = [
+    24, 38, 9, 28, 25, 21, 21, 29, 26, 29, 27, 25, 26,
+    24, 23, 24, 22, 25, 28, 66, 80, 85, 65, 90, 24,
+]
+
+STOCK_TABS = (
+    ("PNs Críticos", "Todos os PNs críticos do Cenário ORION, inclusive sem registros em M221/P277."),
+    ("PNs Encontrados", "Somente PNs com registros válidos no M221 ou P277."),
+    ("Aguardando Almoxarifado", "PNs com pelo menos uma evidência M221/P277 ainda sem validação do PCM/Almoxarifado."),
+    ("Sem Registros", "PNs críticos não encontrados em M221/P277. Isso não demonstra inexistência em outros depósitos."),
+    ("Encaminhados à Qualidade", "PNs cujo gap não explicado foi encaminhado à Qualidade, inclusive encaminhamentos provisórios."),
+)
+
+QUALITY_TABS = (
+    ("PNs Recebidos", "Todos os PNs encaminhados pela Divergência de Estoque, com ou sem evidência no CQ."),
+    ("Encontrados Q239", "Somente PNs com Q239 como depósito ativo, prioritário na análise de CQ."),
+    ("Encontrados Q273", "Somente PNs com Q273 como depósito ativo na ausência de Q239; refugo depende de comprovação."),
+    ("Aguardando CQ", "PNs com pelo menos uma evidência ativa Q239/Q273 ainda não confirmada pelo CQ."),
+    ("Sem Registros nesses depósitos", "PNs encaminhados que não foram encontrados em Q239 nem Q273. Não significa refugo confirmado."),
+)
 
 
-def _fmt_decision(value):
-    return DECISION_LABELS.get(value, value or "Aguardando confirmação")
+def _decision_label(value):
+    return DECISION_LABELS.get(value, value or "Aguardando validação")
 
 
-def _sum_by_unit(materials, get_value):
-    totals = {}
-    for item in materials:
-        unit = item.get("unit") or "SEM UM"
-        totals[unit] = totals.get(unit, 0.0) + float(get_value(item) or 0.0)
-    return totals
+def _excel_text(value):
+    """Avoid silent truncation at Excel's 32,767 character per-cell limit."""
+    value = str(value or "")
+    return value if len(value) <= 32000 else value[:31800] + "\n[Texto longo: consulte o histórico no ORION]"
 
 
-def _stock_all(stock):
-    if not stock:
-        return []
-    return [*stock.get("materials", []), *stock.get("unmatched_materials", [])]
+def _source_lines(candidates, *, informative=False):
+    rendered = []
+    for candidate in candidates:
+        rows = ", ".join(str(x) for x in (candidate.get("source_rows") or [])) or "não identificadas"
+        descriptor = (
+            f"{candidate.get('depot') or '?'} | Centro: {candidate.get('center') or 'não informado'} "
+            f"| Quantidade: {candidate.get('quantity') or 0} {candidate.get('unit') or ''} "
+            f"| ORIGINAL, linhas {rows}"
+        )
+        rendered.append(descriptor + (" | INFORMATIVO, NÃO SOMAR" if informative else ""))
+    return _excel_text("\n".join(rendered)) if rendered else "STK ORIGINAL: nenhum registro nesses depósitos"
 
 
-def _sum_candidates(material, depot=None):
-    return sum(
-        float(candidate.get("quantity") or 0)
-        for candidate in material.get("candidates", [])
-        if not depot or candidate.get("depot") == depot
-    )
-
-
-def _missing(item):
-    return float(item.get("negative_balance") or 0)
-
-
-def _moneyless_total_section(stock, quality):
-    """One row per measurement unit; never add KG, CM and UN together."""
-    stocks = _stock_all(stock)
-    stock_matched = {x["material"]: x for x in stock.get("materials", [])} if stock else {}
-    quality_rows = quality.get("materials", []) if quality else []
-    units = sorted({*(x.get("unit") or "SEM UM" for x in stocks),
-                    *(x.get("unit") or "SEM UM" for x in quality_rows)})
-    rows = []
-    for unit in units:
-        ss = [m for m in stocks if (m.get("unit") or "SEM UM") == unit]
-        qq = [m for m in quality_rows if (m.get("unit") or "SEM UM") == unit]
-        raw = sum(_sum_candidates(m) for m in ss if m["material"] in stock_matched)
-        potential = sum(min(_missing(m), _sum_candidates(m)) for m in ss)
-        recovered = sum(float(m.get("recovered_quantity_applied") or 0) for m in ss)
-        remaining = sum(float(m.get("projected_gap_remaining") if m["material"] in stock_matched else _missing(m)) for m in ss)
-        unexplained = sum(float(m.get("unexplained_quantity") if m["material"] in stock_matched else _missing(m)) for m in ss)
-        cq_found = sum(_sum_candidates(m) for m in qq)
-        cq_applied = sum(float(m.get("quality_released_applied") or 0) for m in qq)
-        cq_unexplained = sum(float(m.get("unexplained_after_quality") or 0) for m in qq)
-        rows.extend([
-            (unit + " · Falta inicial (PNs críticos)", sum(_missing(m) for m in ss)),
-            (unit + " · Quantidade M221/P277 encontrada (bruta)", raw),
-            (unit + " · Cobertura potencial em Estoque (não validada)", potential),
-            (unit + " · Disponível aplicado ao gap (Estoque)", recovered),
-            (unit + " · Gap após recuperação em Estoque", remaining),
-            (unit + " · Falta sem justificativa em Estoque", unexplained),
-            (unit + " · Quantidade CQ encontrada (bruta)", cq_found),
-            (unit + " · Liberado aplicado ao gap (Qualidade)", cq_applied),
-            (unit + " · Falta sem explicação após Qualidade", cq_unexplained),
-        ])
-    return rows
-
-
-def _summary(workbook, *, report, scenario, kind, stock_report=None, quality_report=None):
-    quality = kind == "quality"
-    stock = stock_report if stock_report is not None else (report if not quality else None)
-    cq = quality_report if quality_report is not None else (report if quality else None)
-    st = stock.get("summary", {}) if stock else {}
-    qs = cq.get("summary", {}) if cq else {}
-    sheet = workbook.create_sheet("Resumo")
-    caption = "ANÁLISE DE QUALIDADE · Q239 / Q273" if quality else "DIVERGÊNCIA DE ESTOQUE · M221 / P277"
-    rows = [
-        (SECTION_NAMES["visao"], ""),
-        ("PNs críticos (SALDO negativo)", st.get("critical_materials", "Não consultado")),
-        ("PNs com registros em Estoque", st.get("materials_with_candidates", "Não consultado")),
-        ("PNs sem registros em Estoque", st.get("materials_without_candidates", "Não consultado")),
-        ("PNs encaminhados à Qualidade", st.get("items_to_quality", "Não consultado")),
-        ("PNs em análise de Qualidade com registros", (
-            qs.get("materials_with_q239", 0) + qs.get("materials_with_q273", 0)
-            if cq else "Não consultado"
-        )),
-        ("PNs sem registros em Qualidade", qs.get("materials_without_quality_records", "Não consultado")),
-        (SECTION_NAMES["estoque"], ""),
-        ("PNs críticos", st.get("critical_materials", "Não consultado")),
-        ("PNs com registros", st.get("materials_with_candidates", "Não consultado")),
-        ("Registros validados", st.get("candidates_reviewed", "Não consultado")),
-        ("Itens finalizados", st.get("items_finished", "Não consultado")),
-        ("Encaminhar à Qualidade", st.get("items_to_quality", "Não consultado")),
-        ("Encaminhamentos provisórios", st.get("provisional_handoffs", "Não consultado")),
-        ("Aguardando validação", st.get("items_awaiting_validation", "Não consultado")),
-        ("Sem registros para esses PNs", st.get("materials_without_candidates", "Não consultado")),
-        ("Depósitos sem registros no arquivo", ", ".join(st.get("depots_without_records") or []) or "nenhum" if stock else "Não consultado"),
-        (SECTION_NAMES["qualidade"], ""),
-        ("PNs recebidos", qs.get("items_received_from_41", "Não consultado")),
-        ("PNs em Q239", qs.get("materials_with_q239", "Não consultado")),
-        ("PNs em Q273", qs.get("materials_with_q273", "Não consultado")),
-        ("Sem registros", qs.get("materials_without_quality_records", "Não consultado")),
-        ("Registros validados", qs.get("candidates_reviewed", "Não consultado")),
-        ("Finalizados", qs.get("items_finished", "Não consultado")),
-        ("Encaminhar a Scrap", qs.get("items_to_scrap", "Não consultado")),
-        ("Encaminhamentos provisórios", qs.get("provisional_handoffs", "Não consultado")),
-        ("Aguardando CQ", qs.get("items_awaiting_quality", "Não consultado")),
-        (SECTION_NAMES["totais"], ""),
-        *_moneyless_total_section(stock, cq),
-        (SECTION_NAMES["origens"], ""),
-        ("Cenário ORION", report.get("scenario_id") or ""),
-        ("Mês do cenário", report.get("reference_month") or scenario.get("reference_month") or ""),
-        ("Gerado em (UTC)", datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")),
-        ("Fonte de estoque", report.get("source", {}).get("filename") or ""),
-        ("Aba de origem", report.get("source", {}).get("sheet") or "ORIGINAL"),
-        ("DPP anterior (base)", _source(scenario, "base_dpp")),
-        ("STK SAP", _source(scenario, "stock")),
-        ("Explosão de Placas", _source(scenario, "explosion")),
-        ("PGD", _source(scenario, "pgd")),
-        ("WIU", _source(scenario, "wiu")),
-        ("OPEN (opcional)", _source(scenario, "open")),
-        ("DPP final do mês", "Somente comparação e validação; não é fonte da geração"),
-        (SECTION_NAMES["leitura"], ""),
-        ("Abas por investigação", "Divergência de Estoque e Análise de Qualidade apresentam cada PN e suas evidências; PNs e divergências e Confirmar com área detalham a investigação do botão usado."),
-        ("M221 e P277", "Depósitos pesquisados na Divergência de Estoque, conforme a aba ORIGINAL do STK SAP."),
-        ("Q239", "Material em análise no Controle de Qualidade. A liberação precisa ser confirmada pela área."),
-        ("Q273", "Indicação de refugo a confirmar. Quando existe Q239 para o PN, Q273 é apenas informativo e não é somado."),
-        ("Sem registro", "Não encontrado nesses depósitos; isso não comprova inexistência em outros depósitos nem refugo."),
-        ("Quantidade aplicada ao gap", "Parcela confirmada e limitada à falta ainda atribuível ao PN; o valor bruto pode ser maior."),
-        ("Reprovação ou refugo", "Comprovação justificada explica a causa, mas não adiciona estoque nem reduz a falta física."),
-        ("Evidência / linhas STK", "Identifica a aba ORIGINAL e as linhas SAP que originaram o achado, não uma decisão de liberação."),
-        ("Quantidade encontrada", "Registro bruto na aba ORIGINAL; não significa material liberado."),
-        ("Cobertura potencial", "Máximo teórico limitado à falta de cada PN; depende da confirmação da área."),
-        ("Gap recalculado", "Projeção após quantidades comprovadas, sem alterar o SALDO do DPP."),
-        ("Falta sem explicação", "Quantidade ainda não justificada; NÃO representa refugo confirmado."),
-        ("Situação provisória", "Há validações pendentes; a próxima análise poderá mudar."),
-        ("Ação do analista", "Use a aba Confirmar com área para conferir o PN, o depósito e solicitar confirmação."),
-    ]
-    _rows(sheet, ["Indicador (igual ao Dashboard)", "Quantidade / informação"], [52, 105], rows,
-          title=caption, subtitle="Visão consolidada do DPP em construção e das investigações de Estoque e Qualidade.",
-          note="Indicadores por PN e por unidade de medida. Não somar unidades diferentes nem presumir disponibilidade pelos saldos dos depósitos.")
-    for row in range(1, sheet.max_row + 1):
-        if sheet.cell(row, 1).value in SECTION_NAMES.values():
-            for col in (1, 2):
-                cell = sheet.cell(row, col)
-                cell.fill = PatternFill("solid", fgColor=MID)
-                cell.font = Font(name="Aptos", size=10, color=WHITE, bold=True)
-
-
-def _stock_pn_rows(stock):
-    found = {x["material"]: x for x in stock.get("materials", [])}
-    rows = []
-    for m in _stock_all(stock):
-        matched = m["material"] in found
-        deficit = _missing(m)
-        qty = _sum_candidates(m)
-        status = _status_label(m.get("workflow_status") if matched else "QUALITY_4_2")
-        next_step = m.get("next_step") if matched else "Sem registro em M221/P277; seguir para Análise de Qualidade"
-        rows.append([
-            m["material"], m.get("description"), m.get("unit"), m.get("balance") if matched else -deficit,
-            deficit, _sum_candidates(m, "M221"), _sum_candidates(m, "P277"), qty,
-            min(deficit, qty),
-            m.get("recovered_quantity_applied", 0), m.get("projected_gap_remaining", deficit),
-            m.get("justified_unavailable_applied", 0), m.get("unexplained_quantity", deficit),
-            status, next_step, "Sim" if m.get("routing_provisional") else "Não",
-        ])
-    return sorted(rows, key=lambda row: (-float(row[4]), str(row[0])))
-
-
-def _quality_pn_rows(quality, stock):
-    stock_by_pn = {x["material"]: x for x in _stock_all(stock)}
-    rows = []
-    for m in quality.get("materials", []):
-        orig = stock_by_pn.get(m["material"], {})
-        rows.append([
-            m["material"], m.get("description"), m.get("unit"),
-            _missing(orig) if orig else "",
-            _sum_candidates(orig) if orig else 0,
-            orig.get("projected_gap_remaining", _missing(orig)) if orig else "",
-            m.get("gap_from_41"), m.get("active_depot") or "Sem Q239/Q273",
-            _sum_candidates(m), m.get("theoretical_coverage_limit"),
-            m.get("quality_released_applied"), m.get("quality_rejected_applied"),
-            m.get("quality_scrap_applied"), m.get("physical_gap_after_quality"),
-            m.get("unexplained_after_quality"), _status_label(m.get("workflow_status")),
-            m.get("next_step"), "Sim" if m.get("routing_provisional") else "Não",
-        ])
-    return rows
-
-
-def _history(candidate, unit):
-    revisions = candidate.get("validation_history") or []
-    if not revisions:
+def _review_history(candidate):
+    history = candidate.get("validation_history") or []
+    if not history:
         return "Sem validações registradas"
     rendered = []
-    for v in revisions:
-        explanation = v.get("justification") or v.get("evidence") or ""
+    for version in history:
+        reason = version.get("justification") or version.get("evidence") or ""
         rendered.append(
-            "#{} · {} · {} · {} {}{}{}".format(
-                v.get("id") or "", v.get("created_at") or "sem data",
-                _fmt_decision(v.get("decision")), _safe(v.get("confirmed_quantity") or 0),
-                unit, " · " if explanation else "", explanation,
-            )
+            f"Revisão #{version.get('id') or '?'} | {version.get('created_at') or 'data não informada'} "
+            f"| {_decision_label(version.get('decision'))} "
+            f"| {_decision_label(version.get('accounting'))} "
+            f"| {version.get('confirmed_quantity') or 0} {candidate.get('unit') or ''} "
+            f"| {reason or 'Sem justificativa registrada'}"
         )
-    text = "\n".join(rendered)
-    # Excel limita células a 32767 caracteres; sempre deixar explícito se exceder.
-    return text if len(text) <= 32000 else text[:31800] + "\n[Histórico extenso: consulte o sistema para revisões completas]"
+    return _excel_text("\n".join(rendered))
 
 
-def _stock_action_rows(stock):
-    rows = []
-    for m in stock.get("materials", []):
-        for candidate in m.get("candidates", []):
-            validated = candidate.get("validation") or {}
-            pending = not validated
-            action = (
-                "Confirmar com Almoxarifado: localizar/disponibilizar ou justificar baixa."
-                if pending else "Conferir decisão registrada com PCM/Almoxarifado."
-            )
-            rows.append([
-                "Confirmar com Almoxarifado" if pending else "Validação registrada",
-                m["material"], m.get("description"), candidate.get("depot"), candidate.get("center"),
-                candidate.get("unit"), candidate.get("quantity"),
-                "ORIGINAL · linhas " + ", ".join(str(x) for x in candidate.get("source_rows") or []),
-                _fmt_decision(validated.get("decision")), _fmt_decision(validated.get("accounting")),
-                validated.get("confirmed_quantity"), candidate.get("recovered_applied", 0),
-                candidate.get("justified_unavailable_applied", 0), m.get("projected_gap_remaining"),
-                m.get("unexplained_quantity"), _status_label(m.get("workflow_status")),
-                action, validated.get("evidence") or "", validated.get("created_at") or "",
-                _history(candidate, candidate.get("unit")),
-            ])
-    return sorted(rows, key=lambda row: (row[0] != "Confirmar com Almoxarifado", -float(row[14] or 0), str(row[1])))
-
-
-def _quality_action_rows(quality):
-    rows = []
-    for m in quality.get("materials", []):
-        if not m.get("candidates"):
-            rows.append([
-                "Sem registro no CQ", m["material"], m.get("description"),
-                "Sem Q239/Q273", "", m.get("unit"), 0,
-                "STK ORIGINAL · nenhum registro Q239/Q273",
-                "Sem confirmação", "Não se aplica", 0, 0, 0, 0,
-                m.get("unexplained_after_quality"),
-                _status_label(m.get("workflow_status")),
-                ("Nenhum registro no CQ. Confirmar a ausência de informação "
-                 "com a Qualidade antes de agir sobre o encaminhamento; "
-                 "isso não comprova refugo."),
-                "", "", "Sem validações registradas",
-            ])
-        for candidate in m.get("candidates", []):
-            validated = candidate.get("validation") or {}
-            pending = not validated
-            rows.append([
-                "Confirmar com Qualidade/CQ" if pending else "Validação registrada",
-                m["material"], m.get("description"), candidate.get("depot"), candidate.get("center"),
-                candidate.get("unit"), candidate.get("quantity"),
-                "ORIGINAL · linhas " + ", ".join(str(x) for x in candidate.get("source_rows") or []),
-                _fmt_decision(validated.get("decision")), _fmt_decision(validated.get("accounting")),
-                validated.get("confirmed_quantity"),
-                candidate.get("release_applied", 0), candidate.get("rejection_applied", 0),
-                candidate.get("scrap_applied", 0), m.get("unexplained_after_quality"),
-                _status_label(m.get("workflow_status")),
-                ("Confirmar com CQ: liberação/reprovação ou refugo; registrar justificativa."
-                 if pending else "Revisar confirmação registrada com CQ."),
-                validated.get("justification") or "", validated.get("created_at") or "",
-                _history(candidate, candidate.get("unit")),
-            ])
-        for candidate in m.get("additional_q273_evidence") or []:
-            rows.append([
-                "Informativo · não somar", m["material"], m.get("description"), candidate.get("depot"),
-                candidate.get("center"), candidate.get("unit"), candidate.get("quantity"),
-                "ORIGINAL · linhas " + ", ".join(str(x) for x in candidate.get("source_rows") or []),
-                "Não avaliado", "Não se aplica", 0, 0, 0, 0,
-                m.get("unexplained_after_quality"), "Q239 com prioridade",
-                "Não validar automaticamente o Q273 enquanto o Q239 for o caminho ativo.",
-                "", "", "Registro apenas informativo",
-            ])
-    return sorted(rows, key=lambda row: (row[0] != "Confirmar com Qualidade/CQ", str(row[1]), str(row[3])))
-
-
-def _evidence_locations(candidates, *, informative=False):
-    """Show actual SAP source rows without treating every row as approved stock."""
-    if not candidates:
-        return "Nenhum registro nos depósitos investigados."
-    entries = []
+def _candidate_audit(candidates, *, informative=()):
+    """Keep validation/evidence associated with its own depot and SAP rows."""
+    current = []
+    explanations = []
+    versions = []
+    confirmed = 0.0
     for candidate in candidates:
-        depot = candidate.get("depot") or "?"
-        center = candidate.get("center") or "sem centro"
-        origin = ", ".join(str(value) for value in candidate.get("source_rows") or [])
-        location = f"{depot} · centro {center} · ORIGINAL linhas {origin or '?'}"
-        entries.append(f"{location} · apenas informativo" if informative else location)
-    result = "\n".join(entries)
-    return result if len(result) <= 32000 else result[:31800] + "\n[Consulte o STK ORIGINAL para a lista completa]"
-
-
-def _stock_analysis_rows(stock):
-    """One record per critical PN, including those absent in both depots."""
-    found = {item["material"]: item for item in stock.get("materials", [])}
-    lines = []
-    for item in _stock_all(stock):
-        matched = item["material"] in found
-        deficit = _missing(item)
-        found_quantity = _sum_candidates(item)
-        lines.append([
-            item["material"], item.get("description"), item.get("unit"),
-            item.get("balance") if matched else -deficit, deficit,
-            _sum_candidates(item, "M221"), _sum_candidates(item, "P277"),
-            found_quantity, min(deficit, found_quantity),
-            item.get("recovered_quantity_applied", 0),
-            item.get("justified_unavailable_applied", 0),
-            item.get("projected_gap_remaining", deficit),
-            item.get("unexplained_quantity", deficit),
-            item.get("pending_reviews", 0) if matched else 0,
-            "Sim" if item.get("routing_provisional") else "Não",
-            item.get("next_step") if matched else (
-                "Sem registro em M221/P277. Encaminhar à Qualidade; "
-                "a ausência não comprova inexistência em outros depósitos."
-            ),
-            _evidence_locations(item.get("candidates") or []) if matched
-            else "STK ORIGINAL · nenhum registro M221/P277 para este PN",
-            _status_label(item.get("workflow_status") if matched else "QUALITY_4_2"),
-        ])
-    return sorted(lines, key=lambda row: (-float(row[4] or 0), str(row[0])))
-
-
-def _quality_analysis_rows(quality):
-    """Disclose the active CQ depot separately from informative Q273 evidence."""
-    lines = []
-    for item in quality.get("materials", []):
-        active = item.get("active_depot")
-        inspected = item.get("candidates") or []
-        informative = item.get("additional_q273_evidence") or []
-        source = _evidence_locations(inspected)
-        if informative:
-            source += "\n" + _evidence_locations(informative, informative=True)
-        lines.append([
-            item["material"], item.get("description"), item.get("unit"),
-            item.get("gap_from_41", 0),
-            _sum_candidates(item, "Q239"), _sum_candidates(item, "Q273"),
-            sum(float(evidence.get("quantity") or 0) for evidence in informative),
-            active or "Sem Q239/Q273",
-            item.get("theoretical_coverage_limit", 0),
-            item.get("quality_released_applied", 0),
-            item.get("quality_rejected_applied", 0),
-            item.get("quality_scrap_applied", 0),
-            item.get("physical_gap_after_quality", 0),
-            item.get("unexplained_after_quality", 0),
-            item.get("pending_reviews", 0),
-            item.get("pending_stock_reviews", 0),
-            "Sim" if item.get("routing_provisional") else "Não",
-            _status_label(item.get("workflow_status")),
-            item.get("next_step"),
-            source if inspected or informative else "STK ORIGINAL · nenhum registro Q239/Q273 para este PN",
-        ])
-    return sorted(lines, key=lambda row: (-float(row[3] or 0), str(row[0])))
-
-
-def _add_stage_analysis_sheets(book, *, stock, quality):
-    """Both downloads expose the two investigations explicitly and independently."""
-    _rows(
-        book.create_sheet("Divergência de Estoque"),
-        ["PN", "Descrição", "UM", "SALDO original ORION", "Falta inicial",
-         "M221 encontrado", "P277 encontrado", "Total bruto encontrado",
-         "Cobertura possível (não validada)", "Disponível adicional aplicado",
-         "Indisponível justificada", "Falta física após Estoque",
-         "Falta sem justificativa", "Registros pendentes Estoque",
-         "Encaminhamento provisório?", "Próxima ação", "Evidência / linhas STK", "Situação"],
-        [23, 36, 9, 23, 17, 18, 18, 23, 29, 26, 23, 24, 24, 23, 22, 63, 70, 29],
-        _stock_analysis_rows(stock),
-        title="DIVERGÊNCIA DE ESTOQUE · M221 E P277",
-        subtitle=(
-            "Um registro por PN crítico do Cenário ORION, incluindo os que não aparecem "
-            "nesses depósitos. A coluna de evidência indica depósito, centro e linha do STK ORIGINAL."
-        ),
-        note=(
-            "Encontrado no SAP não significa disponível. Só a quantidade adicional confirmada pelo "
-            "PCM/Almoxarifado reduz a falta física; baixa justificada apenas explica parte do déficit."
-        ),
-        status_column=18,
+        state = candidate.get("validation") or {}
+        place = f"{candidate.get('depot') or '?'} / centro {candidate.get('center') or 'não informado'}"
+        if state:
+            qty = float(state.get("confirmed_quantity") or 0)
+            confirmed += qty
+            current.append(
+                f"{place}: {_decision_label(state.get('decision'))}, "
+                f"{_decision_label(state.get('accounting'))}; "
+                f"{qty:g} {candidate.get('unit') or ''} confirmado(s), "
+                f"registro #{state.get('id') or '?'} em {state.get('created_at') or 'data não informada'}"
+            )
+            reason = state.get("justification") or state.get("evidence")
+            if reason:
+                explanations.append((place, str(reason)))
+        else:
+            current.append(f"{place}: AGUARDANDO CONFIRMAÇÃO")
+        versions.append(f"{place}\n{_review_history(candidate)}")
+    for candidate in informative:
+        place = f"{candidate.get('depot') or '?'} / centro {candidate.get('center') or 'não informado'}"
+        current.append(f"{place}: SOMENTE INFORMATIVO; Q239 tem prioridade; não somar nem validar automaticamente")
+    if len(explanations) == 1:
+        # Keep a user's comment in its own cell, safely escaped by _safe().
+        reason_text = explanations[0][1]
+    else:
+        reason_text = "\n".join(f"{place}: {reason}" for place, reason in explanations)
+    return (
+        confirmed,
+        _excel_text("\n".join(current)) or "Sem registro nos depósitos investigados",
+        _excel_text(reason_text) if reason_text else "Sem justificativa registrada",
+        _excel_text("\n\n".join(versions)) if versions else "Sem revisões",
     )
-    _rows(
-        book.create_sheet("Análise de Qualidade"),
-        ["PN", "Descrição", "UM", "Falta recebida do Estoque",
-         "Q239 ativo encontrado", "Q273 ativo encontrado",
-         "Q273 apenas informativo", "Depósito CQ priorizado",
-         "Cobertura possível (não validada)", "Liberado adicional aplicado",
-         "Reprovado justificado", "Refugo justificado",
-         "Falta física após CQ", "Falta sem explicação",
-         "Registros pendentes CQ", "Pendências de Estoque",
-         "Encaminhamento provisório?", "Situação", "Próxima ação",
-         "Evidência / linhas STK"],
-        [23, 36, 9, 25, 21, 21, 22, 24, 30, 26, 23, 23, 23, 23, 21, 21, 22, 29, 63, 70],
-        _quality_analysis_rows(quality),
-        title="ANÁLISE DE QUALIDADE · Q239 E Q273",
-        subtitle=(
-            "Somente PNs encaminhados pelo Estoque. Q239 tem prioridade; Q273 é ativo apenas "
-            "quando não há Q239. Registros Q273 paralelos ficam informativos e não são somados."
-        ),
-        note=(
-            "Apenas liberação CQ confirmada e fora do DPP reduz a falta física. "
-            "Reprovação ou refugo com justificativa explica parte da falta, sem virar estoque. "
-            "Pendências tornam o encaminhamento provisório."
-        ),
-        status_column=18,
+
+
+def _stock_row(item, *, matched):
+    deficit = float(item.get("negative_balance") or 0)
+    candidates = item.get("candidates") or []
+    raw = sum(float(c.get("quantity") or 0) for c in candidates)
+    confirmed, current, reason, history = _candidate_audit(candidates)
+    physical = float(item.get("projected_gap_remaining", deficit) or 0) if matched else deficit
+    unexplained = float(item.get("unexplained_quantity", deficit) or 0) if matched else deficit
+    return [
+        item.get("material"), item.get("description"), item.get("unit"),
+        item.get("balance", -deficit), deficit,
+        sum(float(c.get("quantity") or 0) for c in candidates if c.get("depot") == "M221"),
+        sum(float(c.get("quantity") or 0) for c in candidates if c.get("depot") == "P277"),
+        raw, min(deficit, raw), confirmed,
+        item.get("recovered_quantity_applied", 0),
+        item.get("justified_unavailable_applied", 0),
+        physical, unexplained, sum(not c.get("validation") for c in candidates),
+        _status_label(item.get("workflow_status") if matched else "QUALITY_4_2"),
+        item.get("next_step") if matched else "Sem registro M221/P277; encaminhado à Qualidade",
+        _source_lines(candidates) if matched else "STK ORIGINAL: nenhum registro M221/P277 para este PN",
+        current, reason, history, "Sim" if item.get("routing_provisional") else "Não",
+    ]
+
+
+def _quality_row(item):
+    candidates = item.get("candidates") or []
+    additional = item.get("additional_q273_evidence") or []
+    confirmed, current, reason, history = _candidate_audit(candidates, informative=additional)
+    evidence = _source_lines(candidates)
+    if additional:
+        evidence += "\n" + _source_lines(additional, informative=True)
+    return [
+        item.get("material"), item.get("description"), item.get("unit"),
+        item.get("gap_from_41", 0), item.get("physical_gap_from_41", 0),
+        sum(float(c.get("quantity") or 0) for c in candidates if c.get("depot") == "Q239"),
+        sum(float(c.get("quantity") or 0) for c in candidates if c.get("depot") == "Q273"),
+        sum(float(c.get("quantity") or 0) for c in additional),
+        item.get("active_depot") or "Sem Q239/Q273",
+        item.get("theoretical_coverage_limit", 0),
+        confirmed, item.get("quality_released_applied", 0),
+        item.get("quality_rejected_applied", 0), item.get("quality_scrap_applied", 0),
+        item.get("physical_gap_after_quality", 0), item.get("unexplained_after_quality", 0),
+        sum(not c.get("validation") for c in candidates),
+        item.get("pending_stock_reviews", 0),
+        _status_label(item.get("workflow_status")), item.get("next_step"),
+        _excel_text(evidence), current, reason, history,
+        "Sim" if item.get("routing_provisional") else "Não",
+    ]
+
+
+def _sorted(items, *, deficit):
+    return sorted(items, key=lambda item: (-float(item.get(deficit) or 0), str(item.get("material") or "")))
+
+
+def _export_stock(book, report, *, subtitle):
+    found = {item["material"]: item for item in report.get("materials", [])}
+    unmatched = {item["material"]: item for item in report.get("unmatched_materials", [])}
+    all_items = {**found, **unmatched}
+    forwarded = report.get("workflow", {}).get("forward_to_quality") or []
+    subsets = (
+        list(all_items.values()),
+        list(found.values()),
+        [x for x in found.values() if any(not c.get("validation") for c in x.get("candidates") or [])],
+        list(unmatched.values()),
+        [all_items[entry["material"]] for entry in forwarded if entry["material"] in all_items],
     )
+    expected = report.get("summary", {})
+    counts = (
+        expected.get("critical_materials"),
+        expected.get("materials_with_candidates"),
+        # The web uses unique PNs with any unreviewed candidate, not just workflow status.
+        None,
+        expected.get("materials_without_candidates"),
+        expected.get("items_to_quality"),
+    )
+    for (name, description), selection, count in zip(STOCK_TABS, subsets, counts):
+        records = [_stock_row(item, matched=item["material"] in found) for item in _sorted(selection, deficit="negative_balance")]
+        if count is not None and len(records) != count:
+            raise ValueError(f"Indicador de Estoque inconsistente: {name}.")
+        _rows(
+            book.create_sheet(name), STOCK_COLUMNS, STOCK_WIDTHS, records,
+            title=name.upper(),
+            subtitle=f"Indicador do painel: {len(records)} PN(s) | {subtitle}",
+            note=description + " Saldos encontrados não são liberações e nenhum SALDO oficial é alterado.",
+            status_column=16,
+        )
+
+
+def _export_quality(book, report, *, subtitle):
+    materials = report.get("materials", [])
+    subsets = (
+        materials,
+        [x for x in materials if x.get("active_depot") == "Q239"],
+        [x for x in materials if x.get("active_depot") == "Q273"],
+        [x for x in materials if any(not c.get("validation") for c in x.get("candidates") or [])],
+        [x for x in materials if x.get("active_depot") is None],
+    )
+    counts = report.get("summary", {})
+    expected = (
+        counts.get("items_received_from_41"),
+        counts.get("materials_with_q239"),
+        counts.get("materials_with_q273"),
+        None,
+        counts.get("materials_without_quality_records"),
+    )
+    for (name, description), selection, count in zip(QUALITY_TABS, subsets, expected):
+        records = [_quality_row(item) for item in _sorted(selection, deficit="gap_from_41")]
+        if count is not None and len(records) != count:
+            raise ValueError(f"Indicador de Qualidade inconsistente: {name}.")
+        _rows(
+            book.create_sheet(name), QUALITY_COLUMNS, QUALITY_WIDTHS, records,
+            title=name.upper(),
+            subtitle=f"Indicador do painel: {len(records)} PN(s) | {subtitle}",
+            note=description + " Quantidades por PN e UM; não somar refugo informativo ou confundir evidência com liberação.",
+            status_column=19,
+        )
 
 
 def export_investigation_excel(
     kind: str, *, report: dict, scenario: dict,
     stock_report: dict | None = None, quality_report: dict | None = None,
 ) -> tuple[bytes, str, str]:
+    """Export the five actual dashboard KPI cohorts, without unrelated tabs."""
     if kind not in {"stock", "quality"}:
         raise ValueError("Tipo de investigação inválido.")
-    stock = stock_report if stock_report is not None else (report if kind == "stock" else {})
-    quality = quality_report if quality_report is not None else (report if kind == "quality" else {})
     book = Workbook()
     book.remove(book.active)
-    _summary(book, report=report, scenario=scenario, kind=kind,
-             stock_report=stock, quality_report=quality)
-    _add_stage_analysis_sheets(book, stock=stock, quality=quality)
-    label = "Qualidade" if kind == "quality" else "Estoque"
-    stamp = (report.get("reference_month") or scenario.get("reference_month") or "SEM_MES").replace("-", "_")
+    source = report.get("source") or {}
+    month = report.get("reference_month") or scenario.get("reference_month") or "SEM_MES"
+    stock_name = source.get("filename") or "STK SAP"
+    subtitle = f"{month} · {stock_name} · aba ORIGINAL · cenário {report.get('scenario_id') or 'não informado'}"
     if kind == "stock":
-        _rows(book.create_sheet("PNs e divergências"),
-            ["PN", "Descrição", "UM", "SALDO Cenário ORION", "Falta inicial",
-             "M221 encontrado", "P277 encontrado", "Qtd. encontrada em Estoque",
-             "Cobertura potencial (não validada)", "Disponível aplicado",
-             "Gap após recuperação", "Indisponível justificada", "Falta sem justificativa",
-             "Situação da análise", "Próxima ação", "Provisório?"],
-            [24, 37, 9, 23, 17, 17, 17, 23, 29, 20, 20, 25, 25, 27, 62, 15],
-            _stock_pn_rows(stock), title="DIVERGÊNCIA DE ESTOQUE · POR PN",
-            subtitle="Todos os PNs críticos, inclusive os que não têm registro em M221 ou P277.",
-            note="ENCONTRADO ≠ DISPONÍVEL. O gap só diminui quando a quantidade é validada como adicional ao Cenário ORION.",
-            status_column=14)
-        _rows(book.create_sheet("Confirmar com área"),
-            ["Ação / área", "PN", "Descrição", "Depósito encontrado", "Centro", "UM",
-             "Qtd. encontrada no depósito", "Fonte STK",
-             "Decisão", "Já contabilizado?", "Qtd. confirmada",
-             "Disponível aplicado", "Indisponível justificada", "Gap após recuperação",
-             "Falta sem justificativa", "Situação da análise", "O que o analista precisa fazer",
-             "Justificativa", "Data confirmação", "Histórico de revisões"],
-            [31, 24, 36, 20, 13, 10, 26, 35, 24, 19, 20, 20, 25, 21, 22, 27, 65, 58, 25, 70],
-            _stock_action_rows(stock), title="ESTOQUE · CONFIRMAR COM ALMOXARIFADO",
-            subtitle="PNs efetivamente encontrados em M221/P277. A primeira coluna prioriza registros pendentes.",
-            note="Peça ao PCM/Almoxarifado que confirme disponibilidade ou baixa. O STK é evidência; não efetua liberação.",
-            status_column=16)
+        _export_stock(book, stock_report if stock_report is not None else report, subtitle=subtitle)
     else:
-        _rows(book.create_sheet("PNs e divergências"),
-            ["PN", "Descrição", "UM", "Falta inicial do Cenário",
-             "Qtd. encontrada em Estoque", "Gap físico após Estoque",
-             "Falta recebida de Estoque", "Depósito CQ", "Qtd. encontrada no CQ",
-             "Cobertura potencial (não validada)", "Liberado aplicado", "Reprovado justificado",
-             "Refugo justificado", "Gap físico após Qualidade", "Falta sem explicação",
-             "Situação da análise", "Próxima ação", "Provisório?"],
-            [24, 37, 9, 22, 23, 22, 25, 23, 23, 30, 21, 23, 22, 24, 23, 28, 62, 15],
-            _quality_pn_rows(quality, stock),
-            title="ANÁLISE DE QUALIDADE · POR PN",
-            subtitle="PNs encaminhados pelo Estoque, com falta recebida, achados em CQ e gap recalculado.",
-            note="REPROVAÇÃO OU REFUGO JUSTIFICADO explica a falta, mas não acrescenta estoque disponível.",
-            status_column=16)
-        _rows(book.create_sheet("Confirmar com área"),
-            ["Ação / área", "PN", "Descrição", "Depósito encontrado", "Centro", "UM",
-             "Qtd. encontrada no depósito", "Fonte STK", "Decisão",
-             "Já contabilizado?", "Qtd. confirmada", "Liberado aplicado",
-             "Reprovado justificado", "Refugo justificado", "Falta sem explicação",
-             "Situação da análise", "O que o analista precisa fazer",
-             "Justificativa", "Data confirmação", "Histórico de revisões"],
-            [31, 24, 36, 20, 13, 10, 26, 35, 25, 19, 20, 21, 24, 20, 22, 27, 65, 58, 25, 70],
-            _quality_action_rows(quality), title="QUALIDADE · CONFIRMAR COM O CQ",
-            subtitle="PNs encontrados no CQ, sem registros e Q273 informativos, com ações diferenciadas.",
-            note="Peça confirmação da Qualidade/CQ por PN e depósito. Ausência de registro NÃO comprova refugo.",
-            status_column=16)
+        _export_quality(book, quality_report if quality_report is not None else report, subtitle=subtitle)
+    label = "Qualidade" if kind == "quality" else "Estoque"
+    stamp = str(month).replace("-", "_")
     output = BytesIO()
     book.save(output)
     return output.getvalue(), f"ORION_{label}_Investigacao_{stamp}.xlsx", XLSX_MIME
