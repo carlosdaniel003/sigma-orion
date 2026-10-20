@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import { buildStockInvestigationReportKey, fileIdentity } from './dpp-workspace-state'
+import { InvestigationModal, InvestigationRecord } from './InvestigationKpiPanel'
 import './dpp-gap-projection.css'
 
 const display = value => value === null || value === undefined
@@ -13,10 +14,11 @@ function reviewSignature(report) {
     .join('|')
 }
 
-function Count({ label, value }) {
-  return <div className="orion-dpp-gap-count">
-    <span>{label}</span><strong>{display(value)}</strong>
-  </div>
+function Count({ label, value, onClick }) {
+  return <button type="button" className="orion-dpp-gap-count orion-kpi-tile"
+    aria-haspopup="dialog" onClick={onClick}>
+    <span>{label}</span><strong>{display(value)}</strong><small>Ver detalhes</small>
+  </button>
 }
 
 export default function DppGapProjection({
@@ -41,7 +43,7 @@ export default function DppGapProjection({
   const [snapshot, setSnapshot] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [expanded, setExpanded] = useState(false)
+  const [activeGroup, setActiveGroup] = useState('')
   const [preparing, setPreparing] = useState(false)
   const [applying, setApplying] = useState(false)
   const [approval, setApproval] = useState(null)
@@ -86,6 +88,22 @@ export default function DppGapProjection({
     ),
   ), [result])
   const units = result?.summary?.units || []
+  const gapGroups = useMemo(() => {
+    const materials = result?.materials || []
+    const changed = item => item.critical && (
+      item.recovered_stock > 0 || item.recovered_cq > 0 ||
+      item.justified_stock > 0 || item.justified_cq_rejection > 0 ||
+      item.justified_cq_scrap > 0
+    )
+    return [
+      { key: 'all', label: 'Materiais do DPP', items: materials },
+      { key: 'critical', label: 'PNs críticos (UN)', items: materials.filter(item => item.critical) },
+      { key: 'applied', label: 'PNs com quantidade aplicada ou justificada', items: materials.filter(changed) },
+      { key: 'pending', label: 'PNs com validações pendentes', items: materials.filter(item => item.critical && item.pending_validations > 0) },
+    ]
+  }, [result])
+  const selectedGap = gapGroups.find(group => group.key === activeGroup)
+
 
   function closeApproval() {
     if (applying) return
@@ -209,78 +227,63 @@ export default function DppGapProjection({
           {!stock && <p role="status">Consulte primeiro a Divergência de Estoque para preparar a aplicação.</p>}
           {stock && loading && !result && <p role="status">Atualizando o gap projetado...</p>}
           {result && <>
-            <div className="orion-dpp-gap-overview" aria-label="Resumo da projeção">
-              <Count label="Materiais do DPP" value={result.summary.materials_total} />
-              <Count label="PNs críticos (UN)" value={result.summary.critical_materials} />
-              <Count label="PNs com quantidade aplicada ou justificada" value={result.summary.materials_with_applied_explanations} />
-              <Count label="PNs com validações pendentes" value={result.summary.critical_materials_with_pending_validations} />
-            </div>
-            <h4>Falta por unidade de medida</h4>
-            <p className="orion-dpp-gap-caption">Somente material disponível e liberado fora do DPP reduz a falta física; justificativas explicam a falta sem gerar estoque.</p>
-            <div className="orion-dpp-gap-units">
-              {units.filter(item => item.negative_materials > 0).map(item => (
-                <section className="orion-dpp-gap-unit" key={item.unit}>
-                  <div className="orion-dpp-gap-unit-header">
-                    <strong>{item.unit}</strong>
-                    <span>{display(item.negative_materials)} materiais negativos</span>
-                  </div>
-                  <dl>
-                    <div><dt>Falta inicial</dt><dd>{display(item.initial_gap)}</dd></div>
-                    <div><dt>Recuperado em Estoque</dt><dd>{display(item.recovered_stock)}</dd></div>
-                    <div><dt>Gap após Estoque</dt><dd>{display(item.physical_gap_after_stock)}</dd></div>
-                    <div><dt>Liberado pelo CQ</dt><dd>{display(item.recovered_cq)}</dd></div>
-                    <div><dt>Gap físico após Qualidade</dt><dd>{display(item.physical_gap_after_quality)}</dd></div>
-                    <div><dt>Falta sem explicação</dt><dd>{display(item.unexplained_after_quality)}</dd></div>
-                  </dl>
-                </section>
+            <div className="orion-dpp-gap-overview" aria-label="Indicadores clicáveis da projeção">
+              {gapGroups.map(group => (
+                <Count key={group.key} label={group.label} value={group.items.length}
+                  onClick={() => setActiveGroup(group.key)} />
               ))}
             </div>
-            {result.summary.negative_outside_scope > 0 && (
-              <p className="orion-dpp-gap-caption">
-                {display(result.summary.negative_outside_scope)} material(is) negativo(s) de outras unidades permanecem sem ajuste.
-              </p>
-            )}
-            <div className="orion-dpp-gap-details-header">
-              <div>
-                <h4>Materiais com análise aplicada</h4>
-                <p>{display(applied.length)} PN(s) com quantidades ou justificativas validadas. Os demais materiais permanecem nos totais.</p>
-              </div>
-              {applied.length > 0 && <button type="button" className="secondary-button"
-                onClick={() => setExpanded(value => !value)}>
-                {expanded ? 'Ocultar PNs' : 'Ver PNs com ajustes'}
-              </button>}
-            </div>
-            {expanded && applied.length > 0 && (
-              <div className="orion-dpp-gap-material-list">
-                {applied.map(item => (
-                  <details key={item.material}>
-                    <summary>
-                      <strong>{item.material}</strong>
-                      <span>{display(item.initial_gap)} {item.unit} iniciais</span>
-                      <span>{display(item.physical_gap_after_quality)} {item.unit} ainda em falta</span>
-                    </summary>
-                    <div>
-                      <p>{item.description || 'Sem descrição'}</p>
-                      <dl>
-                        <div><dt>Estoque recuperado</dt><dd>{display(item.recovered_stock)} {item.unit}</dd></div>
-                        <div><dt>CQ liberado</dt><dd>{display(item.recovered_cq)} {item.unit}</dd></div>
-                        <div><dt>Indisponível justificado</dt><dd>{display(item.justified_stock)} {item.unit}</dd></div>
-                        <div><dt>CQ justificado</dt><dd>{display(item.justified_cq_rejection + item.justified_cq_scrap)} {item.unit}</dd></div>
-                        <div><dt>Falta sem explicação</dt><dd>{display(item.unexplained_after_quality)} {item.unit}</dd></div>
-                        <div><dt>SALDO original</dt><dd>{display(item.original_balance)} {item.unit}</dd></div>
-                        <div><dt>SALDO projetado</dt><dd>{display(item.projected_balance)} {item.unit}</dd></div>
-                      </dl>
-                      {item.provisional && <small>Prévia provisória: ainda há confirmações pendentes.</small>}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            )}
             <p className="orion-dpp-gap-disclaimer">
-              O recálculo da prévia não altera o cenário. Clique em "Conferir e aplicar ao DPP"
-              somente após todas as confirmações do Almoxarifado e Qualidade.
+              Apenas liberações validadas fora do DPP reduzem a falta física.
+              Selecione um indicador para visualizar o detalhamento. Esta prévia não altera o DPP.
             </p>
           </>}
+          {selectedGap && <InvestigationModal key={signature + ':' + activeGroup}
+            modalKey={signature + ':' + activeGroup} title={selectedGap.label}
+            items={selectedGap.items} onClose={() => setActiveGroup('')}>
+            {visible => <>
+              {activeGroup === 'all' && <>
+                <h4>Falta por unidade de medida</h4>
+                <p className="orion-dpp-gap-caption">Apenas faltas da mesma unidade podem ser somadas.</p>
+                <div className="orion-dpp-gap-units">
+                  {units.filter(item => item.negative_materials > 0).map(item => (
+                    <section className="orion-dpp-gap-unit" key={item.unit}>
+                      <div className="orion-dpp-gap-unit-header">
+                        <strong>{item.unit}</strong>
+                        <span>{display(item.negative_materials)} materiais negativos</span>
+                      </div>
+                      <dl>
+                        <div><dt>Falta inicial</dt><dd>{display(item.initial_gap)}</dd></div>
+                        <div><dt>Recuperado em Estoque</dt><dd>{display(item.recovered_stock)}</dd></div>
+                        <div><dt>Gap após Estoque</dt><dd>{display(item.physical_gap_after_stock)}</dd></div>
+                        <div><dt>Liberado pelo CQ</dt><dd>{display(item.recovered_cq)}</dd></div>
+                        <div><dt>Gap físico após Qualidade</dt><dd>{display(item.physical_gap_after_quality)}</dd></div>
+                        <div><dt>Falta sem explicação</dt><dd>{display(item.unexplained_after_quality)}</dd></div>
+                      </dl>
+                    </section>
+                  ))}
+                </div>
+              </>}
+              {visible.map(item => (
+                <InvestigationRecord key={item.material} material={item}
+                  facts={[
+                    { label: 'SALDO original', value: display(item.original_balance) + ' ' + item.unit },
+                    { label: 'Falta inicial', value: display(item.initial_gap) + ' ' + item.unit },
+                    { label: 'Estoque encontrado', value: display(item.found_stock) + ' ' + item.unit },
+                    { label: 'Recuperado em Estoque', value: display(item.recovered_stock) + ' ' + item.unit },
+                    { label: 'Liberação CQ', value: display(item.recovered_cq) + ' ' + item.unit },
+                    { label: 'Indisponível justificada', value: display(item.justified_stock) + ' ' + item.unit },
+                    { label: 'Reprovação/refugo justificados', value: display(item.justified_cq_rejection + item.justified_cq_scrap) + ' ' + item.unit },
+                    { label: 'Gap físico após CQ', value: display(item.physical_gap_after_quality) + ' ' + item.unit },
+                    { label: 'Falta sem explicação', value: display(item.unexplained_after_quality) + ' ' + item.unit },
+                    { label: 'SALDO projetado', value: display(item.projected_balance) + ' ' + item.unit },
+                    { label: 'Validações pendentes', value: display(item.pending_validations) },
+                  ]}
+                  status={item.provisional ? 'Projeção provisória, confirmação pendente' : ''}
+                  note={item.critical ? 'Material crítico considerado pelo fluxo de Estoque e Qualidade.' : 'Material fora do escopo de recuperação automática destas investigações.'} />
+              ))}
+            </>}
+          </InvestigationModal>}
         </>
       )}
 
