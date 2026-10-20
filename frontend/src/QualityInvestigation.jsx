@@ -213,27 +213,23 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
                   onClick={() => setSelectedId(candidate.candidate_id)}>
                   {candidate.validation ? 'Revisar validação' : 'Validar manualmente'}
                 </button>
-              </>} />
+              </>}>
+              {selected?.material.material === material.material && (
+                <div ref={formRef} className="orion-stock-review-anchor">
+                  <QualityReviewForm key={selected.candidate.candidate_id}
+                    scenario={scenario} stockFile={stockFile} candidate={selected.candidate}
+                    material={selected.material} apiUrl={apiUrl} onCancel={() => setSelectedId('')}
+                    onSaved={updated => {
+                      setQualityInvestigation({ reportKey, result: updated })
+                      setSelectedId('')
+                      setMessage('Validação da Qualidade registrada. SALDO oficial inalterado.')
+                    }} />
+                </div>
+              )}
+            </InvestigationRecord>
           ))}
-          {visible.some(material => (material.additional_q273_evidence || []).length > 0) &&
-            <p className="orion-investigation-record-note">
-              Q273 junto com Q239 permanece apenas como evidência informativa; não é somado nem liberado automaticamente.
-            </p>}
-          {selected && <div ref={formRef} className="orion-stock-review-anchor">
-            <QualityReviewForm key={selected.candidate.candidate_id}
-              scenario={scenario} stockFile={stockFile} candidate={selected.candidate}
-              material={selected.material} apiUrl={apiUrl} onCancel={() => setSelectedId('')}
-              onSaved={updated => {
-                setQualityInvestigation({ reportKey, result: updated })
-                setSelectedId('')
-                setMessage('Validação da Qualidade registrada. SALDO oficial inalterado.')
-              }} />
-          </div>}
         </>}
       </InvestigationModal>}
-      {report && <p className="orion-stock-investigation-note">
-        Amarelo: aguardando confirmação do CQ. Azul: decisão humana registrada. A ausência de registro não comprova refugo.
-      </p>}
     </section>
   )
 }
