@@ -82,10 +82,12 @@
 }
 
 /* Hide the scroll-track, never disable scrolling by wheel, touch, or keyboard. */
+.shell-sidebar,
 .shell-sidebar .shell-navigation {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+.shell-sidebar::-webkit-scrollbar,
 .shell-sidebar .shell-navigation::-webkit-scrollbar {
   display: none;
   width: 0;
