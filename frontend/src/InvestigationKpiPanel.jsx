@@ -42,7 +42,12 @@ export function InvestigationModal({ title, items, onClose, children, modalKey }
   return (
     <dialog ref={ref} className="orion-investigation-dialog"
       aria-label={title} onClose={onClose}
-      onClick={event => { if (event.target === ref.current) ref.current?.close() }}>
+      onClick={event => {
+        if (event.target !== ref.current) return
+        const rect = ref.current.getBoundingClientRect()
+        if (event.clientX < rect.left || event.clientX > rect.right ||
+          event.clientY < rect.top || event.clientY > rect.bottom) ref.current.close()
+      }}>
       <header className="orion-investigation-dialog-heading">
         <div>
           <h3>{title}</h3>
@@ -68,10 +73,15 @@ export function InvestigationModal({ title, items, onClose, children, modalKey }
 
 export function InvestigationRecord({ material, facts, candidates, renderCandidate, note, status }) {
   return (
-    <article className="orion-investigation-record">
+    <article className={'orion-investigation-record ' + (candidates?.length
+      ? candidates.some(candidate => !candidate.validation)
+        ? 'orion-investigation-record--pending' : 'orion-investigation-record--reviewed'
+      : 'orion-investigation-record--unlocated')}>
       <header>
         <strong>PN {material.material}</strong>
         <span>{material.description || 'Descrição não informada'} · {material.unit || 'UM não informada'}</span>
+        {candidates?.length > 0 && <small>{candidates.some(candidate => !candidate.validation)
+          ? 'Validação humana pendente' : 'Validado manualmente'}</small>}
         {status && <small>{status}</small>}
       </header>
       <dl className="orion-investigation-record-facts">
