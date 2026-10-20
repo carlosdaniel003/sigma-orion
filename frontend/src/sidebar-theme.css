@@ -1,0 +1,82 @@
+/*
+ * Sidebar palette is independent of the page theme. The photo is optional:
+ * place the user's Mondial JPG at frontend/public/assets/mondial-sidebar.jpg.
+ * The sidebar still works and retains its solid color when the asset is absent.
+ */
+.shell-sidebar {
+  --sidebar-ink: #FFFFFF;
+  --sidebar-muted: rgba(255, 255, 255, 0.76);
+  --sidebar-hover: rgba(255, 255, 255, 0.10);
+  --sidebar-divider: rgba(255, 255, 255, 0.20);
+  --sidebar-star: #46D9FF;
+  isolation: isolate;
+  border-right-color: var(--sidebar-divider);
+  background-color: #000000 !important;
+  color: var(--sidebar-ink) !important;
+}
+
+/* Image layer stays behind navigation, does not intercept clicks or reduce text opacity. */
+.shell-sidebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url('/assets/mondial-sidebar.jpg');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  opacity: 0.12;
+  filter: grayscale(100%) contrast(1.08);
+  pointer-events: none;
+}
+.shell-sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* The star blue (#46D9FF) is the actual dark-theme sidebar surface. */
+:root[data-theme='dark'] .shell-sidebar {
+  --sidebar-ink: #08111F;
+  --sidebar-muted: #43556B; /* Remains grey, adjusted for readable contrast on cyan. */
+  --sidebar-hover: rgba(8, 17, 31, 0.11);
+  --sidebar-divider: rgba(8, 17, 31, 0.22);
+  --sidebar-star: #08111F; /* Inverted so the toggle does not disappear into its own background. */
+  background-color: #46D9FF !important;
+}
+:root[data-theme='dark'] .shell-sidebar::before { opacity: 0.095; }
+:root[data-theme='light'] .shell-sidebar {
+  background-color: #000000 !important;
+}
+
+/* Only sidebar elements change. The rest of the light/dark theme is untouched. */
+.shell-sidebar .shell-brand,
+.shell-sidebar .brand-logo,
+:root[data-theme='light'] .shell-sidebar .brand-logo,
+.shell-sidebar .brand-logo-word,
+.shell-sidebar .brand-star-toggle {
+  color: var(--sidebar-ink) !important;
+}
+.shell-sidebar .brand-logo-star .orion-brand-star-symbol {
+  fill: var(--sidebar-star) !important;
+}
+.shell-sidebar .shell-nav-item,
+.shell-sidebar .shell-nav-group > p,
+.shell-sidebar .shell-product-caption {
+  color: var(--sidebar-muted) !important;
+}
+.shell-sidebar .shell-nav-item:hover,
+.shell-sidebar .shell-nav-item[aria-current='page'] {
+  background-color: var(--sidebar-hover) !important;
+  color: var(--sidebar-ink) !important;
+}
+.shell-sidebar .shell-sidebar-footer {
+  border-top-color: var(--sidebar-divider) !important;
+}
+.shell-sidebar .brand-star-toggle:hover {
+  background: var(--sidebar-hover) !important;
+}
+.shell-sidebar .brand-star-toggle:focus-visible,
+.shell-sidebar .shell-nav-item:focus-visible {
+  outline: 2px solid var(--sidebar-ink) !important;
+  outline-offset: -2px;
+}
