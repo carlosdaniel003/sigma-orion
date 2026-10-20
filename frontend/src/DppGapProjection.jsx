@@ -227,16 +227,6 @@ export default function DppGapProjection({
             </div>
             <p>Cenário de origem: {approved.original_scenario_id}. Aplicado em: {approved.approved_at_utc}.</p>
           </dialog>
-          <div className="orion-dpp-gap-units">
-            {(approved.recovered_by_unit || []).map(item => (
-              <div key={item.unit} className="orion-dpp-gap-approved-unit">
-                <strong>{item.unit}</strong>
-                <span>Adicional em Estoque: {display(item.from_stock)}</span>
-                <span>Adicional liberado no CQ: {display(item.from_quality)}</span>
-                <span>Falta sem explicação: {display(item.still_unexplained)}</span>
-              </div>
-            ))}
-          </div>
         </>
       ) : (
         <>
@@ -275,6 +265,7 @@ export default function DppGapProjection({
           </>}
           {selectedGap && <InvestigationModal key={signature + ':' + activeGroup}
             modalKey={signature + ':' + activeGroup} title={selectedGap.label}
+            subtitle="Projeção de quantidades confirmadas e justificadas; somente disponibilidade adicional reduz a falta física."
             items={selectedGap.items} onClose={() => setActiveGroup('')}>
             {visible => <>
               {activeGroup === 'all' && <>
