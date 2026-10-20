@@ -220,3 +220,8 @@ Para detalhes de limitações, funcionalidades e próximos passos, consultar **`
 O tema **claro** mantém a sidebar preta com nome e ícones brancos. O tema **escuro** usa o azul ORION `#46D9FF` em superfícies antes azul-marinho e texto principal azul-marinho `#08111F`, com rótulos secundários azul-petróleo `#28546B`. O mesmo tom escuro do wordmark é usado nos textos da sidebar azul. O botão de expandir/recolher é o logotipo **SIGMA-S ★RION inteiro** quando expandido e apenas a estrela quando recolhido. A scrollbar da navegação lateral é ocultada visualmente sem bloquear a rolagem. O cabeçalho e **Fechar** dos modais de Estoque e Qualidade permanecem visíveis durante a rolagem.
 
 A imagem Mondial é opcional e deve ser enviada manualmente para `frontend/public/assets/mondial-sidebar.jpg`; o repositório não inclui fotos não autorizadas.
+
+
+### Ajuste do tema escuro após validação visual
+
+O tema claro e a sidebar com a foto da Mondial permanecem como estavam. Após a inspeção das capturas do usuário, o fundo ciano uniforme do tema escuro foi descartado: a página usa azul-marinho `#0D1826`, painéis `#142235`, superfícies elevadas `#1B2D43`, títulos/números claros e informações secundárias `#91A4B8`. A sidebar escura permanece azul ORION `#46D9FF`; ciano nas demais áreas fica reservado a ações/foco. Tokens centralizados em `frontend/src/orion-dark-refinement.css`, em vez de sobrescrever os módulos individualmente.
