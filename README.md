@@ -118,7 +118,7 @@ OPEN é usado como evidência auxiliar e não altera estoque.
 
 ### Visual operacional do Dashboard (web)
 
-O Dashboard web apresenta indicadores principais, resumo do estoque e Qualidade, filas de validação por área e cards expansíveis apenas de PNs encontrados nos depósitos investigados. A hierarquia usa texto, faixas de métricas com divisores e espaçamento. Ícones SVG ficam restritos a atalhos de navegação, sem caixas decorativas; barras agregadas mostram achados ainda não validados. Comparações complementares continuam acessíveis num painel recolhível. Os detalhes completos de todos os PNs, inclusive os sem registros, permanecem nos relatórios Excel **sem nenhuma modificação de formato**.
+O Dashboard concentra a leitura inicial em quatro indicadores do Cenário ORION e seis indicadores do Resumo Operacional. Estoque e Qualidade apresentam exclusivamente cinco cards de indicadores cada, que abrem modais nativos com todos os PNs da categoria, dados completos, decisões humanas e formulários de validação. Registros pendentes usam marcador amarelo e decisões humanas já registradas usam azul, apenas nesses detalhes operacionais. PNs sem registros permanecem neutros. O Gap recalculado apresenta quatro indicadores clicáveis, deslocando detalhamentos de materiais e unidades para modais. Pacote do mês e comparação ORION × DPP Final não mudam; as cinco abas de cada Excel preservam suas próprias categorias.
 
 ## Dashboard
 
