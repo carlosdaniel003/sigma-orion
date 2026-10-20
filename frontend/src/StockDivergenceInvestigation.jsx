@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
-import OrionVisualIcon from './OrionVisualIcon'
 import { downloadInvestigationExcel } from './investigation-excel'
 import StockDepotReviewForm from './StockDepotReviewForm'
 import { InvestigationKpiGrid, InvestigationModal, InvestigationRecord } from './InvestigationKpiPanel'
