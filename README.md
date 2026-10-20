@@ -69,7 +69,7 @@ Consultas factuais simples podem responder diretamente por SQL/Python para reduz
 
 ## Relatórios Excel das investigações
 
-Após as consultas de **Divergência de Estoque** e **Análise de Qualidade** no Dashboard, os botões contextuais **Baixar Excel** geram relatórios de três abas: **Resumo**, **PNs e divergências** e **Confirmar com área**. O Dashboard também apresenta um resumo conjunto das investigações. Os relatórios incluem PNs críticos, achados por depósito, gaps recalculados, responsáveis pela confirmação e histórico de revisões no mesmo conjunto de planilhas. São relatórios derivados do cenário ORION em construção e do STK SAP do mesmo pacote, não do DPP Final já consolidado. Os downloads são apenas leitura e não fazem lançamentos no SAP nem alteram o DPP.
+Após as consultas de **Divergência de Estoque** e **Análise de Qualidade** no Dashboard, os botões contextuais **Baixar Excel** geram relatórios integrados de cinco abas: **Resumo**, **PNs e divergências**, **Confirmar com área**, **Divergência de Estoque** e **Análise de Qualidade**. As duas abas nomeadas mostram, em ambos os downloads, o detalhamento por PN de cada investigação, incluindo depósitos, falta física, evidências de origem e pendências de validação. O Dashboard também apresenta um resumo conjunto das investigações. Os relatórios incluem PNs críticos, achados por depósito, gaps recalculados, responsáveis pela confirmação e histórico de revisões no mesmo conjunto de planilhas. São relatórios derivados do cenário ORION em construção e do STK SAP do mesmo pacote, não do DPP Final já consolidado. Os downloads são apenas leitura e não fazem lançamentos no SAP nem alteram o DPP.
 
 ### Gap recalculado do DPP em construção
 
