@@ -5,6 +5,8 @@
 > Estas descrições **não criam novas regras de cálculo**. Em caso de conflito, `motor-deterministico.md`, `regras-globais.md` e a implementação Python são a fonte de verdade determinística.
 >
 > Cada módulo deve manter exatamente três informações para o usuário: **O que mostra**, **Origem** e **Finalidade**.
+>
+> **Interface atual (2026-10-20):** os indicadores complementares recolhíveis, o painel Gap recalculado e o Comparativo completo das colunas foram retirados do Dashboard. Suas definições abaixo permanecem como conhecimento histórico e explicação de regras, não como garantia de um componente visual ativo.
 
 ## dashboard.overview — Dashboard do DPP
 
@@ -16,7 +18,7 @@
 
 ## dashboard.package — Pacote compartilhado do DPP
 
-**O que mostra:** Quais arquivos mensais foram reconhecidos, quais entradas obrigatórias estão presentes e quais arquivos permanecem opcionais ou ausentes.
+**O que mostra:** Quais arquivos mensais foram reconhecidos, quais entradas obrigatórias estão presentes e quais arquivos permanecem opcionais ou ausentes. Na tela do Dashboard já processado, esses arquivos aparecem lado a lado em uma grade compacta responsiva, com nome completo disponível ao passar o cursor.
 
 **Origem:** Arquivos selecionados pelo usuário e persistidos no workspace/IndexedDB. A classificação identifica DPP anterior, DPP Final, STK SAP, Explosão, OPEN, PGD e WIU. A geração usa as fontes definidas na REGRA-011; OPEN é opcional e não altera estoque.
 
@@ -80,7 +82,7 @@
 
 ## dashboard.monthly_gap_projection — Gap recalculado do DPP
 
-**O que mostra:** Quatro indicadores clicáveis do déficit recalculado do DPP mensal, após recuperação confirmada de Estoque e do CQ; cada indicador abre modal com materiais, quantidades e evidências. Diferencia falta física e falta sem explicação e exibe totais por UM, incluindo material negativo fora do escopo de investigação atual.
+**O que mostra:** Funcionalidade de recálculo do déficit mensal disponível no backend, atualmente sem painel na tela principal do Dashboard. Os dados diferenciam falta física e falta sem explicação, respeitando unidades de medida e materiais negativos fora do escopo atual.
 
 **Origem:** Cenário ORION mensal, STK SAP ORIGINAL do mesmo pacote e decisões atuais de Divergência de Estoque M221/P277 e Qualidade Q239/Q273 registradas no SQLite. O DPP Final não é fonte do recálculo.
 
@@ -88,7 +90,7 @@
 
 ## dashboard.monthly_gap_approval — Conferência e aplicação ao DPP
 
-**O que mostra:** Prévia explícita, por unidade de medida, das quantidades efetivamente liberadas em Estoque e CQ; quantos registros ainda exigem validação; e quantos PNs seguem sem explicação. Depois de aprovada, mostra a nova versão do DPP com origem e data de aplicação.
+**O que mostra:** Endpoint de conferência e aplicação por unidade de medida, preservado no backend, mas sem ação de interface no Dashboard após a remoção do painel Gap recalculado. A prévia inclui quantidades liberadas, pendências e faltas sem explicação; uma aprovação explícita cria nova versão auditável.
 
 **Origem:** Reavaliação do backend sobre cenário mensal ORION, mesmo snapshot do STK e confirmações atuais persistidas no SQLite. As quantidades não são fornecidas pelo navegador.
 
@@ -96,7 +98,7 @@
 
 ## dashboard.stock_divergence — Divergência de Estoque
 
-**O que mostra:** Consulta os PNs críticos do Cenário ORION nos depósitos M221 e P277 da aba ORIGINAL do STK SAP, registros e linhas de origem. Permite validar quantidade disponível, quantidade indisponível justificada e contabilização no DPP, preservando o histórico no SQLite. Resume o déficit inicial, o gap após recuperação e a falta sem justificativa por PN, inclusive PNs sem registro nesses depósitos. Ao clicar em **Baixar Excel**, o sistema gera cinco abas que correspondem exatamente aos indicadores dessa seção: **PNs Críticos**, **PNs Encontrados**, **Aguardando Almoxarifado**, **Sem Registros** e **Encaminhados à Qualidade**. Cada aba lista todos os PNs do respectivo indicador, não apenas os visíveis na paginação, com descrição, UM, saldo, falta, quantidades M221/P277, recuperação aplicada, gap restante, centro, linhas da aba ORIGINAL, decisões e histórico. Os grupos podem se sobrepor: um PN encaminhado provisoriamente pode continuar aguardando um depósito. No painel web permanecem somente cinco indicadores clicáveis; cada um abre um modal com todos os PNs correspondentes, evidência, status de validação (amarelo quando pendente, azul quando registrado manualmente), formulário de confirmação quando aplicável e histórico.
+**O que mostra:** Consulta os PNs críticos do Cenário ORION nos depósitos M221 e P277 da aba ORIGINAL do STK SAP, registros e linhas de origem. Permite validar quantidade disponível, quantidade indisponível justificada e contabilização no DPP, preservando o histórico no SQLite. Resume o déficit inicial, o gap após recuperação e a falta sem justificativa por PN, inclusive PNs sem registro nesses depósitos. Ao clicar em **Baixar Excel**, o sistema gera cinco abas que correspondem exatamente aos indicadores dessa seção: **PNs Críticos**, **PNs Encontrados**, **Aguardando Almoxarifado**, **Sem Registros** e **Encaminhados à Qualidade**. Cada aba lista todos os PNs do respectivo indicador, sem depender de filtros ou paginação da tela, com descrição, UM, saldo, falta, quantidades M221/P277, recuperação aplicada, gap restante, centro, linhas da aba ORIGINAL, decisões e histórico. Os grupos podem se sobrepor: um PN encaminhado provisoriamente pode continuar aguardando um depósito. No painel web permanecem somente cinco indicadores clicáveis; cada um abre um modal com todos os PNs correspondentes, evidência, status de validação (amarelo quando pendente, azul quando registrado manualmente), formulário de confirmação quando aplicável e histórico.
 
 **Origem:** STK SAP do pacote compartilhado, cenário calculado pelo motor Python e histórico de revisões local em SQLite. A consulta é persistida no IndexedDB até mudança do pacote ou do cenário, e o cálculo oficial do DPP segue exclusivamente a fonte consolidada. O Excel é reconstruído pela API no momento do download, sem usar o DPP Final como fonte de investigação. O arquivo expõe cobertura potencial teórica limitada ao déficit por PN, quantidade bruta, parcela aplicada ao déficit e encaminhamentos provisórios; totais de UM diferentes não são somados.
 
@@ -130,7 +132,7 @@
 
 ## dashboard.column_comparison — Comparativo completo das colunas do DPP
 
-**O que mostra:** Compara as colunas suportadas da aba DPP respeitando a semântica de cada campo: comparação determinística, referência final, contextual ou sem regra implementada.
+**O que mostra:** Regras e dados de comparação das colunas suportadas da aba DPP, atualmente sem o painel Comparativo completo das colunas no Dashboard. A semântica técnica distingue comparação determinística, referência final, contextual e campos sem regra implementada.
 
 **Origem:** Projeção canônica do Cenário ORION e DPP Final analisado. CHECK segue REGRA-007; OPC segue REGRA-005; COMENTS segue REGRA-008; números usam REGRA-009.
 
