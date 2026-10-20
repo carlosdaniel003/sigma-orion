@@ -750,3 +750,14 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Aguardando Almoxarifado / CQ corresponde à contagem de PNs únicos com ao menos um candidato ativo pendente (`!candidate.validation`), inclusive os que já foram provisoriamente encaminhados, tal como o frontend.
 - Indicadores não são necessariamente disjuntos; um PN pode estar em mais de uma aba. `Encontrados Q273` usa apenas depósito ativo Q273 quando não existe Q239. Q273 com Q239 prioritário continua descrito no histórico/evidência, mas é informativo, sem somar ou atribuir ao déficit.
 - Os PNs do Excel são derivados do backend e independem da paginação, filtros e busca do frontend. Nenhuma movimentação SAP, nova fonte, recálculo do DPP final nem mudança de fórmula é feita na exportação.
+
+
+### Painéis compactos com modais por indicador (2026-10-20)
+
+- Interface do Cenário Inicial organizada em um único painel contendo título e quatro métricas já existentes.
+- Resumo Operacional mantém seis métricas: negativos, encontrados Estoque, aguardando Almoxarifado, encaminhados Qualidade, encontrados CQ e aguardando Qualidade. Barras, sequências de gap e links de fila foram retirados da visão inicial.
+- As duas investigações exibem somente os cinco indicadores derivados dos relatórios atuais, com clique que abre diálogo nativo. Removidas da tela listas paginadas e cards expansíveis por PN. Modal exibe os PNs de cada categoria (inclusive sem registros), detalhes completos e formulário original de confirmação por depósito.
+- Na interface dos modais, borda amarela identifica registros sem `candidate.validation`; borda azul identifica decisões humanas persistidas. PNs sem registro não simulam validação. Após salvar, a fila/categoria é recalculada com os dados do backend e o histórico continua disponível.
+- O Gap recalculado move detalhamento por PN e unidade para modais acionados pelos quatro KPIs. Confirmação de aplicação permanece separada e auditável. A versão já aprovada oferece diálogo de auditoria por indicador.
+- Não modifica Pacote do mês, ORION × DPP Final, regras determinísticas, endpoints, SQLite, confirmações de área, backend nem as exportações Excel.
+- Esta seção prevalece sobre a documentação histórica de paginação e filas da página web.
