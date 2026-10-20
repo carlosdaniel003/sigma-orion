@@ -1148,3 +1148,17 @@ Estas decisões substituem exclusivamente a paleta e os controles anteriores da 
 - O wordmark completo continua visível com a sidebar expandida; quando recolhida, a estrela permanece centralizada e operável por teclado ou toque. Na navegação móvel o mesmo controle funciona em ambos os estados, mantendo os itens navegáveis.
 - A foto licenciada da Mondial fica em `frontend/public/assets/mondial-sidebar.jpg` (JPG 1159×640); a camada `::before` usa `background-size: cover`, escala de cinza e opacidade `0.12` no tema claro/`0.095` no escuro para manter contraste e permitir reconhecer a imagem discretamente. A foto é **opcional**, sem interferir na sidebar se ainda não tiver sido anexada.
 - As novas regras ficam isoladas em `frontend/src/sidebar-theme.css`, importado após as demais folhas para garantir especificidade, sem alterar o tema da aplicação.
+
+
+### Inversão azul do tema escuro, logotipo clicável e modais (2026-10-20)
+
+Estas regras **substituem** a antiga definição de tema escuro predominantemente azul-marinho (seção 6.1) e as regras anteriores da sidebar que limitavam o clique à estrela e mantinham cinza os rótulos secundários.
+
+- **Tema escuro global invertido:** azul ORION `#46D9FF` passa a preencher as superfícies que eram azul-marinho (fundo da aplicação e painéis). Sobre esse fundo, o texto que antes era branco passa a `#08111F` (azul-marinho), e o texto que antes era cinza passa a `#28546B` (azul-petróleo acinzentado mais escuro). Superfície elevada usa `#83E8FF`, linhas `#2A7894` e texto neutro `#315E76`; todos são exceções locais documentadas do tema invertido.
+- Para não perder contraste, **botões de ação principais, realce de foco e marcação de validação confirmada** usam azul-marinho `#08111F` quando a superfície é azul ORION. Cores semânticas de dados e as regras de confirmação humana continuam válidas; não usar ciano sobre ciano.
+- O **tema claro** mantém sua paleta original e sua sidebar preta; nenhuma alteração de tokens claros é permitida por esta regra.
+- Com a sidebar **aberta**, clicar em qualquer parte de `SIGMA-S ★RION` abre/recolhe (um único botão acessível cobrindo o wordmark completo). Com a sidebar **fechada**, somente a estrela fica visível e clicável. A estrela permanece parte do logotipo, sem segundo controle invisível sobreposto. Preservar `aria-controls`, `aria-expanded` e o rótulo de ação contextual.
+- A **scrollbar interna da sidebar** fica visualmente oculta em todos os navegadores suportados, sem desabilitar rolagem por mouse, touch ou teclado. A navegação permanece acessível em janelas baixas e no celular.
+- Os textos secundários da **sidebar no tema escuro** também passam a azul-marinho `#08111F`, tal como o nome SIGMA-S ★RION, substituindo o cinza da revisão anterior.
+- Nos modais de Estoque e Qualidade, o cabeçalho contendo **Fechar** fica `position: sticky; top: 0` com fundo opaco do tema e índice superior ao conteúdo, evitando que a ação desapareça com a rolagem dos PNs. Não prender os formulários nem desabilitar Escape ou busca.
+- Implementação centralizada em `orion-inverted-dark.css` (carregado por último no tema), `BrandLogo.jsx`, `brand.css`, `sidebar-theme.css` e `investigation-kpi-panel.css`. Não duplicar temas dentro dos módulos.
