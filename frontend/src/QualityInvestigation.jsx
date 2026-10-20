@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
-import OrionVisualIcon from './OrionVisualIcon'
 import QualityReviewForm from './QualityReviewForm'
 import { InvestigationKpiGrid, InvestigationModal, InvestigationRecord } from './InvestigationKpiPanel'
 import { qualityCohorts } from './investigation-view-model'
