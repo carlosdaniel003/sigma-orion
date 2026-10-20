@@ -156,8 +156,6 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <h3>Divergência de Estoque</h3>
             <ModuleInfoHint moduleKey="dashboard.stock_divergence" />
           </div>
-          <p>Localização de PNs críticos em M221 e P277 na aba ORIGINAL do STK SAP.</p>
-          <small>Os detalhes e as confirmações estão disponíveis ao selecionar um indicador.</small>
         </div>
         <div className="orion-investigation-actions">
           <button type="button" className="secondary-button" onClick={investigate}
