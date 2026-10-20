@@ -156,8 +156,6 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
             <h3>Análise de Qualidade</h3>
             <ModuleInfoHint moduleKey="dashboard.quality_investigation" />
           </div>
-          <p>PNs encaminhados pelo Estoque, encontrados em Q239 ou Q273 do STK ORIGINAL.</p>
-          <small>Selecione um indicador para visualizar os PNs e validar os registros com o CQ.</small>
         </div>
         {canRun && <div className="orion-investigation-actions">
           <button type="button" className="secondary-button" disabled={loading || exporting} aria-busy={loading}
