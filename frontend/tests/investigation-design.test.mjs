@@ -89,3 +89,30 @@ test('compact shared monthly package keeps full filename tooltip and responsive 
   assert.match(stylesheet, /repeat\(4, minmax\(0, 1fr\)\)/)
   assert.match(stylesheet, /@container \(max-width: 400px\)/)
 })
+
+
+test('the ORION star exclusively controls sidebar expansion, including mobile', () => {
+  const sidebar = source('WorkspaceNavigation.jsx')
+  const brand = source('BrandLogo.jsx')
+  const navigation = source('navigation.css')
+  assert.match(sidebar, /<BrandLogo collapsed=\{collapsed\} onToggle=\{\(\) => setCollapsed/)
+  assert.doesNotMatch(sidebar, /shell-mobile-close|<button className="shell-icon-button" type="button" aria-label=\{collapsed/)
+  assert.match(brand, /className="brand-star-toggle"/)
+  assert.match(brand, /aria-expanded=\{!collapsed\}/)
+  assert.match(brand, /aria-controls="workspace-navigation"/)
+  assert.match(brand, /onClick=\{onToggle\}/)
+  assert.match(navigation, /--sidebar-width: 64px/)
+})
+
+test('sidebar palettes remain isolated and Mondial background is optional', () => {
+  const theme = source('sidebar-theme.css')
+  const main = source('main.jsx')
+  assert.match(theme, /:root\[data-theme='light'\] \.shell-sidebar/)
+  assert.match(theme, /:root\[data-theme='dark'\] \.shell-sidebar/)
+  assert.match(theme, /background-color: #000000 !important/)
+  assert.match(theme, /background-color: #46D9FF !important/)
+  assert.match(theme, /--sidebar-muted: #43556B/)
+  assert.match(theme, /\/assets\/mondial-sidebar\.jpg/)
+  assert.match(theme, /pointer-events: none/)
+  assert.match(main, /import '\.\/sidebar-theme\.css'/)
+})
