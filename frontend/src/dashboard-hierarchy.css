@@ -107,7 +107,7 @@
 }
 
 /* Breakpoints acompanham a área útil (inclusive ao recolher/abrir a sidebar). */
-@container (max-width: 1180px) {
+@container (max-width: 1100px) {
   .dpp-dashboard-view .dashboard-operational-top {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -119,11 +119,13 @@
   }
 }
 
-@container (max-width: 760px) {
+@media (max-width: 1000px) {
   .dpp-dashboard-view:not([hidden]) {
     gap: var(--space-2);
   }
+}
 
+@container (max-width: 760px) {
   .dpp-dashboard-view .dashboard-operational-top,
   .dpp-dashboard-view .dashboard-investigation-pair {
     gap: var(--space-2);
@@ -147,7 +149,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric {
+  .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric:nth-child(n) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-1) var(--space-2);

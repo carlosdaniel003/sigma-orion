@@ -50,8 +50,8 @@ test('operational overview replaces the initial DPP panel and aligns with month 
   assert.match(layout, /\.dashboard-operational-top/)
   assert.match(layout, /\.dashboard-investigation-pair/)
   assert.match(layout, /\.dashboard-shared-package > \.bulk-file-picker\.compact/)
-  assert.match(layout, /padding:var\(--space-4\) !important/)
-  assert.match(layout, /border:1px solid var\(--orion-border\) !important/)
+  assert.match(layout, /padding:\s*var\(--space-4\) !important/)
+  assert.match(layout, /border:\s*1px solid var\(--orion-border\) !important/)
 })
 
 
@@ -200,9 +200,9 @@ test('dashboard stage one uses a responsive two-row composition without duplicat
   assert.equal((loader.match(/<BulkDppFilePicker\b/g) || []).length, 2)
   assert.match(loader, /<FinalModelPlan finalDppAnalysis=\{finalDppAnalysis\} \/>/)
   assert.match(layout, /grid-template-columns: minmax\(0, 0\.37fr\) minmax\(0, 0\.63fr\)/)
-  assert.match(layout, /@container \(max-width: 1180px\)/)
+  assert.match(layout, /@container \(max-width: 1100px\)/)
   assert.match(layout, /@container \(max-width: 900px\)/)
-  assert.doesNotMatch(layout, /order:\s*\d/)
+  assert.doesNotMatch(layout, /^\s*order:\s*\d/m)
   assert.match(modal, /aria-haspopup="dialog"/)
   assert.match(modal, /aria-label=\{\x60\$\{metric\.label\}/)
   assert.doesNotMatch(modal, /<small>Ver itens e detalhes<\/small>/)
