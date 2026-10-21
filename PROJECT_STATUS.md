@@ -805,3 +805,14 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Paleta escura **vigente**: sidebar quase preta `#090A0C`, letras brancas `#F5F5F6`, foto Mondial em fundo discreto, estrela ciano `#46D9FF`. Área de trabalho grafite `#191A1D`, painéis `#242529`, elevado `#2E3035`, bordas `#404249`, secundários `#BBC0C8`. Ações primárias brancas com letras escuras, outras cinza; ciano reservado ao símbolo e interações pontuais.
 - Ajustes somente em `orion-dark-refinement.css`, `sidebar-theme.css`, testes de design e documentação; sem alterações no tema claro, funcionalidades, arquivos corporativos, cálculos nem Excel.
 - Esta regra substitui as paletas azul-marinho/ciano apresentadas nos históricos acima.
+
+
+### Alinhamento operacional, consultas automáticas e prevenção de estado expirado (2026-10-21)
+
+- Retirada da árvore renderizada do Dashboard a seção “Cenário inicial do DPP” (quatro métricas); “Resumo Operacional” assume a primeira posição sem mudar seus seis KPIs. Resumo, Estoque e Qualidade foram alinhados à caixa do Pacote do mês: borda total, padding 16 px e heading de mesma escala; gap vertical 12 px/8 px em telas menores.
+- Removidos os botões de reconsulta dos módulos Estoque e Qualidade. Fluxo sequencial de geração DPP → consulta automática Estoque M221/P277 → consulta automática Qualidade Q239/Q273 dos PNs encaminhados, sem submissão manual; Excel e validação humana continuam.
+- Corrigida a condição inicial da 4.1 que aguardava um cache de Estoque preexistente antes de iniciar sua primeira consulta. Falhas temporárias das investigações podem ser reconsultadas ao focar/retomar a aba.
+- Backend: `dpp_scenario_service.py` registra snapshots v3 de todas as até oito versões de cenário ativas, preservando leitura dos registros antigos v2; endpoint `GET /api/dpp/monthly/scenarios/{scenario_id}/availability` verifica somente a identidade real mantida no servidor.
+- Frontend: `useScenarioAvailability.js` verifica servidor no primeiro carregamento, retorno da aba/foco, periodicamente e ao solicitar abertura do modal, evitando exibir indicadores antigos como válidos depois da expiração ou substituição do cenário. Comparação com assinatura do pacote impede cruzamento entre meses e arquivos.
+- Em cenário realmente ausente: ocultar todos os números da investigação e disponibilizar “Tentar recuperar cenário” ou “Reprocessar pacote salvo” usando arquivos mantidos no IndexedDB. Não copiar confirmações humanas SQLite de um ID para outro; avisar sobre isso, sem atualização silenciosa do DPP oficial.
+- Sem alterações nas regras determinísticas de NEC, REAL, SALDO, STK TTL, Amount, validação de PN ou nas 5 abas por exportação Excel.
