@@ -2,7 +2,6 @@ import { useLayoutEffect, useState } from 'react'
 import AgentOrion from './AgentOrion'
 import WorkspaceNavigation from './WorkspaceNavigation'
 import DashboardLoader from './DashboardLoader'
-import FinalModelPlan from './FinalModelPlan'
 import './final-model-plan-detail.css'
 import DppConsolidation from './DppConsolidation'
 import DppTest from './DppTest'
@@ -73,7 +72,6 @@ function App() {
             finalDppAnalysis={finalDppAnalysis}
             onFinalDppAnalysis={setFinalDppAnalysis}
           />
-          <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
         </section>
 
         {activeWorkspace === 'dpp' && activeView === 'consolidation' && <DppConsolidation apiUrl={API_URL} />}
