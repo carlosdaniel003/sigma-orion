@@ -225,3 +225,8 @@ A imagem Mondial é opcional e deve ser enviada manualmente para `frontend/publi
 ### Ajuste do tema escuro após validação visual
 
 O tema claro e a sidebar com a foto da Mondial permanecem como estavam. Após a inspeção das capturas do usuário, o fundo ciano uniforme do tema escuro foi descartado: a página usa azul-marinho `#0D1826`, painéis `#142235`, superfícies elevadas `#1B2D43`, títulos/números claros e informações secundárias `#91A4B8`. A sidebar escura permanece azul ORION `#46D9FF`; ciano nas demais áreas fica reservado a ações/foco. Tokens centralizados em `frontend/src/orion-dark-refinement.css`, em vez de sobrescrever os módulos individualmente.
+
+
+### Paleta Mondial vigente para o modo escuro
+
+A identidade **preto, grafite e branco** substitui as experiências anteriores de azul-ciano e azul-marinho espalhados pelos painéis. No tema escuro, a sidebar com a fotografia Mondial usa quase preto `#090A0C`, texto branco e estrela ORION azul `#46D9FF`. A área de conteúdo fica em grafite `#191A1D`, com painéis `#242529`, elevado `#2E3035` e texto claro `#F5F5F6`. Os botões principais são brancos com texto escuro; o ciano permanece apenas em poucos realces funcionais. A implementação está centralizada em `frontend/src/orion-dark-refinement.css` e `frontend/src/sidebar-theme.css`. O **tema claro permanece inalterado**.
