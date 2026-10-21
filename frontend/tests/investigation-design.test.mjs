@@ -127,7 +127,11 @@ test('investigation modal close remains visible when PN results scroll', () => {
   const modal = source('investigation-kpi-panel.css')
   assert.match(modal, /\.orion-investigation-dialog-heading \{ position:sticky; top:0; z-index:3;/)
   assert.match(modal, /background:var\(--orion-surface\)/)
-  assert.match(modal, /\.orion-investigation-dialog \{[^}]*overflow-y:auto;/)
+  assert.match(modal, /\.orion-investigation-dialog \{[^}]*overflow:hidden;/)
+  assert.match(modal, /\.orion-investigation-dialog\[open\] \{ display:flex; flex-direction:column; \}/)
+  assert.match(modal, /\.orion-investigation-dialog-content \{[^}]*overflow-y:auto;/)
+  assert.match(modal, /\.orion-investigation-dialog-content \{[^}]*overscroll-behavior-y:contain;/)
+  assert.match(modal, /\.orion-investigation-dialog::backdrop \{[^}]*backdrop-filter:blur\(3px\);/)
 })
 
 test('dark Mondial palette is neutral, readable, and sparing with ORION cyan', () => {
@@ -206,4 +210,19 @@ test('dashboard stage one uses a responsive two-row composition without duplicat
   assert.match(modal, /aria-haspopup="dialog"/)
   assert.match(modal, /aria-label=\{\x60\$\{metric\.label\}/)
   assert.doesNotMatch(modal, /<small>Ver itens e detalhes<\/small>/)
+})
+
+
+test('investigation dialogs lock background scrolling and retain accessible internal content', () => {
+  const js = source('InvestigationKpiPanel.jsx')
+  const lock = source('modal-scroll-lock.js')
+  const modal = source('investigation-kpi-panel.css')
+  assert.match(js, /acquirePageScrollLock\(\)/)
+  assert.match(js, /releaseScrollLock\(\)/)
+  assert.match(js, /role="region"/)
+  assert.match(js, /tabIndex=\{0\}/)
+  assert.match(modal, /\.orion-investigation-dialog-search \{ flex:0 0 auto;/)
+  assert.match(modal, /@media \(prefers-reduced-transparency:reduce\)/)
+  assert.match(lock, /body\.style\.position = 'fixed'/)
+  assert.match(lock, /window\.scrollTo\(scrollX, scrollY\)/)
 })

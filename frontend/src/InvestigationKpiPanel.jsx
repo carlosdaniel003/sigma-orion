@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { acquirePageScrollLock } from './modal-scroll-lock'
 import './investigation-kpi-panel.css'
 
 /** Five operational indicators, each opening its own complete PN cohort. */
@@ -32,8 +33,22 @@ export function InvestigationModal({ title, items, onClose, children, modalKey, 
   // from that cleanup must never clear the user's selected KPI.
   useLayoutEffect(() => {
     const dialog = ref.current
-    if (dialog && !dialog.open) dialog.showModal()
-    return () => { if (dialog?.open) dialog.close() }
+    if (!dialog) return undefined
+
+    const releaseScrollLock = acquirePageScrollLock()
+    try {
+      if (!dialog.open) dialog.showModal()
+    } catch (error) {
+      releaseScrollLock()
+      throw error
+    }
+
+    // The native dialog maintains the focus trap and restores focus on close.
+    // StrictMode cleanup must release the page lock without changing KPI selection.
+    return () => {
+      if (dialog?.open) dialog.close()
+      releaseScrollLock()
+    }
   }, [modalKey])
 
   const normalized = query.trim().toLocaleLowerCase('pt-BR')
@@ -67,7 +82,8 @@ export function InvestigationModal({ title, items, onClose, children, modalKey, 
           placeholder="Filtrar por PN, descrição ou depósito" />
         <span>{visible.length.toLocaleString('pt-BR')} exibido(s)</span>
       </div>
-      <div className="orion-investigation-dialog-content">
+      <div className="orion-investigation-dialog-content" role="region"
+        tabIndex={0} aria-label={`Lista de PNs: ${title}`}>
         {!visible.length && <p>Nenhum PN corresponde à pesquisa ou a categoria está vazia.</p>}
         {children(visible)}
       </div>

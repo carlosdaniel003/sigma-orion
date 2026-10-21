@@ -1233,3 +1233,14 @@ Esta atualização **substitui exclusivamente a geometria de largura igual e emp
 - **Resiliência:** em cenário não disponível ou em versão já aprovada, o Pacote permanece visível isoladamente, sem métricas antigas aparentando validade. Preservar os caminhos de recuperação de cenário.
 - **Implementação:** um único CSS de composição `frontend/src/dashboard-hierarchy.css` e duas áreas explícitas no JSX, sem propriedades `order` que desalinhem a leitura visual da ordem de teclado. Reutilizar exclusivamente as superfícies, bordas e espaçamentos normativos.
 - **Fora do escopo:** travamento de rolagem/desfoque dos diálogos e painel funcional de Pendências requerem aprovação das etapas próprias.
+
+
+### Modais de investigação — Isolamento da rolagem (Etapa 2, 2026-10-21)
+
+Esta é uma **exceção funcional, exclusiva aos diálogos de PNs de Estoque e Qualidade**. Ela não autoriza glassmorphism nem filtros decorativos em painéis.
+
+- Ao abrir um dos modais de investigação, bloquear a rolagem da página com trava compartilhada e restaurar precisamente a posição e os estilos anteriores ao fechar. O bloqueio deve funcionar também em dispositivos móveis e resistir ao ciclo de montagem/desmontagem de `React.StrictMode`.
+- O `<dialog>` nativo continua responsável pelo foco modal e pelo Escape; preservar portal, clique fora, botão Fechar e a seleção de PN. Fechamentos internos de efeitos React não podem disparar `onClose` do usuário.
+- A **única área rolável do diálogo** é a lista de PNs, suas evidências e formulários, com contenção do overscroll. Título, botão Fechar e busca permanecem fora desse contêiner, visíveis mesmo em listas longas.
+- O backdrop recebe escurecimento neutro e `blur(3px)`, exclusivamente para indicar a interrupção da interação com o Dashboard; em `prefers-reduced-transparency`, usar escurecimento sem blur. Sem animações contínuas, glow, vidro translúcido ou novos tokens cromáticos.
+- A lista rolável continua acessível por teclado, touch e mouse; o modal respeita a altura disponível (`dvh`) e os temas claro/escuro. Não modificar as decisões humanas, os cálculos, o pacote, as fontes nem os cinco grupos Excel.

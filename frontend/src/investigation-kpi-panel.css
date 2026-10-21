@@ -5,16 +5,18 @@
 .orion-kpi-tile > strong { font-size:26px; font-variant-numeric:tabular-nums; line-height:1.1; }
 .orion-kpi-tile:hover { background:var(--orion-surface-elevated); }
 .orion-kpi-tile:focus-visible { outline:2px solid var(--orion-blue); outline-offset:2px; }
-.orion-investigation-dialog { width:min(95vw,1100px); max-width:95vw; max-height:90vh; padding:0; border:1px solid var(--orion-border); border-radius:0; color:var(--orion-text); background:var(--orion-surface); box-shadow:none; overflow-y:auto; }
-.orion-investigation-dialog::backdrop { background:rgba(0,0,0,.70); }
-.orion-investigation-dialog-heading { position:sticky; top:0; z-index:3; display:flex; align-items:start; justify-content:space-between; gap:var(--space-4); padding:var(--space-5); border-bottom:1px solid var(--orion-border); background:var(--orion-surface); }
+/* O dialog não rola: só a área dos PNs pode deslizar, sem levar o dashboard junto. */
+.orion-investigation-dialog { width:min(95vw,1100px); max-width:95vw; max-height:90vh; max-height:90dvh; padding:0; border:1px solid var(--orion-border); border-radius:0; color:var(--orion-text); background:var(--orion-surface); box-shadow:none; overflow:hidden; overscroll-behavior:contain; }
+.orion-investigation-dialog[open] { display:flex; flex-direction:column; }
+.orion-investigation-dialog::backdrop { background:rgba(0,0,0,.58); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+.orion-investigation-dialog-heading { position:sticky; top:0; z-index:3; flex:0 0 auto; display:flex; align-items:start; justify-content:space-between; gap:var(--space-4); padding:var(--space-5); border-bottom:1px solid var(--orion-border); background:var(--orion-surface); }
 .orion-investigation-dialog-heading h3 { font-size:20px; margin:0 0 8px; }
 .orion-investigation-dialog-heading p { margin:0; font-size:12px; color:var(--orion-text-secondary); }
 .orion-investigation-dialog-heading button { flex-shrink:0; }
-.orion-investigation-dialog-search { padding:var(--space-3) var(--space-5); display:flex; gap:var(--space-3); align-items:center; border-bottom:1px solid var(--orion-border); }
+.orion-investigation-dialog-search { flex:0 0 auto; padding:var(--space-3) var(--space-5); display:flex; gap:var(--space-3); align-items:center; border-bottom:1px solid var(--orion-border); background:var(--orion-surface); }
 .orion-investigation-dialog-search input { min-width:0; width:min(100%,470px); padding:var(--space-2) var(--space-3); font:inherit; color:var(--orion-text); background:var(--orion-surface); border:1px solid var(--orion-border); border-radius:0; }
 .orion-investigation-dialog-search span { font-size:12px; color:var(--orion-text-secondary); white-space:nowrap; }
-.orion-investigation-dialog-content { padding:0 var(--space-5) var(--space-5); }
+.orion-investigation-dialog-content { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:0 var(--space-5) var(--space-5); }
 .orion-investigation-record { padding:var(--space-4) 0; border-bottom:1px solid var(--orion-border); }
 .orion-investigation-record > header { display:flex; gap:var(--space-2) var(--space-4); align-items:baseline; flex-wrap:wrap; }
 .orion-investigation-record > header strong { font-size:15px; }
@@ -50,5 +52,16 @@
 .orion-investigation-record-depot--pending small { color:var(--orion-text); }
 .orion-investigation-dialog .orion-dpp-gap-units { margin:var(--space-4) 0 var(--space-5); }
 
-/* Close stays accessible during vertical scroll of a long PN list. */
+/* Cabeçalho/Fechar e filtro permanecem fora do único contêiner rolável. */
 .orion-investigation-dialog-heading button { position:relative; z-index:1; }
+.orion-investigation-dialog-heading > div { min-width:0; }
+
+@media (max-width:480px) {
+  .orion-investigation-dialog-heading { gap:var(--space-2); }
+  .orion-investigation-dialog-heading h3 { font-size:var(--text-lg); }
+  .orion-investigation-dialog-search { flex-wrap:wrap; }
+}
+
+@media (prefers-reduced-transparency:reduce) {
+  .orion-investigation-dialog::backdrop { -webkit-backdrop-filter:none; backdrop-filter:none; background:rgba(0,0,0,.70); }
+}

@@ -825,3 +825,11 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Indicadores de Estoque/CQ ficam menores, ainda acionáveis, com rótulo acessível completo. As mesmas cinco categorias/modais de cada investigação permanecem, sem mudança de contagens, decisões e relatórios Excel.
 - O painel funcional de Pendências previsto na composição final ainda **não foi implementado**: para evitar espaço vazio ou métricas duplicadas, Estoque/CQ dividem a segunda faixa temporariamente. Os modais ainda têm o comportamento anterior de rolagem e backdrop.
 - Composição explícita no JSX e CSS central em `dashboard-hierarchy.css`; não houve alteração em backend, regras, dados, consultas automáticas, endpoints nem planilhas empresariais.
+
+
+### Modais de Estoque e Qualidade com rolagem isolada — Etapa 2 (2026-10-21)
+
+- `InvestigationModal` continua com portal e `<dialog>` nativo, preservando foco, Escape, botão Fechar, busca e validações humanas. A rolagem deixa de acontecer no elemento inteiro: somente `.orion-investigation-dialog-content` é rolável, mantendo título, Fechar e pesquisa fixos.
+- `modal-scroll-lock.js` aplica e restaura o bloqueio da página (incluindo Safari móvel), preserva a posição de rolagem e usa contagem de referências para não liberar o scroll na presença de outro modal. Cleanup de `StrictMode` não remove seleção de KPI.
+- Backdrop escurecido com desfoque funcional discreto de 3 px; alternativa sem filtro em `prefers-reduced-transparency`. Os temas claro e escuro continuam baseados nos mesmos tokens.
+- Acrescentados testes de isolamento de rolagem, liberação idempotente, múltiplas travas e estrutura do diálogo. Sem mudanças em backend, relatórios Excel, regras determinísticas ou painel de Pendências (etapa futura).
