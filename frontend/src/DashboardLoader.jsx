@@ -89,7 +89,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
 
   const scenarioId = generatedScenario?.scenario_id || ''
   const scenarioAccess = useScenarioAvailability(scenarioId, apiUrl)
-  const scenarioUsable = Boolean(scenarioId && scenarioAccess.state === 'ready')
+  const scenarioMatchesPackage = Boolean(bundle.ready && generatedSignature === bundle.signature)
+  const scenarioUsable = Boolean(scenarioId && scenarioMatchesPackage && scenarioAccess.state === 'ready')
   const [recoveryError, setRecoveryError] = useState('')
 
   function regenerateStoredPackage() {
@@ -607,13 +608,14 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
             </>
           ) : (
             <section className="panel dashboard-scenario-recovery" aria-live="polite">
-              {scenarioAccess.state === 'checking' && <p>Verificando o cenário DPP armazenado no servidor...</p>}
-              {scenarioAccess.state === 'offline' && <>
+              {!scenarioMatchesPackage && <p>Preparando automaticamente o cenário do pacote mensal atual. Os indicadores anteriores não serão exibidos.</p>}
+              {scenarioMatchesPackage && scenarioAccess.state === 'checking' && <p>Verificando o cenário DPP armazenado no servidor...</p>}
+              {scenarioMatchesPackage && scenarioAccess.state === 'offline' && <>
                 <h3>Não foi possível verificar o cenário</h3>
                 <p>As consultas e os indicadores foram ocultados até a conexão com o servidor ser confirmada. O pacote do mês permanece salvo neste navegador.</p>
                 <button type="button" className="secondary-button" onClick={scenarioAccess.check}>Tentar conectar novamente</button>
               </>}
-              {scenarioAccess.state === 'missing' && <>
+              {scenarioMatchesPackage && scenarioAccess.state === 'missing' && <>
                 <h3>Cenário não disponível no servidor</h3>
                 <p>Os indicadores anteriores foram ocultados para evitar modais inválidos. O pacote mensal permanece salvo. Você pode processá-lo novamente sem anexar os arquivos; validações de um cenário que não foi recuperado não são transferidas automaticamente para uma nova geração.</p>
                 <button type="button" className="secondary-button" onClick={scenarioAccess.check}>Tentar recuperar cenário</button>
