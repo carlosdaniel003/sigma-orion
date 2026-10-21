@@ -1,60 +1,166 @@
-/* Dashboard operational order and shared geometry: package and investigations align. */
+/*
+ * Dashboard DPP: composição por áreas, sem reordenar visualmente componentes via flex order.
+ * O painel de pendências terá sua própria etapa; até lá as duas investigações dividem a linha.
+ * CSS existente continua responsável pelos temas, botões, modais e tabela de comparação.
+ */
 .dpp-dashboard-view:not([hidden]) {
-  display:flex;
-  flex-direction:column;
-  gap:var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  container-type: inline-size;
 }
-.dpp-dashboard-view > .orion-investigation-overview { order:0; }
-.dpp-dashboard-view > .dashboard-shared-package { order:10; }
-.dpp-dashboard-view > #orion-stock-investigation { order:20; }
-.dpp-dashboard-view > #orion-quality-investigation { order:30; }
-.dpp-dashboard-view > .final-model-plan { order:40; }
 
-/* Match Pacote do Mês: the outer border AND the heading start on the same axis. */
-.dpp-dashboard-view > .orion-investigation-ui,
-.dpp-dashboard-view > .dashboard-shared-package > .bulk-file-picker.compact {
-  box-sizing:border-box;
-  width:100%;
-  margin:0 !important;
-  padding:var(--space-4) !important;
-  border:1px solid var(--orion-border) !important;
-  background:var(--orion-surface) !important;
-  border-radius:0 !important;
-  box-shadow:none !important;
+.dpp-dashboard-view .dashboard-operational-top,
+.dpp-dashboard-view .dashboard-investigation-pair {
+  display: grid;
+  gap: var(--space-3);
+  align-items: start;
+  min-width: 0;
 }
-.dpp-dashboard-view > .dashboard-shared-package,
-.dpp-dashboard-view > .final-model-plan {
-  margin:0 !important;
+
+.dpp-dashboard-view .dashboard-operational-top {
+  grid-template-columns: minmax(0, 0.37fr) minmax(0, 0.63fr);
 }
+
+.dpp-dashboard-view .dashboard-investigation-pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dpp-dashboard-view :is(.dashboard-operational-top, .dashboard-investigation-pair) > *,
+.dpp-dashboard-view .dashboard-shared-package {
+  min-width: 0;
+}
+
+.dpp-dashboard-view :is(.dashboard-operational-top, .dashboard-investigation-pair) > .orion-investigation-ui,
+.dpp-dashboard-view .dashboard-shared-package > .bulk-file-picker.compact {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 !important;
+  padding: var(--space-4) !important;
+  border: 1px solid var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.dpp-dashboard-view .dashboard-shared-package,
+.dpp-dashboard-view .final-model-plan {
+  margin: 0 !important;
+}
+
 .dpp-dashboard-view .orion-investigation-ui h3 {
-  font-size:var(--text-lg) !important;
-  line-height:1.25 !important;
-  letter-spacing:-0.015em !important;
-  margin:0;
-}
-.dpp-dashboard-view .orion-investigation-ui .orion-stock-investigation-header {
-  align-items:center;
-  margin-bottom:var(--space-3) !important;
-  padding:0 0 var(--space-3) !important;
-  border-bottom:1px solid var(--orion-border) !important;
-}
-.dpp-dashboard-view .orion-investigation-overview-metrics {
-  margin:var(--space-3) 0 0 !important;
-}
-.dpp-dashboard-view .orion-investigation-ui .orion-kpi-grid {
-  margin:var(--space-3) 0 0 !important;
-}
-.dpp-dashboard-view .orion-investigation-overview .orion-investigation-block-heading {
-  margin:0 !important;
-}
-.dpp-dashboard-view .dashboard-shared-package > .bulk-file-picker.compact .bulk-file-picker-head {
-  margin:0;
+  margin: 0;
+  font-size: var(--text-lg) !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.015em !important;
 }
 
-@media (max-width:760px) {
-  .dpp-dashboard-view:not([hidden]) { gap:var(--space-2); }
-  .dpp-dashboard-view > .orion-investigation-ui,
-  .dpp-dashboard-view > .dashboard-shared-package > .bulk-file-picker.compact {
-    padding:var(--space-3) !important;
+.dpp-dashboard-view .orion-investigation-ui .orion-stock-investigation-header {
+  align-items: center;
+  margin-bottom: var(--space-3) !important;
+  padding: 0 0 var(--space-3) !important;
+  border-bottom: 1px solid var(--orion-border) !important;
+}
+
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metrics,
+.dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-grid {
+  margin: var(--space-3) 0 0 !important;
+}
+
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric,
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric:nth-child(n) {
+  padding: var(--space-3);
+  gap: var(--space-1);
+}
+
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric dd {
+  font-size: 24px;
+}
+
+.dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-tile {
+  gap: var(--space-2);
+  min-height: 94px;
+  padding: var(--space-3);
+  justify-content: space-between;
+}
+
+.dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-tile > span {
+  line-height: 1.35;
+  overflow-wrap: break-word;
+}
+
+.dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-tile > strong {
+  font-size: 24px;
+}
+
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-block-heading,
+.dpp-dashboard-view .dashboard-shared-package > .bulk-file-picker.compact .bulk-file-picker-head {
+  margin: 0 !important;
+}
+
+/* Breakpoints acompanham a área útil (inclusive ao recolher/abrir a sidebar). */
+@container (max-width: 1180px) {
+  .dpp-dashboard-view .dashboard-operational-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 900px) {
+  .dpp-dashboard-view .dashboard-investigation-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 760px) {
+  .dpp-dashboard-view:not([hidden]) {
+    gap: var(--space-2);
+  }
+
+  .dpp-dashboard-view .dashboard-operational-top,
+  .dpp-dashboard-view .dashboard-investigation-pair {
+    gap: var(--space-2);
+  }
+
+  .dpp-dashboard-view :is(.dashboard-operational-top, .dashboard-investigation-pair) > .orion-investigation-ui,
+  .dpp-dashboard-view .dashboard-shared-package > .bulk-file-picker.compact {
+    padding: var(--space-3) !important;
+  }
+}
+
+@container (max-width: 540px) {
+  .dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Em telas muito estreitas, KPIs operacionais viram linhas legíveis, sem colunas espremidas. */
+@container (max-width: 400px) {
+  .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2);
+  }
+
+  .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric dd {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric small {
+    grid-column: 1;
   }
 }

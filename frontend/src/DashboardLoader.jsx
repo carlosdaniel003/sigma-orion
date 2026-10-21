@@ -555,6 +555,21 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     </>
   )
 
+  const sharedPackagePanel = (
+    <section className="dashboard-shared-package">
+      <BulkDppFilePicker
+        mode="generate"
+        referenceMonth={referenceMonth}
+        onBundle={() => {}}
+        processing={generating}
+        compact
+        title="Pacote compartilhado do DPP"
+        infoKey="dashboard.package"
+        footer={packageFooter}
+      />
+    </section>
+  )
+
   return (
     <>
       {!generatedScenario ? (
@@ -586,28 +601,23 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
         <>
           {error && <div className="alert error">{error}</div>}
 
-          <section className="dashboard-shared-package">
-            <BulkDppFilePicker
-              mode="generate"
-              referenceMonth={referenceMonth}
-              onBundle={() => {}}
-              processing={generating}
-              compact
-              title="Pacote compartilhado do DPP"
-              infoKey="dashboard.package"
-              footer={packageFooter}
-            />
-          </section>
+          {scenarioUsable && !generatedScenario?.gap_approval ? (
+            <div className="dashboard-operational-top">
+              <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
+              {sharedPackagePanel}
+            </div>
+          ) : sharedPackagePanel}
 
           {scenarioUsable ? (
             <>
-              {!generatedScenario?.gap_approval && <>
-                <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
-                <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock}
-                  apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
-                <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock}
-                  apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
-              </>}
+              {!generatedScenario?.gap_approval && (
+                <div className="dashboard-investigation-pair">
+                  <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                    apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+                  <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                    apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+                </div>
+              )}
               <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
             </>
           ) : (

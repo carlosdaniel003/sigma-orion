@@ -816,3 +816,12 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Frontend: `useScenarioAvailability.js` verifica servidor no primeiro carregamento, retorno da aba/foco, periodicamente e ao solicitar abertura do modal, evitando exibir indicadores antigos como válidos depois da expiração ou substituição do cenário. Comparação com assinatura do pacote impede cruzamento entre meses e arquivos.
 - Em cenário realmente ausente: ocultar todos os números da investigação e disponibilizar “Tentar recuperar cenário” ou “Reprocessar pacote salvo” usando arquivos mantidos no IndexedDB. Não copiar confirmações humanas SQLite de um ID para outro; avisar sobre isso, sem atualização silenciosa do DPP oficial.
 - Sem alterações nas regras determinísticas de NEC, REAL, SALDO, STK TTL, Amount, validação de PN ou nas 5 abas por exportação Excel.
+
+
+### Dashboard em duas faixas responsivas — Etapa 1 (2026-10-21)
+
+- Layout do Dashboard reorganizado em duas faixas: Resumo Operacional (37%) + Pacote mensal (63%) em desktop amplo; Estoque + Qualidade lado a lado em telas amplas, com empilhamento responsivo. O Plano Consolidado por Modelo permanece em largura total.
+- A primeira faixa só apresenta o Resumo para um cenário confirmado e não aprovado; caso contrário, o pacote aparece sozinho. O fluxo existente de verificação/recuperação de cenário foi preservado, sem mostrar dados de investigação potencialmente expirados.
+- Indicadores de Estoque/CQ ficam menores, ainda acionáveis, com rótulo acessível completo. As mesmas cinco categorias/modais de cada investigação permanecem, sem mudança de contagens, decisões e relatórios Excel.
+- O painel funcional de Pendências previsto na composição final ainda **não foi implementado**: para evitar espaço vazio ou métricas duplicadas, Estoque/CQ dividem a segunda faixa temporariamente. Os modais ainda têm o comportamento anterior de rolagem e backdrop.
+- Composição explícita no JSX e CSS central em `dashboard-hierarchy.css`; não houve alteração em backend, regras, dados, consultas automáticas, endpoints nem planilhas empresariais.

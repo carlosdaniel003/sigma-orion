@@ -1219,3 +1219,17 @@ Esta decisão **substitui** a regra que exibia “Cenário inicial do DPP” com
 - **Retomada de sessão/standby:** arquivos e resultados do navegador não provam que seu `scenario_id` ainda existe no processo do backend. O servidor passa a persistir as até oito versões ativas com a mesma identidade e disponibiliza uma consulta read-only de disponibilidade; no frontend conferir no início, ao voltar à aba, periodicamente e **antes de abrir um modal**. Nunca abrir um modal de validação usando cenário inválido.
 - **Estado inválido:** não exibir como operacionais números de Estoque/Qualidade de um cenário que expirou, foi perdido ou pertence a outro pacote. Exibir mensagem imediata e a opção de recuperar o cenário; se ele não existir, permitir reprocessar o pacote já salvo no IndexedDB, sem pedir novo upload. **Não transportar validações humanas antigas automaticamente para um novo scenario_id**; informar essa limitação explicitamente.
 - **Paneis restantes, modalidades de validação, cores Mondial, imagem da sidebar e planilhas** permanecem conforme as regras vigentes. Não há recálculo silencioso por uma LLM.
+
+
+### Composição responsiva do Dashboard — Etapa 1 (2026-10-21)
+
+Esta atualização **substitui exclusivamente a geometria de largura igual e empilhamento obrigatório** da seção "Dashboard operacional unificado" acima. As regras de dados, categorias, validação, cores, modais, Excel, ordem de investigação automática e retomada de cenários continuam vigentes.
+
+- **Primeira linha em desktop amplo:** Resumo Operacional (37%) ao lado do Pacote do mês (63%), com largura calculada na área útil após a sidebar. Em notebooks e espaços menores, voltar para uma coluna para preservar a leitura.
+- **Resumo:** manter exatamente seis métricas, sem novos indicadores; a grade principal usa duas colunas e espaçamentos compactos. Em telas muito estreitas, usar linhas técnicas.
+- **Segunda linha nesta etapa:** Estoque e Qualidade dividem a largura em duas colunas, sem alterar o total de cinco indicadores acionáveis e cinco abas Excel de cada módulo. Os botões KPI ficam compactos, com categoria e quantidade; a descrição repetida de clique é substituída por nome acessível.
+- **Etapa futura:** ao introduzir a área operacional de Pendências à direita, reorganizar Estoque e Qualidade empilhados na coluna esquerda. Não incluir painel vazio, indicadores repetidos nem atalhos inertes nesta etapa.
+- **Comparação:** Plano Consolidado por Modelo ORION × DPP Final continua em largura total, sem reduzir a tabela ou modificar filtros e detalhes.
+- **Resiliência:** em cenário não disponível ou em versão já aprovada, o Pacote permanece visível isoladamente, sem métricas antigas aparentando validade. Preservar os caminhos de recuperação de cenário.
+- **Implementação:** um único CSS de composição `frontend/src/dashboard-hierarchy.css` e duas áreas explícitas no JSX, sem propriedades `order` que desalinhem a leitura visual da ordem de teclado. Reutilizar exclusivamente as superfícies, bordas e espaçamentos normativos.
+- **Fora do escopo:** travamento de rolagem/desfoque dos diálogos e painel funcional de Pendências requerem aprovação das etapas próprias.

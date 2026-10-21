@@ -8,10 +8,11 @@ export function InvestigationKpiGrid({ metrics, onSelect, label }) {
     <div className="orion-kpi-grid" role="group" aria-label={label}>
       {metrics.map(metric => (
         <button key={metric.key} type="button" className="orion-kpi-tile"
-          aria-haspopup="dialog" onClick={() => onSelect(metric.key)}>
+          aria-haspopup="dialog"
+          aria-label={`${metric.label}: ${metric.items.length} PN(s). Ver itens e detalhes`}
+          onClick={() => onSelect(metric.key)}>
           <span>{metric.label}</span>
           <strong>{Number(metric.items.length).toLocaleString('pt-BR')}</strong>
-          <small>Ver itens e detalhes</small>
         </button>
       ))}
     </div>

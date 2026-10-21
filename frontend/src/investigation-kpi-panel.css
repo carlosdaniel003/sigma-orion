@@ -3,7 +3,6 @@
 .orion-kpi-tile { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); min-width:0; min-height:114px; padding:var(--space-4); background:var(--orion-surface); color:var(--orion-text); border:1px solid var(--orion-border); border-radius:0; box-shadow:none; font:inherit; text-align:left; cursor:pointer; }
 .orion-kpi-tile > span { color:var(--orion-text-secondary); font-size:12px; }
 .orion-kpi-tile > strong { font-size:26px; font-variant-numeric:tabular-nums; line-height:1.1; }
-.orion-kpi-tile > small { font-size:11px; color:var(--orion-text-secondary); margin-top:auto; }
 .orion-kpi-tile:hover { background:var(--orion-surface-elevated); }
 .orion-kpi-tile:focus-visible { outline:2px solid var(--orion-blue); outline-offset:2px; }
 .orion-investigation-dialog { width:min(95vw,1100px); max-width:95vw; max-height:90vh; padding:0; border:1px solid var(--orion-border); border-radius:0; color:var(--orion-text); background:var(--orion-surface); box-shadow:none; overflow-y:auto; }
