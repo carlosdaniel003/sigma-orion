@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
 import StockDivergenceInvestigation from './StockDivergenceInvestigation'
 import InvestigationOverview from './InvestigationOverview'
+import FinalModelPlan from './FinalModelPlan'
 import QualityInvestigation from './QualityInvestigation'
 import { useScenarioAvailability } from './useScenarioAvailability'
 import ModuleInfoHint from './ModuleInfoHint'
@@ -599,12 +600,15 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
           </section>
 
           {scenarioUsable ? (
-            !generatedScenario?.gap_approval && <>
-              <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
-              <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock}
-                apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
-              <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock}
-                apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+            <>
+              {!generatedScenario?.gap_approval && <>
+                <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
+                <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                  apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+                <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                  apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+              </>}
+              <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />
             </>
           ) : (
             <section className="panel dashboard-scenario-recovery" aria-live="polite">
