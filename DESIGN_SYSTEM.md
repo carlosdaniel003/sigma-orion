@@ -1266,3 +1266,14 @@ A geometria e os dados das Etapas 1–3 são mantidos. Esta etapa consolida apen
 - **Hierarquia:** Pendências usa o mesmo divisor de cabeçalho de Estoque/Qualidade e nomes de PNs longos não invadem a coluna lateral. Em telas pequenas, o bloco de fontes do Plano Consolidado não força largura mínima maior que sua coluna; nomes completos podem quebrar linha.
 - **Código residual:** a folha `dashboard-visual-rhythm.css` mantém somente os estilos ainda utilizados no Dashboard atual. As folhas `dashboard-kpi-polish.css`, `dashboard-table-polish.css`, `dashboard-operational-polish.css` e `dashboard-theme-runtime-fixes.css` foram retiradas do ponto de entrada por tratarem exclusivamente de painéis legados não montados. Mantêm-se a camada neutra de produto, as cores Mondial vigentes e os estilos de relatórios em uso.
 - **Validação:** testes de contrato da composição, temas e modais e build frontend, além da suíte Python. A verificação automatizada não substitui inspeção manual no navegador com os arquivos empresariais reais.
+
+
+### SVGs lineares dos quatro módulos operacionais (2026-10-21)
+
+Exceção aprovada para identificação visual de quatro cabeçalhos no Dashboard: Pacote compartilhado do DPP (somente versão compacta), Divergência de Estoque, Análise de Qualidade e Pendências de validação.
+
+- Componente reutilizável: `frontend/src/DashboardModuleIcon.jsx`; CSS: `frontend/src/dashboard-module-icons.css`.
+- Desenhos SVG de 20 × 20 px, traço 1,7 px, sem preenchimento, cor `var(--orion-text-secondary)` e espaçamento `var(--space-2)`, como a sidebar.
+- Não adicionar caixa ao redor, fundo de outra cor, borda, sombra, gradiente, animação ou cores semânticas aos pictogramas.
+- `aria-hidden` nos SVGs evita redundância com o texto do título. Preservar o botão contextual `i`, as ações, os temas e a responsividade.
+- Não adicionar ícones ao Resumo Operacional, ORION × DPP Final, KPIs, listas de PNs e nomes dos arquivos sem análise específica.

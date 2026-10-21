@@ -848,3 +848,10 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Revisadas hierarquia, bordas de métricas, alinhamento do painel Pendências, quebra de textos longos e responsividade das fontes do Plano Consolidado em telas menores. A tabela mantém sua rolagem horizontal isolada.
 - `dashboard-visual-rhythm.css` mantém apenas classes atualmente montadas; estilos históricos de coberturas, filas, métricas iniciais e painéis ocultos foram eliminados. O entrypoint deixou de carregar quatro CSS legados usados exclusivamente pelas antigas seções de KPI, risco, PGD x REAL e correções de tema dessas seções. Os estilos restantes de Dashboard, modais, temas e Excel não foram alterados.
 - Incluído teste estático para evitar retorno de imports antigos, inversão visual da ordem do DOM ou bordas sobrepostas. Sem mudanças nos relatórios, validações humanas, identidade do cenário, endpoints, regras determinísticas ou exportações.
+
+
+### Ícones SVG lineares nos cabeçalhos (2026-10-21)
+
+- Adicionado o componente `DashboardModuleIcon.jsx` com quatro desenhos inline para títulos de Pacote mensal (somente versão compacta), Estoque, Qualidade e Pendências.
+- A apresentação usa `dashboard-module-icons.css`: traço 1,7 px, 20 × 20 px, cor secundária do tema, sem tiles, fundos, bordas ou sombras. Os SVGs são ocultos da árvore acessível porque o título textual já identifica o módulo.
+- Não alterados Resumo, KPIs, PN, comparação ORION × DPP Final, consultas, cálculos, validações humanas, Excel ou estrutura do layout. Teste estático adicionado à suíte existente.
