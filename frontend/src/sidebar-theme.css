@@ -34,16 +34,16 @@
   z-index: 1;
 }
 
-/* The star blue (#46D9FF) is the actual dark-theme sidebar surface. */
+/* Dark theme: Mondial black sidebar, white wordmark and a single cyan star. */
 :root[data-theme='dark'] .shell-sidebar {
-  --sidebar-ink: #08111F;
-  --sidebar-muted: #08111F; /* Same navy as the SIGMA-S ORION wordmark. */
-  --sidebar-hover: rgba(8, 17, 31, 0.11);
-  --sidebar-divider: rgba(8, 17, 31, 0.22);
-  --sidebar-star: #08111F; /* Inverted so the toggle does not disappear into its own background. */
-  background-color: #46D9FF !important;
+  --sidebar-ink: #F5F5F6;
+  --sidebar-muted: #C3C6CB;
+  --sidebar-hover: rgba(255, 255, 255, 0.10);
+  --sidebar-divider: rgba(255, 255, 255, 0.18);
+  --sidebar-star: #46D9FF;
+  background-color: #090A0C !important;
 }
-:root[data-theme='dark'] .shell-sidebar::before { opacity: 0.095; }
+:root[data-theme='dark'] .shell-sidebar::before { opacity: 0.11; }
 :root[data-theme='light'] .shell-sidebar {
   background-color: #000000 !important;
 }
