@@ -1,4 +1,4 @@
-import { buildStockInvestigationReportKey, fileIdentity } from './dpp-workspace-state'
+import { buildStockInvestigationReportKey, fileIdentity } from './dpp-workspace-state.js'
 
 /** Somente relatórios da identidade atual do pacote, cenário e revisão de Estoque. */
 export function currentInvestigationReports({
