@@ -338,3 +338,20 @@ def test_dpp_analysis_recalculates_deterministic_fields() -> None:
     assert divergence["python"]["balance"] == -90
     assert divergence["python"]["amount"] == -135
     assert divergence["python"]["status"] == "INVESTIGAR"
+
+
+def test_monthly_scenario_availability_reflects_authoritative_server(monkeypatch) -> None:
+    from app.api import routes
+
+    monkeypatch.setattr(
+        routes, "get_monthly_scenario",
+        lambda scenario_id: {"scenario_id": scenario_id} if scenario_id == "saved-123" else None,
+    )
+    with TestClient(app) as client:
+        available = client.get("/api/dpp/monthly/scenarios/saved-123/availability")
+        missing = client.get("/api/dpp/monthly/scenarios/expired-123/availability")
+
+    assert available.status_code == 200
+    assert available.json() == {"available": True, "scenario_id": "saved-123"}
+    assert missing.status_code == 200
+    assert missing.json() == {"available": False, "scenario_id": "expired-123"}
