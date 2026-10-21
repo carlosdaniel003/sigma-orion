@@ -1,56 +1,60 @@
-/* Workflow order and compact rhythm for the operational DPP dashboard. */
+/* Dashboard operational order and shared geometry: package and investigations align. */
 .dpp-dashboard-view:not([hidden]) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-3);
 }
+.dpp-dashboard-view > .orion-investigation-overview { order:0; }
+.dpp-dashboard-view > .dashboard-shared-package { order:10; }
+.dpp-dashboard-view > #orion-stock-investigation { order:20; }
+.dpp-dashboard-view > #orion-quality-investigation { order:30; }
+.dpp-dashboard-view > .final-model-plan { order:40; }
 
-/* The scenario is interpreted before detailed investigation; the plan comparison remains last. */
-.dpp-dashboard-view > .dashboard-plan-overview { order: 0; }
-.dpp-dashboard-view > .dashboard-shared-package { order: 10; }
-.dpp-dashboard-view > .orion-investigation-overview { order: 20; }
-.dpp-dashboard-view > #orion-stock-investigation { order: 30; }
-.dpp-dashboard-view > #orion-quality-investigation { order: 40; }
-.dpp-dashboard-view > .final-model-plan { order: 50; }
-
-.dpp-dashboard-view > .dashboard-plan-overview,
+/* Match Pacote do Mês: the outer border AND the heading start on the same axis. */
+.dpp-dashboard-view > .orion-investigation-ui,
+.dpp-dashboard-view > .dashboard-shared-package > .bulk-file-picker.compact {
+  box-sizing:border-box;
+  width:100%;
+  margin:0 !important;
+  padding:var(--space-4) !important;
+  border:1px solid var(--orion-border) !important;
+  background:var(--orion-surface) !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
 .dpp-dashboard-view > .dashboard-shared-package,
-.dpp-dashboard-view > .orion-stock-investigation.orion-investigation-ui,
 .dpp-dashboard-view > .final-model-plan {
-  margin: 0 !important;
+  margin:0 !important;
 }
-
-.dpp-dashboard-view .dashboard-shared-package .bulk-file-picker {
-  margin: 0;
-}
-
-/* Preserve the same six summaries and five-action investigation layout without large gutters. */
-.dpp-dashboard-view .orion-stock-investigation.orion-investigation-ui {
-  margin-block: 0 !important;
-  padding: var(--space-3) 0 var(--space-2);
-}
-.dpp-dashboard-view .orion-investigation-overview.orion-investigation-ui {
-  padding-top: var(--space-2);
+.dpp-dashboard-view .orion-investigation-ui h3 {
+  font-size:var(--text-lg) !important;
+  line-height:1.25 !important;
+  letter-spacing:-0.015em !important;
+  margin:0;
 }
 .dpp-dashboard-view .orion-investigation-ui .orion-stock-investigation-header {
-  margin-bottom: var(--space-3);
-}
-.dpp-dashboard-view .orion-investigation-ui .orion-kpi-grid {
-  margin-block: var(--space-3);
+  align-items:center;
+  margin-bottom:var(--space-3) !important;
+  padding:0 0 var(--space-3) !important;
+  border-bottom:1px solid var(--orion-border) !important;
 }
 .dpp-dashboard-view .orion-investigation-overview-metrics {
-  margin-block: var(--space-3) 0;
+  margin:var(--space-3) 0 0 !important;
 }
-.dpp-dashboard-view .dashboard-plan-overview .dashboard-header {
-  margin-bottom: var(--space-3);
+.dpp-dashboard-view .orion-investigation-ui .orion-kpi-grid {
+  margin:var(--space-3) 0 0 !important;
 }
-.dpp-dashboard-view .dashboard-plan-overview .dashboard-plan-metrics > div {
-  padding: var(--space-3);
+.dpp-dashboard-view .orion-investigation-overview .orion-investigation-block-heading {
+  margin:0 !important;
+}
+.dpp-dashboard-view .dashboard-shared-package > .bulk-file-picker.compact .bulk-file-picker-head {
+  margin:0;
 }
 
-@media (max-width: 760px) {
-  .dpp-dashboard-view:not([hidden]) { gap: var(--space-2); }
-  .dpp-dashboard-view .orion-stock-investigation.orion-investigation-ui {
-    padding: var(--space-3) 0 var(--space-2);
+@media (max-width:760px) {
+  .dpp-dashboard-view:not([hidden]) { gap:var(--space-2); }
+  .dpp-dashboard-view > .orion-investigation-ui,
+  .dpp-dashboard-view > .dashboard-shared-package > .bulk-file-picker.compact {
+    padding:var(--space-3) !important;
   }
 }
