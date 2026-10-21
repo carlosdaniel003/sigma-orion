@@ -251,6 +251,16 @@ def latest_monthly_dpp_route() -> dict:
     }
 
 
+@router.get("/dpp/monthly/scenarios/{scenario_id}/availability")
+def monthly_scenario_availability_route(scenario_id: str) -> dict:
+    """Read-only liveness check for a browser-restored scenario ID."""
+    scenario = get_monthly_scenario(scenario_id)
+    return {
+        "available": scenario is not None,
+        "scenario_id": scenario_id,
+    }
+
+
 @router.post("/dpp/investigations/stock-divergence")
 async def investigate_stock_divergence_route(
     scenario_id: str = Form(...),
