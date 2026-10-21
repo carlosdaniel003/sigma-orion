@@ -1174,3 +1174,35 @@ Esta diretriz **revoga a inversão ciano de toda a superfície definida na seç�
 - **Ciano como acento funcional:** `#46D9FF` representa marca, controles primários, foco e estados interativos; nunca preencher todos os cards e a página simultaneamente com ciano. Em ações ciano, o texto fica no tom do fundo azul-marinho, para contraste.
 - **Escopo:** os mesmos tokens funcionam em Dashboard, Agente, Testes do DPP, Base de Conhecimento e modais. Não criar versões divergentes por tela. Não alterar o comportamento de cálculo, exportações Excel, estrutura dos indicadores nem o CSS do tema claro.
 - **Implementação:** `frontend/src/orion-dark-refinement.css` concentra os ajustes finais de hierarquia. A antiga folha `orion-inverted-dark.css` foi eliminada, juntamente com overrides de inversão de formulários que não cabem em superfícies escuras. O arquivo `sidebar-theme.css` continua responsável exclusivamente pela sidebar.
+
+
+### Tema escuro Mondial — preto, grafite e branco com ciano pontual (2026-10-21)
+
+Esta seção **substitui todas as propostas cromáticas anteriores para o tema escuro**, incluindo (1) sidebar ciano, (2) inversão integral azul-clara, e (3) fundo/painéis azul-marinho. Foi aprovada a direção de marca **Mondial em branco e preto**, reservando o ciano da estrela ORION como detalhe funcional contido.
+
+**Tokens vigentes para `data-theme='dark'`:**
+```css
+/* Sidebar — mais escura que o conteúdo, imagem Mondial preservada */
+--sidebar-background: #090A0C; /* valor CSS efetivo da sidebar */
+--sidebar-ink: #F5F5F6;
+--sidebar-muted: #C3C6CB;
+--sidebar-star: #46D9FF;
+
+/* Conteúdo — luminância separada por função */
+--orion-bg: #191A1D;
+--orion-surface: #242529;
+--orion-surface-elevated: #2E3035;
+--orion-border: #404249;
+--orion-text: #F5F5F6;
+--orion-text-secondary: #BBC0C8;
+--orion-neutral: #9CA2AB;
+```
+
+- **Sidebar:** quase preta, mais escura que a área de trabalho; títulos e itens brancos, descrições cinzas legíveis, estrela ciano `#46D9FF`; a fotografia da Mondial continua discreta em escala de cinza. Não alterar largura, navegação pelo wordmark, recolhimento ou scrollbar oculta.
+- **Conteúdo:** fundo grafite `#191A1D`, painéis `#242529`, elementos elevados `#2E3035`. A hierarquia decorre da diferença de luminosidade, bordas moderadas e tipografia branca, e não de preenchimentos azuis.
+- **Ações principais:** botão branco, texto escuro; ações secundárias grafite claro com texto branco. Hover neutro. **Ciano apenas como acento** da estrela, foco, seleção controlada e sinalizadores que efetivamente representem a validação humana. Não criar estados coloridos decorativos.
+- **Tema claro:** permanece exatamente como a versão aprovada; sidebar preta com a mesma imagem, fundo branco/cinza de conteúdo.
+- **Escopo:** trocar tokens compartilhados do tema escuro em `orion-dark-refinement.css`, regras cromáticas da sidebar em `sidebar-theme.css`; preservar APIs, cálculos, estrutura, responsividade, modais, planilhas, Agente e comparação ORION × DPP Final. Manter uma única camada final, sem nova folha de CSS duplicada.
+- **Contraste mínimo:** 4,5:1 para textos auxiliares, preferindo 7:1 para títulos e valores numéricos sobre as superfícies grafite.
+
+Esta regra prevalece sobre a seção 6.1 e todas as revisões de tema escuro anteriores, que permanecem no documento apenas como histórico.
