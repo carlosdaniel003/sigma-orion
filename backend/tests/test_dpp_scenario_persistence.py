@@ -58,3 +58,41 @@ def test_monthly_scenario_survives_memory_reset(tmp_path, monkeypatch) -> None:
         assert restored["materials"][0]["nec"] == 14.0
     finally:
         scenario_service._SCENARIOS.clear()
+
+
+def test_multiple_scenarios_survive_restart(tmp_path, monkeypatch) -> None:
+    state_file = tmp_path / "dpp_scenario_state.json"
+    monkeypatch.setattr(scenario_service, "SCENARIO_STATE_PATH", state_file)
+    scenario_service._SCENARIOS.clear()
+    try:
+        first = _register_scenario()
+        second = _register_scenario()
+        assert first["scenario_id"] != second["scenario_id"]
+
+        scenario_service._SCENARIOS.clear()
+        assert scenario_service.restore_persisted_monthly_scenario() is True
+        assert scenario_service.get_monthly_scenario(first["scenario_id"]) is not None
+        assert scenario_service.get_monthly_scenario(second["scenario_id"]) is not None
+        assert scenario_service.get_latest_monthly_scenario()["scenario_id"] == second["scenario_id"]
+    finally:
+        scenario_service._SCENARIOS.clear()
+
+
+def test_legacy_v2_scenario_can_still_be_restored(tmp_path, monkeypatch) -> None:
+    import json
+    path = tmp_path / "dpp_scenario_state.json"
+    monkeypatch.setattr(scenario_service, "SCENARIO_STATE_PATH", path)
+    scenario_service._SCENARIOS.clear()
+    try:
+        current = _register_scenario()
+        original = scenario_service._SCENARIOS[current["scenario_id"]]
+        path.write_text(json.dumps({
+            "version": 2,
+            "scenario_id": current["scenario_id"],
+            "scenario": original,
+        }), encoding="utf-8")
+        scenario_service._SCENARIOS.clear()
+        assert scenario_service.restore_persisted_monthly_scenario() is True
+        assert scenario_service.get_monthly_scenario(current["scenario_id"]) is not None
+    finally:
+        scenario_service._SCENARIOS.clear()
