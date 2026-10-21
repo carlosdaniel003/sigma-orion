@@ -14,7 +14,7 @@ function fmt(value) {
   return Number.isFinite(parsed) ? parsed.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : '—'
 }
 
-function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
+function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenarioAvailable }) {
   const {
     dppState, workspaceReady, stockInvestigation,
     qualityInvestigation, setQualityInvestigation,
@@ -25,6 +25,8 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
   const [message, setMessage] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const [category, setCategory] = useState('')
+  const [retryTick, setRetryTick] = useState(0)
+  const [opening, setOpening] = useState(false)
   const controllerRef = useRef(null)
   const attemptedRef = useRef('')
   const formRef = useRef(null)
@@ -101,7 +103,22 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     if (!canRun || report || loading || attemptedRef.current === reportKey) return
     attemptedRef.current = reportKey
     fetchReport()
-  }, [canRun, report, loading, reportKey, fetchReport])
+  }, [canRun, report, loading, reportKey, retryTick, fetchReport])
+
+  useEffect(() => {
+    const retry = () => {
+      if (!document.hidden && canRun && !report && !loading) {
+        attemptedRef.current = ''
+        setRetryTick(tick => tick + 1)
+      }
+    }
+    document.addEventListener('visibilitychange', retry)
+    window.addEventListener('focus', retry)
+    return () => {
+      document.removeEventListener('visibilitychange', retry)
+      window.removeEventListener('focus', retry)
+    }
+  }, [canRun, report, loading])
 
   useEffect(() => () => controllerRef.current?.abort(), [])
 
@@ -142,9 +159,16 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
     if (decision === 'SCRAP_CONFIRMED') return 'Validado: refugo comprovado'
     return 'Validado: sem comprovação'
   }
-  function openCategory(key) {
-    setSelectedId('')
-    setCategory(key)
+  async function openCategory(key) {
+    if (opening) return
+    setOpening(true)
+    try {
+      if (ensureScenarioAvailable && !(await ensureScenarioAvailable())) return
+      setSelectedId('')
+      setCategory(key)
+    } finally {
+      setOpening(false)
+    }
   }
 
   return (
@@ -158,10 +182,6 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
           </div>
         </div>
         {canRun && <div className="orion-investigation-actions">
-          <button type="button" className="secondary-button" disabled={loading || exporting} aria-busy={loading}
-            onClick={() => { attemptedRef.current = reportKey; fetchReport() }}>
-            {loading ? 'Consultando...' : report ? 'Consultar novamente' : 'Consultar Qualidade'}
-          </button>
           {report && <button type="button" className="secondary-button" onClick={exportExcel}
             disabled={loading || exporting} aria-busy={exporting}>
             {exporting ? 'Gerando Excel...' : 'Baixar Excel'}
@@ -170,6 +190,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '' }) {
       </div>
       {!stockReady && <p role="status">Execute primeiro Divergência de Estoque para identificar os PNs encaminhados.</p>}
       {stockReady && !canRun && <p role="status">Nenhum PN foi encaminhado à Qualidade.</p>}
+      {loading && <p role="status">Analisando automaticamente Q239 e Q273...</p>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {report && <InvestigationKpiGrid label="Indicadores da Qualidade" metrics={metrics}
