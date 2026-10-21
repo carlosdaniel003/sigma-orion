@@ -797,3 +797,11 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A inversão anterior (ciano em fundo e painéis simultaneamente) não apresentou hierarquia adequada nas capturas. Foi removida a folha `orion-inverted-dark.css`.
 - O modo escuro reintroduz fundo `#0D1826`, painéis `#142235`, superfícies elevadas `#1B2D43`, textos principais `#F4F8FC` e auxiliares `#91A4B8`, em `orion-dark-refinement.css`; ciano `#46D9FF` permanece na sidebar, na identidade e nas ações primárias.
 - O comportamento do wordmark, a scrollbar oculta, o fechamento fixo de modais, a foto da sidebar, o Dashboard de KPIs, a investigação e as exportações foram preservados.
+
+
+### Paleta escura Mondial em preto e branco (2026-10-21)
+
+- A terceira revisão cromática foi orientada por captura real: azul-claro integral e tons azul-marinho nos painéis não entregaram o contraste/harmonia pretendidos.
+- Paleta escura **vigente**: sidebar quase preta `#090A0C`, letras brancas `#F5F5F6`, foto Mondial em fundo discreto, estrela ciano `#46D9FF`. Área de trabalho grafite `#191A1D`, painéis `#242529`, elevado `#2E3035`, bordas `#404249`, secundários `#BBC0C8`. Ações primárias brancas com letras escuras, outras cinza; ciano reservado ao símbolo e interações pontuais.
+- Ajustes somente em `orion-dark-refinement.css`, `sidebar-theme.css`, testes de design e documentação; sem alterações no tema claro, funcionalidades, arquivos corporativos, cálculos nem Excel.
+- Esta regra substitui as paletas azul-marinho/ciano apresentadas nos históricos acima.
