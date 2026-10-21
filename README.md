@@ -237,3 +237,8 @@ A identidade **preto, grafite e branco** substitui as experiências anteriores d
 O Dashboard apresenta primeiro o **Resumo Operacional** (seis métricas), depois o Pacote do mês, as investigações Estoque/Qualidade e o Plano Consolidado por Modelo ORION × DPP Final. O cenário inicial segue sendo calculado pelo motor, mas não ocupa painel separado. O pacote válido inicia automaticamente geração, investigação dos depósitos M221/P277 e, para os PNs encaminhados, consulta Q239/Q273; não há botões de reconsulta.
 
 Os cenários ativos são persistidos pelo servidor; após suspender a aba, o sistema verifica se o ID do cenário salvo no navegador ainda existe. Se não existir, os indicadores antigos ficam ocultos e o usuário pode tentar recuperar o servidor ou **reprocessar o pacote salvo localmente**, sem anexar novamente os arquivos. Decisões humanas não são assumidas como válidas para uma nova identidade de cenário. Os cinco grupos Excel de Estoque e Qualidade não mudaram.
+
+
+### Painel de Pendências de validação (Etapa 3)
+
+Com cenário ativo, Estoque e Qualidade aparecem empilhados à esquerda e a fila Pendências de validação à direita. Cada PN pendente abre o modal original da área já filtrado; "Ver todos" abre a categoria completa. As contagens são de PNs distintos por área e somente dos relatórios atuais; não são novas consultas nem validações automáticas. A tabela ORION × DPP Final continua em largura total.

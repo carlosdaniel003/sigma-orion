@@ -1,8 +1,7 @@
-import { useMemo } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
-import { buildStockInvestigationReportKey, fileIdentity } from './dpp-workspace-state'
 import { pendingRecords, qualityFound, stockFound } from './investigation-view-model'
 import ModuleInfoHint from './ModuleInfoHint'
+import { currentInvestigationReports } from './current-investigation-reports'
 import './investigation-cards.css'
 
 function display(value) {
@@ -21,21 +20,11 @@ function OverviewMetric({ label, value, context }) {
 
 export default function InvestigationOverview({ scenario, stockFile }) {
   const { dppState, workspaceReady, stockInvestigation, qualityInvestigation } = useDppWorkspace()
-  const packageKey = workspaceReady && stockFile && dppState.bundle.signature
-    ? dppState.bundle.signature + '|' + fileIdentity(stockFile) : ''
-  const stockKey = buildStockInvestigationReportKey(packageKey, scenario)
-  const stock = stockKey && stockInvestigation?.reportKey === stockKey
-    ? stockInvestigation.result : null
-  const revisions = useMemo(() => stock
-    ? (stock.materials || []).flatMap(item =>
-      item.candidates.map(candidate => candidate.candidate_id + ':' + (candidate.validation?.id || 0)),
-    ).join(';') : '', [stock])
-  const qualityKey = stock ? stockKey + '|quality-4.2-v2|' + revisions : ''
-  const quality = qualityKey && qualityInvestigation?.reportKey === qualityKey
-    ? qualityInvestigation.result : null
-
-  const stockPending = useMemo(() => pendingRecords(stockFound(stock)), [stock])
-  const qualityPending = useMemo(() => pendingRecords(qualityFound(quality)), [quality])
+  const { stock, quality } = currentInvestigationReports({
+    dppState, workspaceReady, stockFile, scenario, stockInvestigation, qualityInvestigation,
+  })
+  const stockPending = pendingRecords(stockFound(stock))
+  const qualityPending = pendingRecords(qualityFound(quality))
   const criticalCount = stock?.summary?.critical_materials
     ?? (scenario?.materials || []).filter(material => material.status === 'INVESTIGAR').length
 

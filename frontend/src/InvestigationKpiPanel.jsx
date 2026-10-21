@@ -21,13 +21,13 @@ export function InvestigationKpiGrid({ metrics, onSelect, label }) {
 }
 
 /** Native modal: focus trap/Escape are handled by the browser, not by custom overlays. */
-export function InvestigationModal({ title, items, onClose, children, modalKey, subtitle = 'Amarelo: registro pendente. Azul: validação humana registrada. Quantidade encontrada não significa liberação.' }) {
+export function InvestigationModal({ title, items, onClose, children, modalKey, initialQuery = '', subtitle = 'Amarelo: registro pendente. Azul: validação humana registrada. Quantidade encontrada não significa liberação.' }) {
   const ref = useRef(null)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
 
   useEffect(() => {
-    setQuery('')
-  }, [modalKey])
+    setQuery(initialQuery)
+  }, [modalKey, initialQuery])
 
   // StrictMode replays effect cleanup during development. Native close events
   // from that cleanup must never clear the user's selected KPI.
@@ -52,7 +52,10 @@ export function InvestigationModal({ title, items, onClose, children, modalKey, 
   }, [modalKey])
 
   const normalized = query.trim().toLocaleLowerCase('pt-BR')
-  const visible = normalized
+  const exact = normalized
+    ? items.filter(item => String(item.material || '').toLocaleLowerCase('pt-BR') === normalized)
+    : []
+  const visible = exact.length ? exact : normalized
     ? items.filter(item => [item.material, item.description, item.active_depot,
       ...(item.candidates || []).map(candidate => candidate.depot)]
       .some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(normalized)))

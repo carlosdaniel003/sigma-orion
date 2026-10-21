@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
 import StockDivergenceInvestigation from './StockDivergenceInvestigation'
 import InvestigationOverview from './InvestigationOverview'
+import PendingValidations from './PendingValidations'
 import FinalModelPlan from './FinalModelPlan'
 import QualityInvestigation from './QualityInvestigation'
 import { useScenarioAvailability } from './useScenarioAvailability'
@@ -74,6 +75,7 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     activity: 'Aguardando geração do Excel',
   })
   const [exportError, setExportError] = useState('')
+  const [pendingRequest, setPendingRequest] = useState(null)
   const generationTimerRef = useRef(null)
   const generationAbortRef = useRef(null)
   const testPreparingRef = useRef(false)
@@ -555,6 +557,16 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     </>
   )
 
+  function openPendingMaterial(area, material) {
+    if (!generatedScenario?.scenario_id) return
+    setPendingRequest(previous => ({
+      id: (previous?.id || 0) + 1,
+      scenarioId: generatedScenario.scenario_id,
+      area,
+      material,
+    }))
+  }
+
   const sharedPackagePanel = (
     <section className="dashboard-shared-package">
       <BulkDppFilePicker
@@ -611,11 +623,17 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
           {scenarioUsable ? (
             <>
               {!generatedScenario?.gap_approval && (
-                <div className="dashboard-investigation-pair">
-                  <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock}
-                    apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
-                  <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock}
-                    apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+                <div className="dashboard-investigation-workspace">
+                  <div className="dashboard-investigation-pair">
+                    <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                      apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check}
+                      pendingRequest={pendingRequest} />
+                    <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                      apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check}
+                      pendingRequest={pendingRequest} />
+                  </div>
+                  <PendingValidations scenario={generatedScenario} stockFile={bundle.stock}
+                    onOpen={openPendingMaterial} />
                 </div>
               )}
               <FinalModelPlan finalDppAnalysis={finalDppAnalysis} />

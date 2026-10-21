@@ -1244,3 +1244,14 @@ Esta é uma **exceção funcional, exclusiva aos diálogos de PNs de Estoque e Q
 - A **única área rolável do diálogo** é a lista de PNs, suas evidências e formulários, com contenção do overscroll. Título, botão Fechar e busca permanecem fora desse contêiner, visíveis mesmo em listas longas.
 - O backdrop recebe escurecimento neutro e `blur(3px)`, exclusivamente para indicar a interrupção da interação com o Dashboard; em `prefers-reduced-transparency`, usar escurecimento sem blur. Sem animações contínuas, glow, vidro translúcido ou novos tokens cromáticos.
 - A lista rolável continua acessível por teclado, touch e mouse; o modal respeita a altura disponível (`dvh`) e os temas claro/escuro. Não modificar as decisões humanas, os cálculos, o pacote, as fontes nem os cinco grupos Excel.
+
+
+### Pendências de validação — Etapa 3 (2026-10-21)
+
+A segunda faixa passa de duas investigações lado a lado para duas colunas: **Estoque e Qualidade empilhados à esquerda (62%)**, **Pendências à direita (38%)**. Em largura menor, o conjunto se empilha responsivamente. O Plano consolidado ORION × DPP Final continua em largura integral.
+
+- Pendência corresponde a PN único com ao menos um candidato ativo sem decisão humana (`!candidate.validation`) nas mesmas categorias `pending` dos cinco indicadores e dos relatórios Excel. Não interpretar depósitos diferentes como PNs diferentes nem somar contagens das áreas para inferir PNs únicos totais.
+- Exibir até cinco PNs por área e permitir abrir cada PN na categoria pendente do modal original, pré-filtrada; "Ver todos" abre a categoria integral. A identidade do cenário deve ser verificada antes de abrir, conforme regra vigente.
+- Ausência de relatório deve aparecer indisponível (—), e não zero; exceção apenas quando a investigação de Estoque comprovar nenhum encaminhamento ao CQ.
+- Usar superfícies e cores neutras, linhas técnicas e tipografia discreta; sem ícones decorativos, sem status coloridos nem novo fluxo de validação. O módulo tem botão contextual `i` com texto em `knowledge/modulos-interface.md`.
+- Manter todas as funções existentes de consulta automática, recuperação de cenário, modais, Excel, tema e motor determinístico. A revisão visual abrangente permanece na Etapa 4.

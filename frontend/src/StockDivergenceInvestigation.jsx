@@ -14,7 +14,7 @@ function formatQuantity(value) {
   return Number.isFinite(number) ? number.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : '—'
 }
 
-function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensureScenarioAvailable }) {
+function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensureScenarioAvailable, pendingRequest }) {
   const { stockInvestigation, setStockInvestigation, workspaceReady, dppState } = useDppWorkspace()
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -22,6 +22,8 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensure
   const [confirmation, setConfirmation] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const [category, setCategory] = useState('')
+  const [focusedMaterial, setFocusedMaterial] = useState('')
+  const handledPendingRef = useRef(null)
   const [retryTick, setRetryTick] = useState(0)
   const [opening, setOpening] = useState(false)
   const controllerRef = useRef(null)
@@ -157,17 +159,32 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensure
     if (candidate.validation.accounting === 'INCLUDED') return 'Validado: disponível e contabilizado'
     return 'Validado: contabilização não confirmada'
   }
-  async function openCategory(key) {
+  async function openCategory(key, material = '') {
     if (opening) return
     setOpening(true)
     try {
       if (ensureScenarioAvailable && !(await ensureScenarioAvailable())) return
       setSelectedId('')
+      setFocusedMaterial(material)
       setCategory(key)
     } finally {
       setOpening(false)
     }
   }
+
+  useEffect(() => {
+    if (!pendingRequest || pendingRequest.area !== 'stock' ||
+      pendingRequest.scenarioId !== scenario?.scenario_id ||
+      !result || opening ||
+      handledPendingRef.current === pendingRequest.id) return
+
+    const currentPending = metrics.find(item => item.key === 'pending')?.items || []
+    if (pendingRequest.material && !currentPending.some(item =>
+      String(item.material) === pendingRequest.material)) return
+
+    handledPendingRef.current = pendingRequest.id
+    void openCategory('pending', pendingRequest.material)
+  }, [pendingRequest, scenario?.scenario_id, result, opening, metrics])
 
   return (
     <section className="orion-stock-investigation orion-investigation-ui"
@@ -194,7 +211,8 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensure
         onSelect={openCategory} />}
       {selectedMetric && <InvestigationModal key={reportKey + ':' + category}
         modalKey={reportKey + ':' + category} title={selectedMetric.label}
-        items={selectedMetric.items} onClose={() => { setCategory(''); setSelectedId('') }}>
+        items={selectedMetric.items} initialQuery={focusedMaterial}
+        onClose={() => { setCategory(''); setSelectedId(''); setFocusedMaterial('') }}>
         {visible => <>
           {visible.map(material => (
             <InvestigationRecord key={material.material} material={material}
@@ -231,6 +249,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensure
                     onSaved={payload => {
                       setStockInvestigation({ packageKey, reportKey, result: payload })
                       setSelectedId('')
+                      setFocusedMaterial('')
                       setConfirmation('Validação registrada. SALDO oficial inalterado.')
                     }} />
                 </div>

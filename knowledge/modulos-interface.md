@@ -80,6 +80,14 @@
 
 **Finalidade:** Dar ao analista uma visão operacional da extensão das faltas e do andamento das validações, permitindo decidir quais áreas precisam confirmar os PNs. Quantidade no depósito é apenas evidência; não representa liberação, não altera DPP nem comprova Scrap.
 
+## dashboard.pending_validations — Pendências de validação
+
+**O que mostra:** Lista de até cinco PNs por área com registros ativos aguardando confirmação no Almoxarifado (M221/P277) ou CQ (Q239/Q273). Cada contagem representa PNs únicos, não registros ou quantidades. Cada PN abre o modal existente na categoria pendente correspondente já filtrado; "Ver todos" abre a mesma categoria integral. Consulta ausente aparece indisponível, nunca como zero. Sem relatório CQ, somente zero encaminhamentos confirmados pela investigação de Estoque permite exibir zero.
+
+**Origem:** Investigações de Estoque e Qualidade armazenadas para o pacote e cenário ORION atuais, incluindo a revisão da confirmação humana. Utiliza as categorias `pending` de `stockCohorts` e `qualityCohorts`, filtrando apenas candidatos ativos sem `validation`.
+
+**Finalidade:** Permitir acesso rápido às confirmações ainda necessárias. Decisões permanecem nos formulários originais dos modais; o painel é somente leitura, não consulta dados adicionais, nem altera DPP, SAP ou SALDO.
+
 ## dashboard.monthly_gap_projection — Gap recalculado do DPP
 
 **O que mostra:** Funcionalidade de recálculo do déficit mensal disponível no backend, atualmente sem painel na tela principal do Dashboard. Os dados diferenciam falta física e falta sem explicação, respeitando unidades de medida e materiais negativos fora do escopo atual.

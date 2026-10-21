@@ -14,7 +14,7 @@ function fmt(value) {
   return Number.isFinite(parsed) ? parsed.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : '—'
 }
 
-function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenarioAvailable }) {
+function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenarioAvailable, pendingRequest }) {
   const {
     dppState, workspaceReady, stockInvestigation,
     qualityInvestigation, setQualityInvestigation,
@@ -25,6 +25,8 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenario
   const [message, setMessage] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const [category, setCategory] = useState('')
+  const [focusedMaterial, setFocusedMaterial] = useState('')
+  const handledPendingRef = useRef(null)
   const [retryTick, setRetryTick] = useState(0)
   const [opening, setOpening] = useState(false)
   const controllerRef = useRef(null)
@@ -159,17 +161,32 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenario
     if (decision === 'SCRAP_CONFIRMED') return 'Validado: refugo comprovado'
     return 'Validado: sem comprovação'
   }
-  async function openCategory(key) {
+  async function openCategory(key, material = '') {
     if (opening) return
     setOpening(true)
     try {
       if (ensureScenarioAvailable && !(await ensureScenarioAvailable())) return
       setSelectedId('')
+      setFocusedMaterial(material)
       setCategory(key)
     } finally {
       setOpening(false)
     }
   }
+
+  useEffect(() => {
+    if (!pendingRequest || pendingRequest.area !== 'quality' ||
+      pendingRequest.scenarioId !== scenario?.scenario_id ||
+      !report || opening ||
+      handledPendingRef.current === pendingRequest.id) return
+
+    const currentPending = metrics.find(item => item.key === 'pending')?.items || []
+    if (pendingRequest.material && !currentPending.some(item =>
+      String(item.material) === pendingRequest.material)) return
+
+    handledPendingRef.current = pendingRequest.id
+    void openCategory('pending', pendingRequest.material)
+  }, [pendingRequest, scenario?.scenario_id, report, opening, metrics])
 
   return (
     <section className="orion-stock-investigation orion-quality-investigation orion-investigation-ui"
@@ -197,7 +214,8 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenario
         onSelect={openCategory} />}
       {selectedMetric && <InvestigationModal key={reportKey + ':' + category}
         modalKey={reportKey + ':' + category} title={selectedMetric.label}
-        items={selectedMetric.items} onClose={() => { setCategory(''); setSelectedId('') }}>
+        items={selectedMetric.items} initialQuery={focusedMaterial}
+        onClose={() => { setCategory(''); setSelectedId(''); setFocusedMaterial('') }}>
         {visible => <>
           {visible.map(material => (
             <InvestigationRecord key={material.material} material={material}
@@ -241,6 +259,7 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenario
                     onSaved={updated => {
                       setQualityInvestigation({ reportKey, result: updated })
                       setSelectedId('')
+                      setFocusedMaterial('')
                       setMessage('Validação da Qualidade registrada. SALDO oficial inalterado.')
                     }} />
                 </div>

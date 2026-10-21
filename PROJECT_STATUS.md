@@ -833,3 +833,11 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - `modal-scroll-lock.js` aplica e restaura o bloqueio da página (incluindo Safari móvel), preserva a posição de rolagem e usa contagem de referências para não liberar o scroll na presença de outro modal. Cleanup de `StrictMode` não remove seleção de KPI.
 - Backdrop escurecido com desfoque funcional discreto de 3 px; alternativa sem filtro em `prefers-reduced-transparency`. Os temas claro e escuro continuam baseados nos mesmos tokens.
 - Acrescentados testes de isolamento de rolagem, liberação idempotente, múltiplas travas e estrutura do diálogo. Sem mudanças em backend, relatórios Excel, regras determinísticas ou painel de Pendências (etapa futura).
+
+
+### Painel de Pendências com navegação por PN — Etapa 3 (2026-10-21)
+
+- As investigações de Estoque e Qualidade ficam empilhadas à esquerda (62%) e o painel Pendências de validação à direita (38%) em desktop. Empilhamento responsivo em notebooks e dispositivos menores; a comparação ORION × DPP Final permanece integral.
+- O novo painel deriva PNs únicos dos mesmos grupos de pendência das investigações e distingue consulta indisponível de zero realmente conhecido. Os atalhos por PN e "Ver todos" abrem o modal original, incluindo checagem de disponibilidade do cenário antes de mostrar decisões.
+- O Resumo e a nova fila reutilizam o seletor de relatórios por identidade de pacote e revisões, sem chamadas adicionais a backend, cálculos no navegador ou mudanças no Excel. A categoria é filtrada pelo PN selecionado, com possibilidade de pesquisar normalmente no modal.
+- Atualizados os testes de layout e adicionados testes determinísticos para seleção de relatórios e composição das filas. Fica fora do escopo o refinamento visual geral da Etapa 4.
