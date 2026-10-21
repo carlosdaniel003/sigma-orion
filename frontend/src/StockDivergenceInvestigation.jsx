@@ -14,7 +14,7 @@ function formatQuantity(value) {
   return Number.isFinite(number) ? number.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : '—'
 }
 
-function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
+function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensureScenarioAvailable }) {
   const { stockInvestigation, setStockInvestigation, workspaceReady, dppState } = useDppWorkspace()
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -22,6 +22,8 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
   const [confirmation, setConfirmation] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const [category, setCategory] = useState('')
+  const [retryTick, setRetryTick] = useState(0)
+  const [opening, setOpening] = useState(false)
   const controllerRef = useRef(null)
   const scrollRef = useRef(null)
   const refreshRef = useRef('')
@@ -93,10 +95,27 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
   }, [packageKey])
 
   useEffect(() => {
-    if (!cachedForPackage || !reportKey || result || loading || refreshRef.current === reportKey) return
+    if (!packageKey || !reportKey || !scenario?.scenario_id || !stockFile || result || loading || refreshRef.current === reportKey) return
     refreshRef.current = reportKey
     fetchReport({ automatic: true })
-  }, [cachedForPackage, reportKey, result, loading, fetchReport])
+  }, [packageKey, reportKey, scenario?.scenario_id, stockFile, result, loading, retryTick, fetchReport])
+
+  // A transient failure is retried when the tab becomes active again, without
+  // reloading the package or requiring an operator to press Consultar.
+  useEffect(() => {
+    const retry = () => {
+      if (!document.hidden && !result && !loading) {
+        refreshRef.current = ''
+        setRetryTick(tick => tick + 1)
+      }
+    }
+    document.addEventListener('visibilitychange', retry)
+    window.addEventListener('focus', retry)
+    return () => {
+      document.removeEventListener('visibilitychange', retry)
+      window.removeEventListener('focus', retry)
+    }
+  }, [result, loading])
 
   useEffect(() => () => controllerRef.current?.abort(), [])
 
@@ -108,10 +127,6 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
       block: 'start',
     })
   }, [selectedId])
-
-  function investigate() {
-    if (!loading) fetchReport()
-  }
 
   async function exportExcel() {
     if (!result || exporting) return
@@ -142,9 +157,16 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
     if (candidate.validation.accounting === 'INCLUDED') return 'Validado: disponível e contabilizado'
     return 'Validado: contabilização não confirmada'
   }
-  function openCategory(key) {
-    setSelectedId('')
-    setCategory(key)
+  async function openCategory(key) {
+    if (opening) return
+    setOpening(true)
+    try {
+      if (ensureScenarioAvailable && !(await ensureScenarioAvailable())) return
+      setSelectedId('')
+      setCategory(key)
+    } finally {
+      setOpening(false)
+    }
   }
 
   return (
@@ -158,10 +180,6 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
           </div>
         </div>
         <div className="orion-investigation-actions">
-          <button type="button" className="secondary-button" onClick={investigate}
-            disabled={!scenario?.scenario_id || !stockFile || loading || exporting} aria-busy={loading}>
-            {loading ? 'Consultando...' : result ? 'Consultar novamente' : 'Investigar depósitos'}
-          </button>
           {result && <button type="button" className="secondary-button" onClick={exportExcel}
             disabled={loading || exporting || !stockFile} aria-busy={exporting}>
             {exporting ? 'Gerando Excel...' : 'Baixar Excel'}
@@ -169,6 +187,7 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '' }) {
         </div>
       </div>
       {!stockFile && <p role="status">Adicione o STK SAP para investigar os depósitos.</p>}
+      {loading && <p role="status">Investigando automaticamente os depósitos M221 e P277...</p>}
       {error && <p role="alert">{error}</p>}
       {confirmation && <p role="status">{confirmation}</p>}
       {result && <InvestigationKpiGrid label="Indicadores de Estoque" metrics={metrics}
