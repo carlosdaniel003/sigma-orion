@@ -34,18 +34,17 @@ def _persist_latest_scenario() -> bool:
         return False
 
     scenario_id = next(reversed(_SCENARIOS))
+    # Persist every in-memory scenario, not just the newest: a browser tab can
+    # still be working on a previous monthly scenario after another generation.
     payload = {
-        "version": 2,
+        "version": 3,
         "scenario_id": scenario_id,
-        "scenario": _SCENARIOS[scenario_id],
+        "scenario": _SCENARIOS[scenario_id],  # compatibility with previous snapshots
+        "scenarios": [
+            {"scenario_id": key, "scenario": value}
+            for key, value in _SCENARIOS.items()
+        ],
     }
-    # Keep the exact pre-approval source scenario recoverable across restarts,
-    # instead of retaining only an ID inside the approval metadata.
-    original_id = (_SCENARIOS[scenario_id].get("gap_approval") or {}).get("original_scenario_id")
-    if original_id and original_id in _SCENARIOS:
-        payload["original_scenario"] = {
-            "scenario_id": original_id, "scenario": _SCENARIOS[original_id],
-        }
     temporary = SCENARIO_STATE_PATH.with_suffix(".tmp")
     try:
         temporary.write_text(
@@ -68,21 +67,27 @@ def restore_persisted_monthly_scenario() -> bool:
 
     try:
         payload = json.loads(SCENARIO_STATE_PATH.read_text(encoding="utf-8"))
-        scenario_id = payload.get("scenario_id")
-        scenario = payload.get("scenario")
-        if not isinstance(scenario_id, str) or not scenario_id or not isinstance(scenario, dict):
-            return False
-        original = payload.get("original_scenario")
-        if isinstance(original, dict):
-            original_id = original.get("scenario_id")
-            original_scenario = original.get("scenario")
-            if isinstance(original_id, str) and original_id and isinstance(original_scenario, dict):
-                _SCENARIOS[original_id] = original_scenario
-        _SCENARIOS[scenario_id] = scenario
-        _SCENARIOS.move_to_end(scenario_id)
+        records = payload.get("scenarios")
+        if not isinstance(records, list):
+            records = []
+            # Historical v2 snapshots preserve only latest and its parent.
+            original = payload.get("original_scenario")
+            if isinstance(original, dict):
+                records.append(original)
+            records.append({
+                "scenario_id": payload.get("scenario_id"),
+                "scenario": payload.get("scenario"),
+            })
+        for entry in records:
+            if not isinstance(entry, dict):
+                continue
+            scenario_id = entry.get("scenario_id")
+            scenario = entry.get("scenario")
+            if isinstance(scenario_id, str) and scenario_id and isinstance(scenario, dict):
+                _SCENARIOS[scenario_id] = scenario
         while len(_SCENARIOS) > MAX_SCENARIOS:
             _SCENARIOS.popitem(last=False)
-        return True
+        return bool(_SCENARIOS)
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         return False
 
