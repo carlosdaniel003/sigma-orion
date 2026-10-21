@@ -1255,3 +1255,14 @@ A segunda faixa passa de duas investigações lado a lado para duas colunas: **E
 - Ausência de relatório deve aparecer indisponível (—), e não zero; exceção apenas quando a investigação de Estoque comprovar nenhum encaminhamento ao CQ.
 - Usar superfícies e cores neutras, linhas técnicas e tipografia discreta; sem ícones decorativos, sem status coloridos nem novo fluxo de validação. O módulo tem botão contextual `i` com texto em `knowledge/modulos-interface.md`.
 - Manter todas as funções existentes de consulta automática, recuperação de cenário, modais, Excel, tema e motor determinístico. A revisão visual abrangente permanece na Etapa 4.
+
+
+### Revisão visual final do Dashboard — Etapa 4 (2026-10-21)
+
+A geometria e os dados das Etapas 1–3 são mantidos. Esta etapa consolida apenas a apresentação dos componentes efetivamente montados.
+
+- **Responsividade de contêiner:** as faixas superiores continuam usando a largura útil, com 37/63 para Resumo/Pacote e 62/38 para investigações/Pendências; ao estreitar, passam para uma coluna, sem ordenar visualmente elementos fora da ordem do DOM. A tabela do Plano Consolidado continua com rolagem horizontal **própria**, quando necessária.
+- **Métricas e divisores:** a grade do Resumo usa os divisores de 1 px existentes, sem bordas duplicadas herdadas das colunas antigas. Etiquetas longas de KPIs podem quebrar linha em vez de ultrapassar o contêiner. Nenhum novo card, badge, raio, cor ou sombra.
+- **Hierarquia:** Pendências usa o mesmo divisor de cabeçalho de Estoque/Qualidade e nomes de PNs longos não invadem a coluna lateral. Em telas pequenas, o bloco de fontes do Plano Consolidado não força largura mínima maior que sua coluna; nomes completos podem quebrar linha.
+- **Código residual:** a folha `dashboard-visual-rhythm.css` mantém somente os estilos ainda utilizados no Dashboard atual. As folhas `dashboard-kpi-polish.css`, `dashboard-table-polish.css`, `dashboard-operational-polish.css` e `dashboard-theme-runtime-fixes.css` foram retiradas do ponto de entrada por tratarem exclusivamente de painéis legados não montados. Mantêm-se a camada neutra de produto, as cores Mondial vigentes e os estilos de relatórios em uso.
+- **Validação:** testes de contrato da composição, temas e modais e build frontend, além da suíte Python. A verificação automatizada não substitui inspeção manual no navegador com os arquivos empresariais reais.

@@ -256,3 +256,35 @@ test('pending queue is a live read-only view with direct PN navigation', () => {
   assert.match(layout, /\.dashboard-investigation-pair \{\s*grid-template-columns:minmax\(0,\s*1fr\)/)
   assert.doesNotMatch(panel, /fetch\(|\/api\//)
 })
+
+test('final dashboard visual audit keeps one layout owner and drops legacy-only stylesheet imports', () => {
+  const entry = source('main.jsx')
+  const layout = source('dashboard-hierarchy.css')
+  const rhythm = source('dashboard-visual-rhythm.css')
+  const pending = source('pending-validations.css')
+  const plan = source('final-model-plan.css')
+
+  for (const legacy of [
+    'dashboard-kpi-polish.css',
+    'dashboard-table-polish.css',
+    'dashboard-operational-polish.css',
+    'dashboard-theme-runtime-fixes.css',
+  ]) {
+    assert.doesNotMatch(entry, new RegExp(legacy.replaceAll('.', '\.') + "'"))
+  }
+
+  assert.match(layout, /dashboard-investigation-workspace/)
+  assert.match(layout, /grid-template-columns:minmax\(0, 0\.62fr\) minmax\(0, 0\.38fr\)/)
+  assert.match(layout, /@container \(max-width:980px\)/)
+  assert.match(layout, /@container \(max-width:760px\)/)
+  assert.match(layout, /dashboard-operational-top \.orion-investigation-overview-metric \{[^}]*border:0;/)
+  assert.doesNotMatch(layout, /^\s*order:\s*\d/m)
+
+  assert.match(rhythm, /\.orion-investigation-overview-metrics/)
+  assert.doesNotMatch(rhythm, /\.orion-visual-coverage|\.orion-investigation-queue|\.dashboard-plan-overview/)
+  assert.match(pending, /\.orion-pending-validations \.module-heading-with-info \{[^}]*border-bottom:1px solid var\(--orion-border\)/)
+  assert.match(pending, /overflow-wrap:anywhere/)
+  assert.doesNotMatch(plan, /^\s*order:\s*25;/m)
+  assert.match(plan, /\.final-model-plan-sources \{[^}]*min-width: 0;/)
+  assert.match(plan, /\.final-model-plan-source strong \{[^}]*overflow-wrap: anywhere;/)
+})

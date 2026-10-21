@@ -1,16 +1,30 @@
 /* A fila mostra fatos existentes sem adicionar status ou cor decorativa. */
 .orion-pending-validations { min-width:0; }
-.orion-pending-validations .module-heading-with-info { margin:0; }
+.orion-pending-validations .module-heading-with-info {
+  margin:0;
+  align-items:center;
+  padding-bottom:var(--space-3);
+  border-bottom:1px solid var(--orion-border);
+}
 .orion-pending-validations .orion-pending-intro { margin:var(--space-2) 0 var(--space-4); font-size:var(--text-sm); color:var(--orion-text-secondary); }
 .orion-pending-area { padding-block:var(--space-3); border-top:1px solid var(--orion-border); }
 .orion-pending-area-heading { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-3); }
 .orion-pending-area-heading h4 { margin:0; font-size:var(--text-sm); font-weight:600; }
 .orion-pending-area-heading strong { font-size:22px; line-height:1; font-variant-numeric:tabular-nums; }
-.orion-pending-area > p { margin:var(--space-3) 0 0; color:var(--orion-text-secondary); font-size:var(--text-sm); }
+.orion-pending-area > p {
+  margin:var(--space-3) 0 0;
+  color:var(--orion-text-secondary);
+  font-size:var(--text-sm);
+  line-height:1.45;
+}
 .orion-pending-list { list-style:none; padding:0; margin:var(--space-3) 0 0; }
 .orion-pending-list li { margin:0; border-bottom:1px solid var(--orion-border-soft); }
 .orion-pending-item { width:100%; min-width:0; display:flex; flex-wrap:wrap; align-items:baseline; gap:3px var(--space-2); text-align:left; padding:10px var(--space-2); border:0; background:transparent; color:var(--orion-text); font:inherit; }
-.orion-pending-item strong { flex:0 0 auto; font-size:var(--text-sm); font-weight:650; }
+.orion-pending-item strong {
+  flex:0 1 auto; min-width:0; max-width:100%;
+  font-size:var(--text-sm); font-weight:650;
+  overflow-wrap:anywhere;
+}
 .orion-pending-item span { flex:1 1 135px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--text-sm); color:var(--orion-text-secondary); }
 .orion-pending-item small { flex:0 0 auto; font-size:var(--text-xs); color:var(--orion-text-secondary); }
 .orion-pending-item:hover { background:var(--orion-surface-elevated); }

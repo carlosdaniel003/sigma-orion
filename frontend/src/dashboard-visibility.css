@@ -9,10 +9,3 @@
   display: none !important;
 }
 
-.dashboard-shared-package {
-  margin-bottom: 22px;
-}
-
-.dashboard-shared-package .bulk-file-picker {
-  margin: 0;
-}

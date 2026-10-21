@@ -841,3 +841,10 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O novo painel deriva PNs únicos dos mesmos grupos de pendência das investigações e distingue consulta indisponível de zero realmente conhecido. Os atalhos por PN e "Ver todos" abrem o modal original, incluindo checagem de disponibilidade do cenário antes de mostrar decisões.
 - O Resumo e a nova fila reutilizam o seletor de relatórios por identidade de pacote e revisões, sem chamadas adicionais a backend, cálculos no navegador ou mudanças no Excel. A categoria é filtrada pelo PN selecionado, com possibilidade de pesquisar normalmente no modal.
 - Atualizados os testes de layout e adicionados testes determinísticos para seleção de relatórios e composição das filas. Fica fora do escopo o refinamento visual geral da Etapa 4.
+
+
+### Auditoria visual responsiva e limpeza CSS — Etapa 4 (2026-10-21)
+
+- Revisadas hierarquia, bordas de métricas, alinhamento do painel Pendências, quebra de textos longos e responsividade das fontes do Plano Consolidado em telas menores. A tabela mantém sua rolagem horizontal isolada.
+- `dashboard-visual-rhythm.css` mantém apenas classes atualmente montadas; estilos históricos de coberturas, filas, métricas iniciais e painéis ocultos foram eliminados. O entrypoint deixou de carregar quatro CSS legados usados exclusivamente pelas antigas seções de KPI, risco, PGD x REAL e correções de tema dessas seções. Os estilos restantes de Dashboard, modais, temas e Excel não foram alterados.
+- Incluído teste estático para evitar retorno de imports antigos, inversão visual da ordem do DOM ou bordas sobrepostas. Sem mudanças nos relatórios, validações humanas, identidade do cenário, endpoints, regras determinísticas ou exportações.

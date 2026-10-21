@@ -47,12 +47,13 @@
 .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metrics {
   grid-template-columns:repeat(2,minmax(0,1fr));
 }
-.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric,
-.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric:nth-child(n) {
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric {
   padding:var(--space-3); gap:var(--space-1);
+  border:0;
 }
 .dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric dd {
   font-size:24px;
+  line-height:1.15;
 }
 .dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-grid {
   grid-template-columns:repeat(3,minmax(0,1fr));
@@ -65,6 +66,11 @@
   line-height:1.35; overflow-wrap:break-word;
 }
 .dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-tile > strong { font-size:24px; }
+.dpp-dashboard-view .dashboard-operational-top .orion-investigation-overview-metric dt,
+.dpp-dashboard-view .dashboard-investigation-pair .orion-kpi-tile > span {
+  hyphens:auto;
+  overflow-wrap:break-word;
+}
 .dpp-dashboard-view .dashboard-operational-top .orion-investigation-block-heading,
 .dpp-dashboard-view .dashboard-shared-package > .bulk-file-picker.compact .bulk-file-picker-head {
   margin:0 !important;
