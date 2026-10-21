@@ -315,3 +315,19 @@ test('dashboard module icons use one unboxed neutral SVG style in four approved 
   assert.doesNotMatch(source('InvestigationOverview.jsx'), /DashboardModuleIcon/)
   assert.doesNotMatch(source('FinalModelPlan.jsx'), /DashboardModuleIcon/)
 })
+
+
+test('cyan dashboard accents apply only to dark-theme identity and active interactions', () => {
+  const css = source('dashboard-interaction-accents.css')
+  const entry = source('main.jsx')
+
+  assert.match(entry, /import '\.\/orion-dark-refinement\.css'\s*\nimport '\.\/dashboard-interaction-accents\.css'/)
+  assert.equal((css.match(/:root\[data-theme='dark'\]/g) || []).length, 4)
+  assert.doesNotMatch(css, /:root\[data-theme='light'\]/)
+  assert.match(css, /\.orion-module-icon \{\s*color: var\(--orion-blue\)/)
+  assert.match(css, /\.orion-kpi-tile:is\(:hover, :focus-visible\) > span \{\s*color: var\(--orion-blue\)/)
+  assert.match(css, /\.orion-pending-item:is\(:hover, :focus-visible\) > strong \{\s*color: var\(--orion-blue\)/)
+  assert.match(css, /\.orion-pending-view-all \{\s*color: var\(--orion-blue\)/)
+  assert.doesNotMatch(css, /\b(?:background(?:-color)?|border(?:-color)?|box-shadow|filter|fill)\s*:/)
+  assert.doesNotMatch(css, /!important|#[0-9A-Fa-f]{3,8}\b/)
+})

@@ -855,3 +855,10 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Adicionado o componente `DashboardModuleIcon.jsx` com quatro desenhos inline para títulos de Pacote mensal (somente versão compacta), Estoque, Qualidade e Pendências.
 - A apresentação usa `dashboard-module-icons.css`: traço 1,7 px, 20 × 20 px, cor secundária do tema, sem tiles, fundos, bordas ou sombras. Os SVGs são ocultos da árvore acessível porque o título textual já identifica o módulo.
 - Não alterados Resumo, KPIs, PN, comparação ORION × DPP Final, consultas, cálculos, validações humanas, Excel ou estrutura do layout. Teste estático adicionado à suíte existente.
+
+
+### Acentos ciano funcionais no Dashboard escuro (2026-10-21)
+
+- Aplicado o token existente `--orion-blue` somente aos quatro SVGs de identificação, ao link `Ver todos` das Pendências e, nos estados de hover/foco, aos títulos dos indicadores acionáveis Estoque/CQ e aos códigos PN da lista de Pendências.
+- O conjunto está centralizado no novo `frontend/src/dashboard-interaction-accents.css`, escopado ao Dashboard do tema escuro e carregado após `orion-dark-refinement.css`. Não altera o tema claro, números, descrições, arquivos, bordas, botões de exportação ou a comparação por modelo.
+- Acrescentado contrato estático à suíte frontend para garantir seletor por tema e uso do token em vez de cores duplicadas. Nenhuma lógica operacional ou endpoint modificado.

@@ -1277,3 +1277,15 @@ Exceção aprovada para identificação visual de quatro cabeçalhos no Dashboar
 - Não adicionar caixa ao redor, fundo de outra cor, borda, sombra, gradiente, animação ou cores semânticas aos pictogramas.
 - `aria-hidden` nos SVGs evita redundância com o texto do título. Preservar o botão contextual `i`, as ações, os temas e a responsividade.
 - Não adicionar ícones ao Resumo Operacional, ORION × DPP Final, KPIs, listas de PNs e nomes dos arquivos sem análise específica.
+
+
+### Acentos de identidade e interação no Dashboard escuro (2026-10-21)
+
+Extensão pontual da regra Mondial grafite/branco: usar o mesmo `--orion-blue` da estrela ORION apenas para reconhecimento de módulo e affordance de navegação/interação. O tema claro permanece inalterado.
+
+- Quatro SVGs lineares dos cabeçalhos operacionais usam o ciano em repouso; seus títulos, dimensões e espaçamentos não mudam.
+- Nos indicadores acionáveis de Estoque e Qualidade, somente o rótulo passa a ciano em `hover` e `focus-visible`; números e limites dos indicadores permanecem neutros.
+- Na fila Pendências, somente o código PN passa a ciano em `hover` e `focus-visible`. O link `Ver todos` fica em ciano como os links `Ver detalhes` do comparativo ORION × DPP Final.
+- A seleção de filtros e os links de ORION × DPP Final já têm linguagem própria aprovada e não recebem novas alterações.
+- Não pintar dados quantitativos, status passivos, nomes de arquivos, superfícies, bordas em repouso ou cabeçalhos de tabela. Não introduzir tiles, gradientes, sombras, animações, cores hexadecimais duplicadas ou novas dependências.
+- Implementar essas exceções somente em `frontend/src/dashboard-interaction-accents.css`, importado após o refinamento do tema escuro, com seletores restritos a `:root[data-theme='dark'] .dpp-dashboard-view`. Manter os estados de foco acessíveis e o tema claro intacto.

@@ -19,6 +19,7 @@ import './knowledge-navigation.css'
 import './industrial-neutral-language.css'
 import './sidebar-theme.css'
 import './orion-dark-refinement.css'
+import './dashboard-interaction-accents.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
