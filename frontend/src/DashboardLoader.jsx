@@ -612,7 +612,9 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
             </>
           ) : (
             <section className="panel dashboard-scenario-recovery" aria-live="polite">
-              {!scenarioMatchesPackage && <p>Preparando automaticamente o cenário do pacote mensal atual. Os indicadores anteriores não serão exibidos.</p>}
+              {!scenarioMatchesPackage && <p>{bundle.ready
+                ? 'Preparando automaticamente o cenário do pacote mensal atual. Os indicadores anteriores não serão exibidos.'
+                : 'O pacote mensal está incompleto ou foi alterado. Carregue as fontes necessárias para visualizar os indicadores atuais.'}</p>}
               {scenarioMatchesPackage && scenarioAccess.state === 'checking' && <p>Verificando o cenário DPP armazenado no servidor...</p>}
               {scenarioMatchesPackage && scenarioAccess.state === 'offline' && <>
                 <h3>Não foi possível verificar o cenário</h3>
