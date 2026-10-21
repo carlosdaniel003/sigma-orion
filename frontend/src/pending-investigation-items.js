@@ -1,4 +1,4 @@
-import { qualityCohorts, stockCohorts } from './investigation-view-model'
+import { qualityCohorts, stockCohorts } from './investigation-view-model.js'
 
 /** Fila de PNs únicos, baseada exclusivamente na categoria 'pending' dos KPIs. */
 export function pendingInvestigationItems(report, area) {
