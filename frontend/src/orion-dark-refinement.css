@@ -88,3 +88,16 @@
 :root[data-theme='dark'] .shell-sidebar .shell-nav-item[aria-current='page'] svg {
   color: var(--orion-blue);
 }
+
+/* Override the old blue hover fill: interactive states stay charcoal/white. */
+:root[data-theme='dark'] .secondary-button:hover:not(:disabled),
+:root[data-theme='dark'] .bulk-file-clear:hover:not(:disabled),
+:root[data-theme='dark'] .detail-close:hover,
+:root[data-theme='dark'] .consolidation-tabs button:not(.active):hover {
+  background: #383B41 !important;
+  border-color: #6A6E76 !important;
+  color: var(--orion-text) !important;
+}
+:root[data-theme='dark'] :is(.upload-box, .source-file-control) {
+  color: var(--orion-text) !important;
+}
