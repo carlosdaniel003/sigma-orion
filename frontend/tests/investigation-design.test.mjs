@@ -40,19 +40,17 @@ test('six operational metrics and Excel remain separate from the modal redesign'
 })
 
 
-test('the initial DPP headline is plain text followed by the functional info hint', () => {
-  const dashboard = source('Dashboard.jsx')
-  const heading = dashboard.match(
-    /<div className="module-heading-with-info dashboard-primary-heading">([\s\S]*?)<\/div>/,
-  )
-  assert.ok(heading, 'dashboard uses the specific plain heading structure')
-  assert.match(heading[1], /^\s*<h2>Cenário inicial do DPP<\/h2>\s*<ModuleInfoHint moduleKey="dashboard\.overview" \/>\s*$/)
-  assert.doesNotMatch(heading[1], /<svg|OrionVisualIcon|visual-icon|<span/)
-  assert.doesNotMatch(source('dashboard-visual-rhythm.css'), /orion-visual-dashboard-header/)
-  const info = source('info-hint.css')
-  assert.match(info, /\.info-hint-trigger\s*\{/)
-  assert.match(info, /background:\s*transparent/)
-  assert.match(info, /border:\s*1px solid var\(--orion-border\)/)
+test('operational overview replaces the initial DPP panel and aligns with month package', () => {
+  const loader = source('DashboardLoader.jsx')
+  const overview = source('InvestigationOverview.jsx')
+  const layout = source('dashboard-hierarchy.css')
+  assert.doesNotMatch(loader, /<Dashboard\b/)
+  assert.match(loader, /<InvestigationOverview\b/)
+  assert.match(overview, /<h3>Resumo operacional<\/h3>/)
+  assert.match(layout, /\.dpp-dashboard-view > \.orion-investigation-overview \{ order:0; \}/)
+  assert.match(layout, /\.dpp-dashboard-view > \.dashboard-shared-package > \.bulk-file-picker\.compact/)
+  assert.match(layout, /padding:var\(--space-4\) !important/)
+  assert.match(layout, /border:1px solid var\(--orion-border\) !important/)
 })
 
 
@@ -61,7 +59,7 @@ test('removed dashboard panels stay unmounted while consolidated model plan rema
   assert.doesNotMatch(source('DashboardLoader.jsx'), /<DppGapProjection\b/)
   assert.doesNotMatch(source('Dashboard.jsx'), /dashboard-complementary-details|Ver indicadores complementares/)
   assert.match(source('App.jsx'), /<FinalModelPlan\b/)
-  assert.match(source('Dashboard.jsx'), /<h2>Cenário inicial do DPP<\/h2>/)
+  assert.doesNotMatch(source('DashboardLoader.jsx'), /<Dashboard\b|Cenário inicial do DPP/)
 })
 
 test('both KPI dialogs use a portal and never treat effect cleanup as a user close', () => {
@@ -158,4 +156,31 @@ test('dark Mondial palette is neutral, readable, and sparing with ORION cyan', (
   assert.ok(contrast('#F5F5F6', '#242529') >= 7, 'primary text on cards meets AAA')
   assert.ok(contrast('#BBC0C8', '#242529') >= 4.5, 'secondary labels stay readable')
   assert.ok(contrast('#F5F5F6', '#090A0C') >= 7, 'sidebar white on charcoal meets AAA')
+})
+
+
+test('stock and quality consultations start automatically without manual buttons', () => {
+  const stock = source('StockDivergenceInvestigation.jsx')
+  const quality = source('QualityInvestigation.jsx')
+  assert.match(stock, /fetchReport\(\{ automatic: true \}\)/)
+  assert.match(quality, /Consulta automaticamente/)
+  assert.doesNotMatch(stock, /Consultar novamente|Investigar depósitos/)
+  assert.doesNotMatch(quality, /Consultar novamente|Consultar Qualidade/)
+  assert.match(stock, /ensureScenarioAvailable/)
+  assert.match(quality, /ensureScenarioAvailable/)
+})
+
+test('suspended browser does not show cached investigation metrics when server scenario is missing', () => {
+  const loader = source('DashboardLoader.jsx')
+  const session = source('useScenarioAvailability.js')
+  assert.match(loader, /scenarioUsable \?/)
+  assert.match(loader, /scenarioMatchesPackage/)
+  assert.match(loader, /Cenário não disponível no servidor/)
+  assert.match(loader, /Reprocessar pacote salvo/)
+  assert.match(session, /visibilitychange/)
+  assert.match(session, /pageshow/)
+  assert.match(session, /focus/)
+  assert.match(session, /cache: 'no-store'/)
+  assert.match(session, /\/availability'/)
+  assert.match(source('DashboardLoader.jsx'), /ensureScenarioAvailable=\{scenarioAccess\.check\}/)
 })
