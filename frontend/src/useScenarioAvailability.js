@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Browser-persisted DPP data is not proof that its server-side scenario exists.
@@ -6,9 +6,11 @@ import { useCallback, useEffect, useState } from 'react'
  */
 export function useScenarioAvailability(scenarioId, apiUrl = '') {
   const [status, setStatus] = useState({ scenarioId: '', state: 'checking' })
+  const requestNumber = useRef(0)
 
   const check = useCallback(async () => {
     if (!scenarioId) return false
+    const request = ++requestNumber.current
     setStatus(previous => previous.scenarioId === scenarioId && previous.state === 'ready'
       ? previous : { scenarioId, state: 'checking' })
     try {
@@ -19,12 +21,13 @@ export function useScenarioAvailability(scenarioId, apiUrl = '') {
       if (!response.ok) throw new Error('Consulta de disponibilidade indisponível')
       const data = await response.json()
       const available = data.available === true && data.scenario_id === scenarioId
+      if (request !== requestNumber.current) return false
       setStatus({ scenarioId, state: available ? 'ready' : 'missing' })
       return available
     } catch {
       // A transient network error is not proof that the scenario was deleted.
       // Still hide stale operational data until a successful verification.
-      setStatus({ scenarioId, state: 'offline' })
+      if (request === requestNumber.current) setStatus({ scenarioId, state: 'offline' })
       return false
     }
   }, [scenarioId, apiUrl])
@@ -42,6 +45,7 @@ export function useScenarioAvailability(scenarioId, apiUrl = '') {
       if (!document.hidden) check()
     }, 120000)
     return () => {
+      requestNumber.current += 1
       document.removeEventListener('visibilitychange', resume)
       window.removeEventListener('focus', resume)
       window.removeEventListener('pageshow', resume)
