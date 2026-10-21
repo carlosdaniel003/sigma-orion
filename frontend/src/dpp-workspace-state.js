@@ -1,4 +1,4 @@
-import { classifyDppBundle } from './dpp-file-bundle'
+import { classifyDppBundle } from './dpp-file-bundle.js'
 
 export function fileIdentity(file) {
   return `${file?.name || ''}:${file?.size || 0}:${file?.lastModified || 0}`
