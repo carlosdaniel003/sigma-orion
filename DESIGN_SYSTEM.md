@@ -1206,3 +1206,16 @@ Esta seção **substitui todas as propostas cromáticas anteriores para o tema e
 - **Contraste mínimo:** 4,5:1 para textos auxiliares, preferindo 7:1 para títulos e valores numéricos sobre as superfícies grafite.
 
 Esta regra prevalece sobre a seção 6.1 e todas as revisões de tema escuro anteriores, que permanecem no documento apenas como histórico.
+
+
+### Dashboard operacional unificado, consulta automática e retomada segura (2026-10-21)
+
+Esta decisão **substitui** a regra que exibia “Cenário inicial do DPP” como painel de quatro indicadores no topo do Dashboard e substitui as disposições anteriores de consulta manual de Estoque/CQ.
+
+- **Primeiro painel:** “Resumo Operacional”, com somente os seis indicadores operacionais já existentes. O painel “Cenário inicial do DPP” deixa de ser montado no Dashboard; a geração determinística do Cenário ORION e suas fórmulas permanecem inalteradas.
+- **Geometria:** “Resumo Operacional”, “Divergência de Estoque” e “Análise de Qualidade” usam exatamente a mesma largura, borda externa, padding interno (16 px, 12 px no mobile), escala tipográfica de título e espaçamento de módulo que o “Pacote do mês”; nada de antigos separadores soltos sem borda ou recuos laterais divergentes.
+- **Ordem:** Resumo Operacional, Pacote do mês, Estoque, Qualidade, Plano Consolidado por Modelo ORION × DPP Final. Distância entre blocos de 12 px (8 px em telas menores).
+- **Automação determinística:** após completar o Pacote do mês, a geração mensal já é disparada sem intervenção. Assim que o cenário correspondente estiver válido no backend, a investigação de Estoque M221/P277 é disparada automaticamente; quando o resultado de Estoque encaminhar PNs, a análise CQ Q239/Q273 é disparada automaticamente. Os botões “Consultar novamente”, “Investigar depósitos” e “Consultar Qualidade” **não aparecem**. “Baixar Excel” e as decisões humanas ficam disponíveis onde aplicável. Falhas transitórias podem ser consultadas novamente ao retornar à aba; não criar loop agressivo de requisições.
+- **Retomada de sessão/standby:** arquivos e resultados do navegador não provam que seu `scenario_id` ainda existe no processo do backend. O servidor passa a persistir as até oito versões ativas com a mesma identidade e disponibiliza uma consulta read-only de disponibilidade; no frontend conferir no início, ao voltar à aba, periodicamente e **antes de abrir um modal**. Nunca abrir um modal de validação usando cenário inválido.
+- **Estado inválido:** não exibir como operacionais números de Estoque/Qualidade de um cenário que expirou, foi perdido ou pertence a outro pacote. Exibir mensagem imediata e a opção de recuperar o cenário; se ele não existir, permitir reprocessar o pacote já salvo no IndexedDB, sem pedir novo upload. **Não transportar validações humanas antigas automaticamente para um novo scenario_id**; informar essa limitação explicitamente.
+- **Paneis restantes, modalidades de validação, cores Mondial, imagem da sidebar e planilhas** permanecem conforme as regras vigentes. Não há recálculo silencioso por uma LLM.
