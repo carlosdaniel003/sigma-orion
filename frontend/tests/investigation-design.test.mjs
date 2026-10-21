@@ -58,7 +58,7 @@ test('removed dashboard panels stay unmounted while consolidated model plan rema
   assert.doesNotMatch(source('App.jsx'), /<DppColumnComparison\b/)
   assert.doesNotMatch(source('DashboardLoader.jsx'), /<DppGapProjection\b/)
   assert.doesNotMatch(source('Dashboard.jsx'), /dashboard-complementary-details|Ver indicadores complementares/)
-  assert.match(source('App.jsx'), /<FinalModelPlan\b/)
+  assert.match(source('DashboardLoader.jsx'), /<FinalModelPlan\b/)
   assert.doesNotMatch(source('DashboardLoader.jsx'), /<Dashboard\b|Cenário inicial do DPP/)
 })
 
@@ -177,6 +177,8 @@ test('suspended browser does not show cached investigation metrics when server s
   assert.match(loader, /scenarioMatchesPackage/)
   assert.match(loader, /Cenário não disponível no servidor/)
   assert.match(loader, /Reprocessar pacote salvo/)
+  assert.match(loader, /<FinalModelPlan finalDppAnalysis=\{finalDppAnalysis\} \/>/)
+  assert.doesNotMatch(source('App.jsx'), /<FinalModelPlan\b/)
   assert.match(session, /visibilitychange/)
   assert.match(session, /pageshow/)
   assert.match(session, /focus/)
