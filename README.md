@@ -230,3 +230,10 @@ O tema claro e a sidebar com a foto da Mondial permanecem como estavam. Após a 
 ### Paleta Mondial vigente para o modo escuro
 
 A identidade **preto, grafite e branco** substitui as experiências anteriores de azul-ciano e azul-marinho espalhados pelos painéis. No tema escuro, a sidebar com a fotografia Mondial usa quase preto `#090A0C`, texto branco e estrela ORION azul `#46D9FF`. A área de conteúdo fica em grafite `#191A1D`, com painéis `#242529`, elevado `#2E3035` e texto claro `#F5F5F6`. Os botões principais são brancos com texto escuro; o ciano permanece apenas em poucos realces funcionais. A implementação está centralizada em `frontend/src/orion-dark-refinement.css` e `frontend/src/sidebar-theme.css`. O **tema claro permanece inalterado**.
+
+
+### Dashboard após retomada de sessão
+
+O Dashboard apresenta primeiro o **Resumo Operacional** (seis métricas), depois o Pacote do mês, as investigações Estoque/Qualidade e o Plano Consolidado por Modelo ORION × DPP Final. O cenário inicial segue sendo calculado pelo motor, mas não ocupa painel separado. O pacote válido inicia automaticamente geração, investigação dos depósitos M221/P277 e, para os PNs encaminhados, consulta Q239/Q273; não há botões de reconsulta.
+
+Os cenários ativos são persistidos pelo servidor; após suspender a aba, o sistema verifica se o ID do cenário salvo no navegador ainda existe. Se não existir, os indicadores antigos ficam ocultos e o usuário pode tentar recuperar o servidor ou **reprocessar o pacote salvo localmente**, sem anexar novamente os arquivos. Decisões humanas não são assumidas como válidas para uma nova identidade de cenário. Os cinco grupos Excel de Estoque e Qualidade não mudaram.
