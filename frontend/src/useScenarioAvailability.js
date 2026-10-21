@@ -9,7 +9,8 @@ export function useScenarioAvailability(scenarioId, apiUrl = '') {
 
   const check = useCallback(async () => {
     if (!scenarioId) return false
-    setStatus({ scenarioId, state: 'checking' })
+    setStatus(previous => previous.scenarioId === scenarioId && previous.state === 'ready'
+      ? previous : { scenarioId, state: 'checking' })
     try {
       const response = await fetch(
         apiUrl + '/api/dpp/monthly/scenarios/' + encodeURIComponent(scenarioId) + '/availability',
