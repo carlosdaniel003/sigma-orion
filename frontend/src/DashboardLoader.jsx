@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BulkDppFilePicker from './BulkDppFilePicker'
-import Dashboard from './Dashboard'
 import StockDivergenceInvestigation from './StockDivergenceInvestigation'
 import InvestigationOverview from './InvestigationOverview'
 import QualityInvestigation from './QualityInvestigation'
+import { useScenarioAvailability } from './useScenarioAvailability'
 import ModuleInfoHint from './ModuleInfoHint'
 import OrionWorking from './OrionWorking'
 import './dashboard-visual-rhythm.css'
@@ -45,6 +45,8 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     setGeneratedSignature,
     generatedScenario,
     setGeneratedScenario,
+    setStockInvestigation,
+    setQualityInvestigation,
     testSignature,
     setTestSignature,
     setTestResult,
@@ -84,6 +86,24 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
     () => classifyDppBundle(files, referenceMonth, 'generate'),
     [files, referenceMonth],
   )
+
+  const scenarioId = generatedScenario?.scenario_id || ''
+  const scenarioAccess = useScenarioAvailability(scenarioId, apiUrl)
+  const scenarioUsable = Boolean(scenarioId && scenarioAccess.state === 'ready')
+  const [recoveryError, setRecoveryError] = useState('')
+
+  function regenerateStoredPackage() {
+    if (!bundle.ready) {
+      setRecoveryError('Pacote mensal incompleto. Carregue as fontes ausentes.')
+      return
+    }
+    // A recovered browser report must never be carried into a new scenario ID.
+    setStockInvestigation(null)
+    setQualityInvestigation(null)
+    setGeneratedSignature('')
+    setGeneratedScenario(null)
+    setRecoveryError('')
+  }
 
   const testBundle = useMemo(
     () => classifyDppBundle(files, referenceMonth, 'test'),
@@ -577,16 +597,32 @@ function DashboardLoader({ apiUrl, onNavigate, finalDppAnalysis, onFinalDppAnaly
             />
           </section>
 
-          <Dashboard
-            scenario={generatedScenario}
-            onNavigate={onNavigate}
-          />
-          {!generatedScenario?.gap_approval && <>
-            <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
-            <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
-            <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock} apiUrl={apiUrl} />
-          </>}
-
+          {scenarioUsable ? (
+            !generatedScenario?.gap_approval && <>
+              <InvestigationOverview scenario={generatedScenario} stockFile={bundle.stock} />
+              <StockDivergenceInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+              <QualityInvestigation scenario={generatedScenario} stockFile={bundle.stock}
+                apiUrl={apiUrl} ensureScenarioAvailable={scenarioAccess.check} />
+            </>
+          ) : (
+            <section className="panel dashboard-scenario-recovery" aria-live="polite">
+              {scenarioAccess.state === 'checking' && <p>Verificando o cenário DPP armazenado no servidor...</p>}
+              {scenarioAccess.state === 'offline' && <>
+                <h3>Não foi possível verificar o cenário</h3>
+                <p>As consultas e os indicadores foram ocultados até a conexão com o servidor ser confirmada. O pacote do mês permanece salvo neste navegador.</p>
+                <button type="button" className="secondary-button" onClick={scenarioAccess.check}>Tentar conectar novamente</button>
+              </>}
+              {scenarioAccess.state === 'missing' && <>
+                <h3>Cenário não disponível no servidor</h3>
+                <p>Os indicadores anteriores foram ocultados para evitar modais inválidos. O pacote mensal permanece salvo. Você pode processá-lo novamente sem anexar os arquivos; validações de um cenário que não foi recuperado não são transferidas automaticamente para uma nova geração.</p>
+                <button type="button" className="secondary-button" onClick={scenarioAccess.check}>Tentar recuperar cenário</button>
+                <button type="button" className="secondary-button" disabled={!bundle.ready}
+                  onClick={regenerateStoredPackage}>Reprocessar pacote salvo</button>
+                {recoveryError && <p role="alert">{recoveryError}</p>}
+              </>}
+            </section>
+          )}
         </>
       )}
 
