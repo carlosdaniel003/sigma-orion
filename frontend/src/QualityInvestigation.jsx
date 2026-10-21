@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
+import DashboardModuleIcon from './DashboardModuleIcon'
 import QualityReviewForm from './QualityReviewForm'
 import { InvestigationKpiGrid, InvestigationModal, InvestigationRecord } from './InvestigationKpiPanel'
 import { qualityCohorts } from './investigation-view-model'
@@ -194,7 +195,10 @@ function QualityInvestigation({ scenario, stockFile, apiUrl = '', ensureScenario
       <div className="orion-stock-investigation-header">
         <div>
           <div className="module-heading-with-info">
-            <h3>Análise de Qualidade</h3>
+            <span className="orion-module-title">
+              <DashboardModuleIcon name="quality" />
+              <h3>Análise de Qualidade</h3>
+            </span>
             <ModuleInfoHint moduleKey="dashboard.quality_investigation" />
           </div>
         </div>

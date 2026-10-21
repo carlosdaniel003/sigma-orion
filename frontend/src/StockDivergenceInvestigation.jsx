@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModuleInfoHint from './ModuleInfoHint'
+import DashboardModuleIcon from './DashboardModuleIcon'
 import { downloadInvestigationExcel } from './investigation-excel'
 import StockDepotReviewForm from './StockDepotReviewForm'
 import { InvestigationKpiGrid, InvestigationModal, InvestigationRecord } from './InvestigationKpiPanel'
@@ -192,7 +193,10 @@ function StockDivergenceInvestigation({ scenario, stockFile, apiUrl = '', ensure
       <div className="orion-stock-investigation-header">
         <div>
           <div className="module-heading-with-info">
-            <h3>Divergência de Estoque</h3>
+            <span className="orion-module-title">
+              <DashboardModuleIcon name="stock" />
+              <h3>Divergência de Estoque</h3>
+            </span>
             <ModuleInfoHint moduleKey="dashboard.stock_divergence" />
           </div>
         </div>

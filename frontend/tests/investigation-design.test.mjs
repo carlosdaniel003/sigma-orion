@@ -288,3 +288,30 @@ test('final dashboard visual audit keeps one layout owner and drops legacy-only 
   assert.match(plan, /\.final-model-plan-sources \{[^}]*min-width: 0;/)
   assert.match(plan, /\.final-model-plan-source strong \{[^}]*overflow-wrap: anywhere;/)
 })
+
+
+test('dashboard module icons use one unboxed neutral SVG style in four approved headings', () => {
+  const icons = source('DashboardModuleIcon.jsx')
+  const css = source('dashboard-module-icons.css')
+  const packagePicker = source('BulkDppFilePicker.jsx')
+  const stock = source('StockDivergenceInvestigation.jsx')
+  const quality = source('QualityInvestigation.jsx')
+  const pending = source('PendingValidations.jsx')
+
+  assert.match(packagePicker, /<DashboardModuleIcon name="files" \/>/)
+  assert.match(stock, /<DashboardModuleIcon name="stock" \/>/)
+  assert.match(quality, /<DashboardModuleIcon name="quality" \/>/)
+  assert.match(pending, /<DashboardModuleIcon name="pending" \/>/)
+  for (const name of ['files', 'stock', 'quality', 'pending']) {
+    assert.match(icons, new RegExp('^  ' + name + ': <path ', 'm'))
+  }
+  assert.match(icons, /aria-hidden="true" focusable="false"/)
+  assert.match(css, /stroke: currentColor;/)
+  assert.match(css, /stroke-width: 1\.7;/)
+  assert.match(css, /color: var\(--orion-text-secondary\);/)
+  assert.match(css, /width: 20px;/)
+  assert.match(css, /height: 20px;/)
+  assert.doesNotMatch(css, /background(?:-color)?:|border(?:-radius)?:|box-shadow:|filter:/)
+  assert.doesNotMatch(source('InvestigationOverview.jsx'), /DashboardModuleIcon/)
+  assert.doesNotMatch(source('FinalModelPlan.jsx'), /DashboardModuleIcon/)
+})

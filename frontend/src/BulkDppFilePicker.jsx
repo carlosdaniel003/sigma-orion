@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import InfoHint from './InfoHint'
 import ModuleInfoHint from './ModuleInfoHint'
+import DashboardModuleIcon from './DashboardModuleIcon'
 import { classifyDppBundle, FILE_LABELS, kindFromFilename, fileMonthReference } from './dpp-file-bundle'
 import { useDppWorkspace } from './DppWorkspaceContext'
 import './bulk-file-picker.css'
@@ -131,7 +132,12 @@ function BulkDppFilePicker({
           <span className="eyebrow">PACOTE DO MÊS</span>
           {infoKey || info ? (
             <div className="bulk-file-title-with-info">
-              <h3>{title}</h3>
+              {compact ? (
+                <span className="orion-module-title">
+                  <DashboardModuleIcon name="files" />
+                  <h3>{title}</h3>
+                </span>
+              ) : <h3>{title}</h3>}
               {infoKey ? <ModuleInfoHint moduleKey={infoKey} /> : <InfoHint {...info} />}
             </div>
           ) : (

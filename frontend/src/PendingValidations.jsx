@@ -3,6 +3,7 @@ import { useDppWorkspace } from './DppWorkspaceContext'
 import { currentInvestigationReports } from './current-investigation-reports'
 import { pendingInvestigationItems, qualityPendingItems } from './pending-investigation-items'
 import ModuleInfoHint from './ModuleInfoHint'
+import DashboardModuleIcon from './DashboardModuleIcon'
 import './pending-validations.css'
 
 const MAX_VISIBLE = 5
@@ -52,7 +53,10 @@ export default function PendingValidations({ scenario, stockFile, onOpen }) {
     <aside className="orion-pending-validations orion-investigation-ui"
       aria-label="Pendências de validação" id="orion-pending-validations">
       <div className="module-heading-with-info">
-        <h3>Pendências de validação</h3>
+        <span className="orion-module-title">
+          <DashboardModuleIcon name="pending" />
+          <h3>Pendências de validação</h3>
+        </span>
         <ModuleInfoHint moduleKey="dashboard.pending_validations" />
       </div>
       <p className="orion-pending-intro">
