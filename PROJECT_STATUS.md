@@ -872,3 +872,12 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - O chat dispõe de consultas determinísticas para os indicadores do Resumo Operacional, cinco categorias de Estoque e cinco de Qualidade e detalhes por PN. Q239 prevalece; Q273 paralelo é apenas evidência informativa. Sem relatório vigente, o chat indica indisponibilidade, não zero.
 - O Agente não faz validação humana, movimentação SAP, análise posterior de Scrap ou recálculo independente de gap. Outros dados do Dashboard (materiais, modelos, cenário, DPP Final e comparação) continuam nas entidades já existentes.
 - Cobertura de regressão: `backend/tests/test_agent_investigation_queries.py`.
+
+
+## Ampliação do Agente — glossário, calendário e perguntas independentes (2026-10-29)
+
+- A resolução de definições curtas consulta `knowledge/glossario.md` por correspondência exata de termo, sem depender de ranqueamento lexical ou da interpretação da LLM. PN e PGD recebem definições operacionais, e as limitações locais de Open PO, PCP e PCPM ficam explícitas.
+- O relógio do backend passa a responder data e hora atuais no fuso `ORION_TIMEZONE` (padrão `America/Manaus`) com fonte de runtime e registro de auditoria, independentemente da LLM.
+- Perguntas independentes separadas por `?` e com intenção de definição/data podem receber respostas individuais em uma única mensagem, reunindo evidências; combinações matemáticas/causais seguem sob o planejador composto anterior.
+- O contrato `ChatResponse` mantém no máximo uma tabela; caso duas partes tenham tabelas, elas são representadas em um único conjunto combinado com a origem da consulta em cada linha.
+- Testes: `backend/tests/test_agent_domain_definitions.py`; teste de abstinência do RAG atualizado para fatos realmente fora do domínio.
