@@ -21,13 +21,13 @@ def split_independent_questions(question: str) -> list[str]:
     # Só dividimos questões independentes de definição ou utilidade. Perguntas
     # encadeadas sobre causa, fórmula ou divergência devem preservar o plano composto.
     independent = re.compile(
-        r"^(?:e\\s+)?(?:o que e |o que sao |o que significa |qual (?:e )?o significado de |"
+        r"^(?:e\s+)?(?:o que e |o que sao |o que significa |qual (?:e )?o significado de |"
         r"qual (?:e )?a definicao de |que dia e hoje|qual e a data de hoje|"
         r"que horas sao(?: agora)?|qual e o dia de hoje)",
     )
     cleaned = []
     for part in segments:
-        part = re.sub(r"^e\\s+", "", part, flags=re.IGNORECASE).strip()
+        part = re.sub(r"^e\s+", "", part, flags=re.IGNORECASE).strip()
         if not independent.match(_normalize(part)):
             return []
         cleaned.append(f"{part}?")
@@ -47,7 +47,7 @@ def combine_knowledge_answers(
     parts = []
     tables = []
     for question, result in zip(questions, answers):
-        parts.append(f"**{question}**\\n{result.answer}")
+        parts.append(f"**{question}**\n{result.answer}")
         for source in result.sources:
             if source not in unique_sources:
                 unique_sources.append(source)
@@ -81,7 +81,7 @@ def combine_knowledge_answers(
         }
 
     return DatabaseKnowledgeAnswer(
-        answer="\\n\\n".join(parts),
+        answer="\n\n".join(parts),
         sources=unique_sources,
         chunks=chunks,
         entities=unique_entities,
