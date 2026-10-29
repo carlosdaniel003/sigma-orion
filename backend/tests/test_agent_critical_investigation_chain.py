@@ -263,6 +263,7 @@ def test_real_user_sequence_regra_004_then_count_and_selected_quality():
         assert cq["table"]["total_rows"] == 1
         assert cq["table"]["rows"][0]["material"] == "MAT-C"
         assert cq["answer"].startswith("PN MAT-C:")
+        assert "MAT-C" in cq["resolved_question"]
 
 
 def test_quality_followup_does_not_show_unrelated_q239_q273_materials():
@@ -281,6 +282,12 @@ def test_quality_followup_does_not_show_unrelated_q239_q273_materials():
         assert "MAT-C:" not in quality["answer"]
         assert quality["model"] == "deterministic-dashboard-investigation"
         assert "MAT-B" in quality["entities"]
+        assert "MAT-B" in quality["resolved_question"]
+        plural_worded_but_single_pn = _ask(
+            client, "Quais registros existem para esse PN no CQ?", "quality-missing-pn"
+        )
+        assert "PN MAT-B" in plural_worded_but_single_pn["answer"]
+        assert plural_worded_but_single_pn["table"] is None
         persisted = load_chat_context("quality-missing-pn")
         assert persisted["subject_key"] == "MAT-B"
 
