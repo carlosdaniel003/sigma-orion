@@ -921,3 +921,12 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A sequência **lista → "Explique essa contagem" → ranking → PN** passa pela consulta determinística à contagem atual, sem depender da síntese livre da LLM.
 - Em consulta singular de Qualidade para um PN selecionado, o roteador utiliza a pergunta original e o foco do contexto, não apenas o texto expandido pelo planejador. Se o PN estiver ausente do relatório de CQ, a resposta informa a ausência de registro *desse PN*, sem retornar os demais cinco encontrados. Relatório ausente e PN ausente são estados distintos.
 - Regressões em `backend/tests/test_agent_critical_investigation_chain.py`, incluindo o PN `0404-26` com estoque aguardando validação e sem registro individual em Qualidade.
+
+
+### Explicações ampliadas do DPP/Dashboard (2026-10-29)
+
+- `database_operational_explanation_service.py`: respostas fundamentadas de **o que, por que, como, de onde vem e para que serve** sobre Dashboard DPP, pacote mensal, planejamento, evolução, comparação, Estoque M221/P277, Qualidade Q239/Q273, gap, aprovações, Testes e indicadores. Usa o catálogo único `load_module_info()`; não mantém definições duplicadas no frontend.
+- Consultas a resumos sincronizados mantêm escopo separado (Cenário ORION e DPP Final) e retornam **indisponível** quando a métrica não foi materializada, em vez de zero ou número de outro cenário. Cobertura material permanece percentual de modelos sem restrição material UN, não capacidade produtiva em unidades.
+- `database_material_cause_service.py`: explicação e conferência determinística para PN específico de NEC, STK TTL e SALDO, e decomposição de diferenças do DPP Final em ΔSTK TTL − ΔNEC quando os componentes são comparáveis. Relatórios de Estoque/CQ são evidências, não causas automaticamente demonstradas.
+- O roteamento mantém as rotas de regras expressas, consultas de material, investigação por PN e referências contextuais; questões de PN referenciadas como "esse PN" não são convertidas em documentação genérica. A LLM não sobrepõe respostas estruturadas.
+- Novos testes em `backend/tests/test_agent_operational_explanations.py` cobrem perguntas gerais, indicadores, fluxos, porquês quantitativos, lacunas de evidência e regressões.
