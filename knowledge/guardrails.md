@@ -114,3 +114,12 @@ O RAG complementa essas respostas, mas não pode substituir uma regra determiní
 - Uma pergunta singular sobre o **PN selecionado** em Estoque ou Qualidade deve manter exatamente o PN, mesmo se ele não tiver registro na área requisitada. Nessa situação, informar que o PN não consta no relatório da área; não retornar a lista de outros PNs encontrados.
 - A falta de registro de um PN em Q239/Q273 não comprova ausência física em CQ; distinguir essa condição da indisponibilidade do relatório de Qualidade inteiro. Preservar o status de validação do Estoque apenas quando houver evidência sincronizada do mesmo PN.
 - Uma pergunta sobre "esse PN" sem PN selecionado deve pedir identificação, nunca escolher automaticamente o primeiro ou último PN de uma lista. Pedidos plurais continuam consultando toda a categoria.
+
+
+#### Perguntas abertas sobre qualquer parte do DPP
+
+- Quando existir documentação versionada de um módulo, responder **o que mostra, de onde vêm os dados e para que serve** com base em `modulos-interface.md`, sem inventar módulos ou comportamentos não implementados.
+- Para um "por quê" quantitativo, consultar primeiro os campos da entidade vigente no SQLite e explicitar fórmulas, diferenças e tolerâncias. Classificar essas conclusões como **matemáticas**; só atribuir causa operacional quando houver evidência/validação efetiva.
+- Nunca responder valor de indicador do Cenário ORION com dado somente do DPP Final (ou vice-versa). Ausência de dado sincronizado não significa zero. Não recalcular o DPP com heurísticas da LLM.
+- A pergunta sobre um PN explícito ou "esse PN" pertence ao fluxo de investigação individual mesmo que mencione Dashboard, Estoque ou Qualidade; nunca converter para uma descrição geral do módulo ou listar PNs não solicitados.
+- Se uma pergunta for mais ampla do que a documentação ou os fatos disponíveis permitem, responder o trecho comprovável e explicitar a limitação. A meta de ampla cobertura não autoriza alucinação.
