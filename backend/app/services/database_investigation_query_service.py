@@ -205,14 +205,6 @@ def _specific_material_request(question: str, context: dict, records: list[dict]
     if explicit:
         return explicit, True
 
-    if re.search(r"\b(?:quais|quantos|quantas|todos|todas|liste|lista|listagem)\b", q):
-        return None, False
-    if any(term in q for term in (
-        "encontrados em cq", "encontrados em estoque", "aguardando cq",
-        "aguardando almoxarifado", "resumo operacional",
-    )):
-        return None, False
-
     # Detecta referências inequívocas a um único PN, sem inferir o último
     # registro de tabelas agregadas nem o primeiro material do relatório.
     singular_reference = bool(re.search(
@@ -286,6 +278,8 @@ def _single_pn_unavailable(question: str, area: str, pn: str | None, summary: di
             "subject_type": "material", "subject_key": pn, "investigation_area": area,
         })
         response.entities = [pn]
+        if pn.casefold() not in _normalize(question):
+            response.resolved_question = f"{question} Contexto anterior: material {pn}."
     return response
 
 
@@ -377,6 +371,8 @@ def answer_investigation_question(
                            table=_table(f"Investigação do PN {explicit_material}", rows, total=1))
         response.context.update({"subject_type": "material", "subject_key": explicit_material,
                                  "investigation_area": area})
+        if explicit_material.casefold() not in _normalize(raw_question):
+            response.resolved_question = f"{raw_question} Contexto anterior: material {explicit_material}."
         return response
 
     category = _category(area, question)
