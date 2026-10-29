@@ -11,7 +11,7 @@ import re
 import unicodedata
 
 from app.services.database_answer_service import (
-    DatabaseKnowledgeAnswer, _critical_materials_answer, _format_number,
+    DatabaseKnowledgeAnswer, _format_number, _critical_rule_chunks,
     _runtime_chunk,
 )
 from app.services.dpp_projection_service import CRITICAL_BALANCE_TOLERANCE
@@ -103,7 +103,7 @@ def _count_requested(question: str, context: dict) -> bool:
         r"^(?:explique|explica|detalhe|justifique|mostre|como foi feita|como chegou|"
         r"por que|porque|de onde veio|qual o criterio|qual e o criterio|"
         r"como o orion chegou).{0,100}"
-        r"(?:contagem|total|numero|quantidade|resultado|criterio)(?:\b|$)",
+        r"(?:contagem|criterio|criterios)(?:\b|$)",
         q,
     ))
 
@@ -114,7 +114,7 @@ def _detail_requested(question: str, context: dict) -> tuple[bool, str | None, s
     # Apenas verbos de detalhamento: campo específico como "SALDO do PN X"
     # continua resolvido pelo executor de materiais, sem sequestrar a intenção.
     is_detail = bool(re.search(
-        r"\b(?:investigu\w*|investigac\w*|detalh\w*|analise|analisar|"
+        r"\b(?:investig\w*|detalh\w*|analise|analisar|"
         r"aprofund\w*|diagnostic\w*|me fale sobre|fale sobre|"
         r"o que sabemos sobre|mostre os dados d[eo]|me conte sobre)\b", q,
     ))
@@ -244,7 +244,9 @@ def _count_answer(question: str) -> DatabaseKnowledgeAnswer:
         "**Interpretação:** essa contagem indica quantos PNs precisam ser investigados "
         "no cenário, não quantos itens foram comprovadamente perdidos nem quantas compras realizar."
     )
-    return _answer(question, explanation, records[:5], topic="critical_count", extra_sources=[RULE_SOURCE])
+    response = _answer(question, explanation, records[:5], topic="critical_count", extra_sources=[RULE_SOURCE])
+    response.chunks.extend(_critical_rule_chunks())
+    return response
 
 
 def _investigation_summary(area: str, pn: str) -> tuple[str, list[dict]]:
