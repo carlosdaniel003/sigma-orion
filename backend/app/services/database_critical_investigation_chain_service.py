@@ -11,7 +11,7 @@ import re
 import unicodedata
 
 from app.services.database_answer_service import (
-    DatabaseKnowledgeAnswer, _format_number, _critical_rule_chunks,
+    DatabaseKnowledgeAnswer, _format_number, _critical_rule_chunks, _critical_materials_answer,
     _runtime_chunk,
 )
 from app.services.dpp_projection_service import CRITICAL_BALANCE_TOLERANCE
@@ -81,6 +81,47 @@ def _limit(question: str) -> int:
     q = _normalize(question)
     match = re.search(r"\b(?:top|os|as|primeiros?|primeiras?|maiores?|piores?)\s*(\d{1,3})\b", q)
     return max(1, min(int(match.group(1)), 50)) if match else 5
+
+
+def _critical_list_requested(question: str) -> bool:
+    """Consulta por PNs que satisfazem REGRA-004 != pergunta sobre texto da regra."""
+    q = _normalize(question)
+    if not re.search(r"\bregra[\s_-]*004\b", q):
+        return False
+    has_materials = bool(re.search(r"\b(?:materiais|material|itens|item|pns?|componentes)\b", q))
+    asks_records = bool(re.search(
+        r"\b(?:consulta|consulte|consultar|liste|listar|lista|listagem|"
+        r"mostre|mostrar|exiba|exibir|relacione|identifique|"
+        r"quais|quantos|retorne|apresente|encontre|atendem|enquadram)\b",
+        q,
+    ))
+    # "O que é a REGRA-004?" permanece sob consulta à definição da regra.
+    return has_materials and asks_records
+
+
+def _critical_list_answer(question: str) -> DatabaseKnowledgeAnswer:
+    if not load_runtime_entities(entity_type="scenario_summary", scope="scenario"):
+        return _answer(
+            question,
+            "O Cenário ORION não está sincronizado; não é possível listar os materiais que atendem à REGRA-004.",
+            [], topic="critical_unavailable",
+        )
+    result = _critical_materials_answer("Quais materiais estão críticos?")
+    if result is None:
+        raise RuntimeError("Consulta determinística de materiais críticos indisponível.")
+    result.resolved_question = question
+    # A tabela é derivada da consulta atual; o contexto seleciona a coleção,
+    # não a regra e nem o último PN da tabela.
+    result.context.update({
+        "subject_type": "collection", "subject_key": "materiais críticos",
+        "topic": "critical",
+        "investigation_chain": {
+            "scope": "critical", "stage": "critical_collection",
+            "ranking": [], "selected_pn": "",
+        },
+        "skip_llm": True,
+    })
+    return result
 
 
 def _ranking_requested(question: str, context: dict) -> bool:
@@ -357,6 +398,8 @@ def _detail_answer(question: str, pn: str, ranking: list[str]) -> DatabaseKnowle
 
 def answer_critical_investigation_chain(question: str, context: dict | None = None) -> DatabaseKnowledgeAnswer | None:
     context = context or {}
+    if _critical_list_requested(question):
+        return _critical_list_answer(question)
     if _ranking_requested(question, context):
         return _ranking_answer(question)
     if _count_requested(question, context):
