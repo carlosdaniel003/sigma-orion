@@ -34,10 +34,10 @@ def test_wiu_definition_comes_from_indexed_glossary() -> None:
 
 
 def test_out_of_scope_question_abstains_without_predefined_answer() -> None:
-    payload = ask("Qual o dia de hoje?")
+    payload = ask("Qual o número do ticket de suporte do próximo mês?")
 
     assert payload["knowledge_sources"] == []
-    assert "banco de conhecimento SQLite" in payload["answer"]
+    assert "Não encontrei evidência suficiente" in payload["answer"]
     assert payload["retrieval"] == []
     assert payload["audit_id"] is not None
 
