@@ -13,6 +13,7 @@ from app.services.database_critical_investigation_chain_service import (
 from app.services.database_clock_service import answer_clock_question
 from app.services.database_domain_definition_service import answer_domain_definition
 from app.services.database_operational_explanation_service import answer_operational_explanation
+from app.services.database_material_cause_service import answer_material_causes
 from app.services.database_multi_question_service import split_independent_questions, combine_knowledge_answers
 from app.services.database_investigation_query_service import answer_investigation_question
 from app.services.database_conversation_grounding_service import (
@@ -121,6 +122,10 @@ def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[
         answer_operational_explanation(question, previous_context)
         if clock_result is None and chain_result is None and definition_result is None else None
     )
+    material_cause = (
+        answer_material_causes(question, previous_context)
+        if clock_result is None and chain_result is None and definition_result is None and operational_result is None else None
+    )
     if clock_result is not None:
         knowledge = clock_result
         structured_route = "runtime-clock"
@@ -133,6 +138,9 @@ def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[
     elif operational_result is not None:
         knowledge = operational_result
         structured_route = "operational-explanation"
+    elif material_cause is not None:
+        knowledge = material_cause
+        structured_route = "material-causal-explanation"
     elif plan.smalltalk:
         knowledge = _smalltalk_knowledge(previous_context, question)
     else:
@@ -246,7 +254,7 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         audit_provider = "deterministic-status-registry"
         response_provider = "local-router"
         response_model = "deterministic-status-registry"
-    elif structured_route in {"runtime-clock", "glossary-definition", "operational-explanation", "multi-question"}:
+    elif structured_route in {"runtime-clock", "glossary-definition", "operational-explanation", "material-causal-explanation", "multi-question"}:
         audit_provider = f"deterministic-{structured_route}"
         response_provider = "local-rag"
         response_model = f"deterministic-{structured_route}"
