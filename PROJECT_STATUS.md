@@ -862,3 +862,13 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Aplicado o token existente `--orion-blue` somente aos quatro SVGs de identificação, ao link `Ver todos` das Pendências e, nos estados de hover/foco, aos títulos dos indicadores acionáveis Estoque/CQ e aos códigos PN da lista de Pendências.
 - O conjunto está centralizado no novo `frontend/src/dashboard-interaction-accents.css`, escopado ao Dashboard do tema escuro e carregado após `orion-dark-refinement.css`. Não altera o tema claro, números, descrições, arquivos, bordas, botões de exportação ou a comparação por modelo.
 - Acrescentado contrato estático à suíte frontend para garantir seletor por tema e uso do token em vez de cores duplicadas. Nenhuma lógica operacional ou endpoint modificado.
+
+
+## Agente ORION — sincronização das investigações do Dashboard (2026-10-29)
+
+- A página do Agente recupera exclusivamente os relatórios correspondentes ao cenário, pacote e revisões atualmente válidos no Dashboard (mesma chave de `currentInvestigationReports`).
+- O endpoint `/api/knowledge/workspace/sync` passa a indexar resumos e evidências por PN de Estoque (M221/P277) e Qualidade (Q239/Q273 ativos), mantendo dados de candidatos, centros, linhas ORIGINAL, decisões e históricos. Relatórios de cenário diferente ou STK com filename incompatível são ignorados.
+- A versão/fingerprint do workspace acompanha revisões humanas: uma nova decisão em Almoxarifado ou CQ substitui os fatos de investigação no SQLite/RAG, sem alterar o Cenário ORION ou o DPP Final.
+- O chat dispõe de consultas determinísticas para os indicadores do Resumo Operacional, cinco categorias de Estoque e cinco de Qualidade e detalhes por PN. Q239 prevalece; Q273 paralelo é apenas evidência informativa. Sem relatório vigente, o chat indica indisponibilidade, não zero.
+- O Agente não faz validação humana, movimentação SAP, análise posterior de Scrap ou recálculo independente de gap. Outros dados do Dashboard (materiais, modelos, cenário, DPP Final e comparação) continuam nas entidades já existentes.
+- Cobertura de regressão: `backend/tests/test_agent_investigation_queries.py`.
