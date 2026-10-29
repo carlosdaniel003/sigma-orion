@@ -307,6 +307,16 @@ def _metric_answer(question: str, key: str) -> DatabaseKnowledgeAnswer:
             "Valor consultado diretamente no resumo sincronizado, não estimado pela IA."
         )
     if key == "material_coverage":
+        safe = _numeric(summary.get("safe_models"))
+        active = _numeric(summary.get("active_models"))
+        if safe is not None and active is not None and active > 0 and _numeric(value) is not None:
+            observed = safe / active * 100.0
+            if abs(observed - float(value)) <= 0.051:
+                msg += (
+                    f"\n\n**Conferência:** {_format_number(safe)} modelo(s) sem restrição "
+                    f"÷ {_format_number(active)} modelo(s) ativo(s) × 100 "
+                    f"= {_format_number(value)}%."
+                )
         msg += (
             "\n\n**Definição:** cobertura material = "
             "modelos ativos sem nenhum material UN com SALDO negativo ÷ modelos ativos × 100. "
@@ -411,6 +421,17 @@ def answer_operational_explanation(
         "como o dpp e gerado", "como funciona o dpp", "como montar o dpp",
     )):
         return _process_overview(question)
+
+    # "Como chegou nesse valor?" retoma um indicador, mas relê o resumo
+    # vigente; nunca usa o último número do texto da conversa como evidência.
+    prior_metric = str(context.get("subject_key") or "")
+    if context.get("subject_type") == "metric" and prior_metric in METRICS and len(q.split()) <= 12:
+        if any(_contains(q, x) for x in (
+            "esse valor", "esse numero", "esse total", "essa contagem",
+            "esse indicador", "essa cobertura", "esse resultado", "como chegou",
+            "como calculou", "de onde veio isso", "como foi calculado",
+        )):
+            return _metric_answer(question, prior_metric)
 
     # "Por que este PN teve divergência na Qualidade?" sem código mas com foco
     # em PN selecionado deve seguir o executor de investigação, não o glossário.
