@@ -9,7 +9,7 @@ from app.services.knowledge_inventory_service import DETERMINISTIC_DOCUMENTS, bu
 ABSTENTION_CASE = {
     "id": "scope-abstention",
     "kind": "guardrail",
-    "question": "Qual o dia de hoje?",
+    "question": "Qual o placar do jogo de futebol de amanhã?",
 }
 
 
