@@ -34,7 +34,7 @@ def test_wiu_definition_comes_from_indexed_glossary() -> None:
 
 
 def test_out_of_scope_question_abstains_without_predefined_answer() -> None:
-    payload = ask("Qual o número do ticket de suporte do próximo mês?")
+    payload = ask("Qual o placar do jogo de futebol de amanhã?")
 
     assert payload["knowledge_sources"] == []
     assert "Não encontrei evidência suficiente" in payload["answer"]
