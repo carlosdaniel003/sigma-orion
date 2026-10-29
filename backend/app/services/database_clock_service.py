@@ -29,9 +29,10 @@ def _clock_now(timezone: str) -> datetime:
 def answer_clock_question(question: str) -> DatabaseKnowledgeAnswer | None:
     normalized = _normalize(question)
     wants_date = bool(re.fullmatch(
-        r"(?:que|qual)(?: e o| e a| e)? dia(?: da semana)? (?:e )?hoje|"
+        r"(?:que|qual)(?: e o| e a| e| o| a)? dia(?: da semana)? (?:e |de )?hoje|"
         r"(?:qual (?:e )?a |que )?data (?:de )?hoje|"
-        r"(?:hoje e|qual e a data atual|qual e o dia atual)",
+        r"(?:hoje e|hoje e qual dia|hoje e qual data|"
+        r"qual e a data atual|qual e o dia atual)",
         normalized,
     ))
     wants_time = bool(re.fullmatch(
