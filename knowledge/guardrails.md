@@ -31,7 +31,8 @@ O Agente ORION deve responder qualquer pergunta que possa ser sustentada por pel
 - implementação Python indexada, quando a pergunta for sobre código;
 - Cenário ORION sincronizado;
 - DPP Final sincronizado;
-- entidades e comparativos calculados pelo backend.
+- entidades e comparativos calculados pelo backend;
+- investigações vigentes de Estoque (M221/P277) e Qualidade (Q239/Q273 ativos), incluindo decisões, evidências e pendências por PN.
 
 Quando houver uma rota estruturada no SQLite, ela deve ter prioridade sobre busca lexical genérica.
 
