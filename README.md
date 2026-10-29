@@ -49,7 +49,7 @@ Toda mudança visual deve:
 
 ## Agente ORION
 
-O chat é DB-first. O frontend não possui respostas operacionais pré-definidas.
+O chat é DB-first. O frontend não possui respostas operacionais pré-definidas. Definições curtas de domínio são resolvidas pelo glossário versionado, consultas de data/hora usam o relógio local configurado no backend (`ORION_TIMEZONE`, padrão `America/Manaus`) e perguntas independentes de definição podem ser respondidas na mesma mensagem, preservando evidências e tabela. Termos sem significado operacional homologado são explicitamente apresentados como pendentes, sem expansão fictícia de siglas.
 
 ```text
 Pergunta
