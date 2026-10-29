@@ -145,6 +145,74 @@ def test_plural_critical_query_returns_database_table_not_python_demo() -> None:
     assert "demo" not in " ".join(payload["knowledge_sources"]).lower()
 
 
+def test_critical_table_follow_up_explains_entire_result_not_last_material() -> None:
+    # Reproduz a sequência real: 91 linhas de materiais críticos seguida por
+    # "Como você chegou nesse resultado?" (fixture pequena e auditável).
+    with TestClient(app) as client:
+        _sync(client)
+        first = _ask(client, "O que são materiais críticos?", "critical-provenance")
+        assert first["table"] is not None
+        assert first["table"]["total_rows"] == 1
+        context = load_chat_context("critical-provenance")
+        assert context["subject_type"] == "collection"
+        assert context["subject_key"] == "materiais críticos"
+        assert context["last_entities"][-1] == {
+            "type": "collection", "key": "materiais críticos"
+        }
+        assert not any(item["type"] == "material" for item in context["last_entities"])
+
+        explanation = _ask(
+            client, "Como você chegou nesse resultado?", "critical-provenance"
+        )
+
+    assert "REGRA-001" in explanation["answer"]
+    assert "REGRA-002" in explanation["answer"]
+    assert "REGRA-003" in explanation["answer"]
+    assert "REGRA-004" in explanation["answer"]
+    assert "NEC = " in explanation["answer"]
+    assert "STK TTL = " in explanation["answer"]
+    assert "SALDO = STK TTL - NEC" in explanation["answer"]
+    assert "1 material(is)" in explanation["answer"]
+    assert "UM = UN" in explanation["answer"]
+    assert "material MAT-CRIT-001 está crítico" not in explanation["answer"]
+    assert explanation["table"] is None
+    assert "materiais críticos" in explanation["resolved_question"]
+    assert "regras-globais.md" in explanation["knowledge_sources"]
+
+
+def test_result_deictics_follow_current_collection_and_explicit_pn_still_works() -> None:
+    with TestClient(app) as client:
+        _sync(client)
+        _ask(client, "Quais materiais estão críticos?", "critical-anaphora")
+        question = _ask(client, "De onde veio esse total?", "critical-anaphora")
+        assert "REGRA-004" in question["answer"]
+        assert "1 material(is)" in question["answer"]
+        why = _ask(client, "Por que esse resultado?", "critical-anaphora")
+        assert "REGRA-004" in why["answer"]
+        assert "materiais críticos" in why["resolved_question"]
+
+        # Identificador citado explicitamente mantém precedência legítima.
+        one = _ask(
+            client, "Qual o SALDO do material MAT-CRIT-001?", "critical-anaphora"
+        )
+        assert "MAT-CRIT-001" in one["answer"]
+        assert "SALDO" in one["answer"]
+
+
+def test_list_material_deictic_does_not_pick_arbitrary_final_row() -> None:
+    with TestClient(app) as client:
+        _sync(client)
+        _ask(client, "Quais materiais estão críticos?", "critical-no-arbitrary-pn")
+        plan = __import__(
+            "app.services.database_query_planner_service",
+            fromlist=["plan_database_question"],
+        ).plan_database_question(
+            "Esse material está crítico?",
+            load_chat_context("critical-no-arbitrary-pn"),
+        )
+    assert "MAT-CRIT-001" not in plan.resolved_question
+
+
 def test_definition_then_python_follow_up_uses_previous_subject() -> None:
     with TestClient(app) as client:
         _sync(client)
