@@ -235,11 +235,11 @@ def test_material_divergence_only_claims_observed_arithmetic():
     assert "não prova qual evento operacional" in result["answer"]
 
 
-def test_specific_why_does_not_redirect_to_dashboard_module():
+def test_critical_why_retains_canonical_status_logic():
     with TestClient(app) as client:
         _sync(client)
-        reason = _ask(client, "Por que o PN PN-A1 está crítico na Qualidade?", "specific-why")
-        assert reason["model"] == "deterministic-material-causal-explanation"
-        assert "PN PN-A1" in reason["answer"]
-        assert "crítico" in reason["answer"]
+        reason = _ask(client, "Por que o PN PN-A1 está crítico?", "specific-why")
+        assert reason["model"] != "deterministic-operational-explanation"
+        assert "PN-A1" in reason["answer"]
+        assert "REGRA-004" in reason["answer"]
         assert reason["llm_used"] is False
