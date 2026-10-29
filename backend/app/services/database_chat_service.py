@@ -105,6 +105,7 @@ def _smalltalk_knowledge(previous_context: dict, question: str) -> DatabaseKnowl
 def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[DatabaseKnowledgeAnswer, bool, str]:
     """Resolve uma pergunta por fatos rastreáveis antes de qualquer síntese LLM."""
 
+    question = plan.original_question
     status_direct = False
     structured_route = ""
 
