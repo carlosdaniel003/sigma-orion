@@ -161,7 +161,7 @@ Fluxo preferencial:
 SQL -> resposta determinística
 ```
 
-A LLM pode ser ignorada para reduzir latência.
+A LLM pode ser ignorada para reduzir latência. Definições curtas (PN, PGD, PCP, PCPM e Open PO) consultam diretamente o glossário do projeto, sem geração da LLM. Consultas como `Que dia é hoje?` ou `Que horas são?` usam o relógio do servidor com `ORION_TIMEZONE=America/Manaus` por padrão. Perguntas independentes, como `O que é PCPM? O que são materiais críticos?`, resolvem ambas as partes preservando respostas e tabelas. Siglas não homologadas são identificadas como pendentes, não inventadas.
 
 ### Pergunta explicativa / contextual
 
