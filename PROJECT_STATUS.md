@@ -1,5 +1,28 @@
 # SIGMA-S ORION — Estado atual do projeto
 
+## 29/10/2026 — Referências a resultados agregados no Agente ORION
+
+O roteador anterior interpretava a pergunta "Como você chegou nesse resultado?"
+após uma tabela de materiais críticos como referência ao **último PN listado**,
+pois `last_entities` continha as últimas linhas de uma coleção e a resolução
+dêitica priorizava a última entidade em vez do assunto da resposta.
+
+A correção preserva o **foco da coleção** em sessão (24h) e resolve perguntas
+sobre "esse resultado", "esse total", "essa lista", "essa tabela", além de
+justificativas curtas, para a consulta agregada anterior. A resposta sobre
+criticidade agora retorna a cadeia determinística completa:
+NEC (REGRA-001), STK TTL (REGRA-002), SALDO (REGRA-003), filtro de UM=UN
+e SALDO<-0,0001 (REGRA-004), com contagem consultada novamente nas
+entidades SQLite atuais. Não usa o último PN da tabela como referência
+implícita, mas respeita códigos explicitamente informados.
+
+A resposta explicativa não necessita LLM nem expõe um número fixo: a contagem
+muda com o Cenário ORION sincronizado. Preserva fontes, tabelas originais,
+auditoria SQLite, consultas pontuais e retenção de conversa existente.
+Regressão: `backend/tests/test_database_chat_context.py`.
+Não altera o cálculo DPP, o DPP Final ou qualquer confirmação humana.
+
+
 Atualizado em: **2026-09-28**
 
 Este arquivo registra o estado funcional atual do projeto. Deve ser atualizado quando houver mudança relevante de arquitetura, fluxo do DPP, frontend ou capacidade operacional.
