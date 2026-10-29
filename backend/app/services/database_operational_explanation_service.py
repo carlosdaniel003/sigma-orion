@@ -370,6 +370,15 @@ def answer_operational_explanation(
     q = _normalize(question)
     if not q:
         return None
+    # "Esse PN" sempre é uma consulta singular dependente de identificação,
+    # mesmo sem PN previamente selecionado. O executor da investigação deve
+    # recusar a seleção, em vez de retornar a documentação geral da área.
+    if re.search(
+        r"\b(?:esse|essa|este|esta|desse|dessa|deste|desta|"
+        r"nesse|nessa|neste|nesta|aquele|daquele|dele)\s+"
+        r"(?:pn|material|item)\b", q
+    ):
+        return None
     # Não capturar perguntas que exigem classificação sobre PNs/modelos reais,
     # números específicos ou interpretação da regra determinística literal.
     if _question_mentions_explicit_entity(question):
