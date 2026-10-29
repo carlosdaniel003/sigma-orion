@@ -124,6 +124,11 @@ def _detail_requested(question: str, context: dict) -> tuple[bool, str | None, s
     if explicit:
         return True, explicit, None
 
+    # Um código informado mas ausente do cenário não pode se tornar a posição
+    # anterior nem provocar a escolha silenciosa de outro material.
+    if re.search(r"\b(?:pn|material)\s+[a-z0-9]+(?:-[a-z0-9]+)+\b", q):
+        return True, None, "O PN solicitado não foi localizado no Cenário ORION atual; confira o código."
+
     chain = _chain(context)
     if not chain:
         if _ordinal(question) is not None or re.search(r"\b(?:esse|essa|este|esta)\s+(?:pn|material|item)\b", q):
@@ -156,7 +161,7 @@ def _answer(
     topic: str, selected: str = "", ranking: list[str] | None = None,
     table: dict | None = None, extra_sources: list[str] | None = None,
 ) -> DatabaseKnowledgeAnswer:
-    sources = [CRITICAL_SOURCE, *(extra_sources or [])]
+    sources = ([CRITICAL_SOURCE] if records or load_runtime_entities(entity_type="scenario_summary", scope="scenario") else []) + (extra_sources or [])
     sources.extend(record["source"] for record in records[:8] if record.get("source"))
     sources = list(dict.fromkeys(sources))
     context = {
@@ -232,7 +237,7 @@ def _ranking_answer(question: str) -> DatabaseKnowledgeAnswer:
     )
 
 
-def _count_answer(question: str) -> DatabaseKnowledgeAnswer:
+def _count_answer(question: str, context: dict) -> DatabaseKnowledgeAnswer:
     if not load_runtime_entities(entity_type="scenario_summary", scope="scenario"):
         return _answer(question, "O Cenário ORION não está sincronizado; a contagem atual é indisponível.", [], topic="critical_unavailable")
     records = _critical_records()
@@ -246,7 +251,10 @@ def _count_answer(question: str) -> DatabaseKnowledgeAnswer:
         "**Interpretação:** essa contagem indica quantos PNs precisam ser investigados "
         "no cenário, não quantos itens foram comprovadamente perdidos nem quantas compras realizar."
     )
-    response = _answer(question, explanation, records[:5], topic="critical_count", extra_sources=[RULE_SOURCE])
+    response = _answer(
+        question, explanation, records[:5], topic="critical_count",
+        ranking=_chain(context).get("ranking") or [], extra_sources=[RULE_SOURCE],
+    )
     response.chunks.extend(_critical_rule_chunks())
     return response
 
@@ -352,7 +360,7 @@ def answer_critical_investigation_chain(question: str, context: dict | None = No
     if _ranking_requested(question, context):
         return _ranking_answer(question)
     if _count_requested(question, context):
-        return _count_answer(question)
+        return _count_answer(question, context)
     is_detail, pn, error = _detail_requested(question, context)
     if not is_detail:
         return None
