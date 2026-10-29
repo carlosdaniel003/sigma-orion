@@ -243,3 +243,15 @@ def test_critical_why_retains_canonical_status_logic():
         assert "PN-A1" in reason["answer"]
         assert "REGRA-004" in reason["answer"]
         assert reason["llm_used"] is False
+
+
+def test_metric_followup_rechecks_current_summary_instead_of_llm_reasoning():
+    with TestClient(app) as client:
+        _sync(client)
+        initial = _ask(client, "Qual a cobertura material no DPP Final?", "coverage-followup")
+        assert "50%" in initial["answer"]
+        explanation = _ask(client, "Como chegou nesse valor?", "coverage-followup")
+        assert explanation["model"] == "deterministic-operational-explanation"
+        assert "**Conferência:** 1 modelo(s) sem restrição ÷ 2 modelo(s) ativo(s) × 100 = 50%." in explanation["answer"]
+        assert explanation["llm_used"] is False
+        assert "50%" in explanation["answer"]
