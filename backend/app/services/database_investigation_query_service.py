@@ -214,7 +214,10 @@ def answer_investigation_question(question: str, context: dict | None = None) ->
     # Retoma um PN previamente selecionado, nunca um item arbitrário da tabela.
     context = context or {}
     previous_pn = str(context.get("subject_key") or "") if context.get("subject_type") == "material" else ""
-    if not explicit_material and previous_pn and len(_normalize(question).split()) <= 12:
+    normalized_question = _normalize(question)
+    plural_request = bool(re.search(r"\b(quais|todos|todas|lista|liste|quantos|quantas)\b", normalized_question))
+    explicit_other_pn = bool(re.search(r"\b(?:pn|material)\s+[a-z0-9]+(?:-[a-z0-9]+)+\b", normalized_question))
+    if not explicit_material and previous_pn and not plural_request and not explicit_other_pn and len(normalized_question.split()) <= 12:
         if any(record["entity_key"].casefold() == previous_pn.casefold() for record in records):
             explicit_material = next(record["entity_key"] for record in records if record["entity_key"].casefold() == previous_pn.casefold())
     if explicit_material:
