@@ -19,7 +19,7 @@ WEEKDAYS = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
 def _normalize(value: str) -> str:
     text = unicodedata.normalize("NFKD", str(value or "").casefold())
     text = "".join(char for char in text if not unicodedata.combining(char))
-    return re.sub(r"\\s+", " ", text).strip(" ?.! ")
+    return re.sub(r"\s+", " ", text).strip(" ?.! ")
 
 
 def _clock_now(timezone: str) -> datetime:
