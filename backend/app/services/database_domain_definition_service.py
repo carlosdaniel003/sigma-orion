@@ -14,7 +14,7 @@ from app.services.knowledge_service import KnowledgeChunk
 def _normalize(text: str) -> str:
     value = unicodedata.normalize("NFKD", str(text or "").casefold())
     value = "".join(char for char in value if not unicodedata.combining(char))
-    return re.sub(r"\\s+", " ", value).strip()
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def _subject(question: str) -> str | None:
@@ -23,13 +23,13 @@ def _subject(question: str) -> str | None:
         r"(?:o que e|o que sao|o que significa|qual (?:e )?o significado de|"
         r"qual (?:e )?a definicao de|defina|"
         r"me (?:fala|fale|explica|explique) sobre|explique|"
-        r"o que quer dizer)\\s+(.+)",
+        r"o que quer dizer)\s+(.+)",
     )
     match = re.fullmatch(templates[0], normalized)
     if match:
         subject = match.group(1).strip(" ?.!")
-        subject = re.sub(r"\\s+(?:no|dentro do) orion$", "", subject).strip()
-        subject = re.sub(r"\\s+(?:no|dentro do) dpp$", "", subject).strip()
+        subject = re.sub(r"\s+(?:no|dentro do) orion$", "", subject).strip()
+        subject = re.sub(r"\s+(?:no|dentro do) dpp$", "", subject).strip()
         return subject
     # Siglas isoladas também podem ser consultadas sem pergunta explícita.
     if re.fullmatch(r"[a-z]{2,6}(?: [a-z]{2,6})?", normalized) and question.strip().upper() == question.strip().strip(" ?.!"):
@@ -73,7 +73,7 @@ def answer_domain_definition(question: str) -> DatabaseKnowledgeAnswer | None:
     return DatabaseKnowledgeAnswer(
         answer=content,
         sources=[source],
-        chunks=[KnowledgeChunk(source=source, content=f"{term}: {meaning}\\nValidação: {validation}",
+        chunks=[KnowledgeChunk(source=source, content=f"{term}: {meaning}\nValidação: {validation}",
                                score=1000.0, heading=f"Glossário · {term}", category="operational")],
         entities=[term],
         resolved_question=question,
