@@ -248,3 +248,10 @@ Os cenários ativos são persistidos pelo servidor; após suspender a aba, o sis
 ### Painel de Pendências de validação (Etapa 3)
 
 Com cenário ativo, Estoque e Qualidade aparecem empilhados à esquerda e a fila Pendências de validação à direita. Cada PN pendente abre o modal original da área já filtrado; "Ver todos" abre a categoria completa. As contagens são de PNs distintos por área e somente dos relatórios atuais; não são novas consultas nem validações automáticas. A tabela ORION × DPP Final continua em largura total.
+
+
+### Perguntas sobre o funcionamento e os resultados do DPP
+
+O Agente ORION responde perguntas **o que / por que / como / de onde vem / para que serve** sobre módulos do Dashboard, fluxo mensal, Estoque, Qualidade, comparativos, Testes do DPP e indicadores. As descrições vêm da mesma fonte do botão de ajuda dos módulos (`knowledge/modulos-interface.md`), e métricas disponíveis são lidas dos resumos sincronizados do Cenário ORION e DPP Final sem trocar escopos ou tratar ausência como zero.
+
+Perguntas sobre **por que o SALDO/NEC de um PN difere** usam decomposição matemática (REGRA-003, REGRA-004) e dados do próprio PN; evidência de Estoque/CQ aparece separadamente. A diferença calculada não é automaticamente causa operacional, liberação física ou recomendação de compra. Respostas sem evidência suficiente devem informar a lacuna. A LLM é auxiliar e não substitui os cálculos do motor Python.
