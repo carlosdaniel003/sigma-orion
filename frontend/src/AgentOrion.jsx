@@ -114,7 +114,7 @@ function createFreshConversation(now = Date.now()) {
 
 function responseType(payload) {
   if (payload.model === 'deterministic-router') return 'Conversacional'
-  if (['deterministic-status-registry', 'deterministic-rule-registry', 'deterministic-calculation-registry', 'deterministic-dashboard-investigation', 'deterministic-glossary-definition', 'deterministic-runtime-clock', 'deterministic-multi-question'].includes(payload.model)) return 'Determinística'
+  if (['deterministic-status-registry', 'deterministic-rule-registry', 'deterministic-calculation-registry', 'deterministic-dashboard-investigation', 'deterministic-glossary-definition', 'deterministic-runtime-clock', 'deterministic-multi-question', 'deterministic-critical-investigation-chain'].includes(payload.model)) return 'Determinística'
   if (payload.llm_used) return `SQLite/RAG + ${payload.llm_provider || 'LLM local'}`
   if (payload.knowledge_sources?.length) return 'Fundamentada no SQLite/RAG'
   return 'Sem evidência suficiente'
