@@ -6,6 +6,7 @@ import unicodedata
 from app.schemas.agent import ChatResponse
 from app.services.database_answer_service import DatabaseKnowledgeAnswer, answer_database_knowledge
 from app.services.database_chat_refinement_service import refine_database_answer
+from app.services.database_investigation_query_service import answer_investigation_question
 from app.services.database_conversation_grounding_service import (
     apply_deterministic_conclusions,
     build_persisted_context,
@@ -116,33 +117,38 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
             knowledge = status_result
             status_direct = True
         else:
-            structured_result, structured_route = structured_knowledge_answer(plan, previous_context)
-            if structured_result is not None:
-                knowledge = structured_result
+            investigation_result = answer_investigation_question(plan.resolved_question, previous_context)
+            if investigation_result is not None:
+                knowledge = investigation_result
+                structured_route = "dashboard-investigation"
             else:
-                knowledge = answer_database_knowledge(plan.retrieval_question, context=previous_context)
-                knowledge = refine_database_answer(question, previous_context, knowledge)
-                knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
-                knowledge.resolved_question = plan.resolved_question
+                structured_result, structured_route = structured_knowledge_answer(plan, previous_context)
+                if structured_result is not None:
+                    knowledge = structured_result
+                else:
+                    knowledge = answer_database_knowledge(plan.retrieval_question, context=previous_context)
+                    knowledge = refine_database_answer(question, previous_context, knowledge)
+                    knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
+                    knowledge.resolved_question = plan.resolved_question
 
-                if plan.concept_entities:
-                    subject_key = plan.concept_entities[0] if len(plan.concept_entities) == 1 else " + ".join(plan.concept_entities)
-                    if knowledge.context.get("subject_type") in {None, "", "knowledge", "concept"}:
-                        knowledge.context = {
-                            **knowledge.context,
-                            "subject_type": "concept",
-                            "subject_key": subject_key,
-                        }
+                    if plan.concept_entities:
+                        subject_key = plan.concept_entities[0] if len(plan.concept_entities) == 1 else " + ".join(plan.concept_entities)
+                        if knowledge.context.get("subject_type") in {None, "", "knowledge", "concept"}:
+                            knowledge.context = {
+                                **knowledge.context,
+                                "subject_type": "concept",
+                                "subject_key": subject_key,
+                            }
 
-                if _only_incidental_python(question, knowledge.sources):
-                    knowledge.answer = (
-                        "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
-                        "Nenhuma resposta externa ou pré-definida foi usada."
-                    )
-                    knowledge.sources = []
-                    knowledge.chunks = []
-                    knowledge.entities = []
-                    knowledge.table = None
+                    if _only_incidental_python(question, knowledge.sources):
+                        knowledge.answer = (
+                            "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
+                            "Nenhuma resposta externa ou pré-definida foi usada."
+                        )
+                        knowledge.sources = []
+                        knowledge.chunks = []
+                        knowledge.entities = []
+                        knowledge.table = None
 
         knowledge = apply_deterministic_conclusions(question, plan, knowledge)
 
@@ -199,6 +205,10 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         audit_provider = f"grounded-llm:{enhancement.provider or 'configured'}"
         response_provider = enhancement.provider or "local-llm"
         response_model = enhancement.model or "local-model"
+    elif structured_route == "dashboard-investigation":
+        audit_provider = "deterministic-dashboard-investigation"
+        response_provider = "local-rag"
+        response_model = "deterministic-dashboard-investigation"
     elif structured_route == "model-comparison":
         suffix = ":llm-fallback" if enhancement.fallback else ""
         audit_provider = f"deterministic-model-comparison{suffix}"
