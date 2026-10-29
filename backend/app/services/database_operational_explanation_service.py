@@ -117,7 +117,8 @@ EXPLAIN_MARKERS = (
 )
 NUMERIC_MARKERS = (
     "quantos", "quantas", "quanto", "qual o valor", "qual e o valor",
-    "qual o total", "qual e o total", "qual a quantidade",
+    "qual o total", "qual e o total", "qual a", "qual o", "qual e a", "qual e o",
+    "qual a quantidade",
     "mostre o indicador", "informe o total", "informe a quantidade",
 )
 
@@ -157,10 +158,11 @@ METRICS: dict[str, tuple[tuple[str, ...], str, str, str]] = {
         ("modelos ativos",), "Modelos ativos", "final", "active_models",
     ),
     "risk_models": (
-        ("modelos em risco",), "Modelos em risco", "final", "risk_models",
+        ("modelos em risco", "modelos estao em risco"), "Modelos em risco", "final", "risk_models",
     ),
     "safe_models": (
-        ("modelos sem restricao material", "modelos sem risco", "modelos seguros"),
+        ("modelos sem restricao material", "modelos sem risco", "modelos estao sem risco",
+         "modelos estao sem restricao", "modelos seguros"),
         "Modelos sem restrição material", "final", "safe_models",
     ),
     "material_coverage": (
