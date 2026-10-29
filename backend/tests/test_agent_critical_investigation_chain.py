@@ -227,3 +227,112 @@ def test_unrelated_session_does_not_inherit_other_sessions_rankings():
         _ask(client, "Mostre os 3 maiores déficits", "session-owner")
         response = _ask(client, "Investigue o segundo item", "different-session")
         assert "Não há seleção ativa" in response["answer"]
+
+
+def test_real_user_sequence_regra_004_then_count_and_selected_quality():
+    with TestClient(app) as client:
+        _sync(client)
+        initial = _ask(
+            client,
+            "Consulta os materiais do Cenário ORION conforme a REGRA-004",
+            "real-chain-119",
+        )
+        assert initial["model"] == "deterministic-critical-investigation-chain"
+        assert initial["table"]["total_rows"] == 4
+        assert {row["material"] for row in initial["table"]["rows"]} == {
+            "MAT-A", "MAT-B", "MAT-C", "MAT-D"
+        }
+        assert initial["llm_used"] is False
+
+        count = _ask(client, "Explique essa contagem", "real-chain-119")
+        assert count["model"] == "deterministic-critical-investigation-chain"
+        assert "4 PN(s)" in count["answer"]
+        for code in ("REGRA-001", "REGRA-002", "REGRA-003", "REGRA-004"):
+            assert code in count["answer"]
+        assert count["llm_used"] is False
+
+        ranking = _ask(client, "Mostre os cinco maiores déficits", "real-chain-119")
+        assert ranking["table"]["total_rows"] == 4
+        assert ranking["table"]["rows"][1]["material"] == "MAT-C"
+
+        detail = _ask(client, "Investigue o segundo item", "real-chain-119")
+        assert "PN MAT-C" in detail["answer"]
+
+        cq = _ask(client, "E o que aparece na Qualidade para esse PN?", "real-chain-119")
+        assert cq["model"] == "deterministic-dashboard-investigation"
+        assert cq["table"]["total_rows"] == 1
+        assert cq["table"]["rows"][0]["material"] == "MAT-C"
+        assert cq["answer"].startswith("PN MAT-C:")
+
+
+def test_quality_followup_does_not_show_unrelated_q239_q273_materials():
+    with TestClient(app) as client:
+        _sync(client)
+        _ask(client, "Mostre os 5 maiores déficits", "quality-missing-pn")
+        _ask(client, "Investigue o primeiro item", "quality-missing-pn")
+
+        quality = _ask(client, "E o que aparece na Qualidade para esse PN?", "quality-missing-pn")
+
+        assert "PN MAT-B" in quality["answer"]
+        assert "não há registro individual" in quality["answer"]
+        assert "não comprova ausência física" in quality["answer"]
+        assert quality["table"] is None
+        assert "Encontrados em CQ" not in quality["answer"]
+        assert "MAT-C:" not in quality["answer"]
+        assert quality["model"] == "deterministic-dashboard-investigation"
+        assert "MAT-B" in quality["entities"]
+        persisted = load_chat_context("quality-missing-pn")
+        assert persisted["subject_key"] == "MAT-B"
+
+        aggregate = _ask(client, "Quais materiais foram encontrados em CQ?", "quality-missing-pn")
+        assert aggregate["table"]["total_rows"] == 1
+        assert aggregate["table"]["rows"][0]["material"] == "MAT-C"
+
+
+def test_specific_quality_reference_without_selected_pn_does_not_choose_random_record():
+    with TestClient(app) as client:
+        _sync(client)
+        no_selection = _ask(
+            client, "E o que aparece na Qualidade para esse PN?", "quality-no-selection"
+        )
+        assert "Não foi possível identificar um PN único" in no_selection["answer"]
+        assert no_selection["table"] is None
+        assert no_selection["llm_used"] is False
+
+
+def test_pure_rule_definition_is_not_overridden_by_collection_query():
+    with TestClient(app) as client:
+        _sync(client)
+        rule = _ask(client, "O que diz a REGRA-004?", "rule-definition-only")
+        assert rule["model"] == "deterministic-rule-registry"
+        assert rule["table"] is None
+        assert "SALDO" in rule["answer"]
+
+
+def test_quality_absence_for_actual_reported_material_0404_26():
+    scenario = _workspace()
+    scenario["scenario"]["materials"].append(
+        {
+            "material": "0404-26", "description": "PRENDEDOR METAL C/ REVEST PLAST MWO",
+            "um": "UN", "nec": 207897, "stock_total": 17374,
+            "balance": -190523, "status": "INVESTIGAR",
+        }
+    )
+    scenario["investigations"]["stock"]["materials"].append(
+        {
+            "material": "0404-26", "description": "PRENDEDOR METAL C/ REVEST PLAST MWO",
+            "unit": "UN", "negative_balance": 190523, "unexplained_quantity": 190523,
+            "workflow_status": "AWAITING_VALIDATION",
+            "candidates": [{"depot": "M221", "center": "0001", "quantity": 10, "validation": None}],
+        }
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/knowledge/workspace/sync", json=scenario)
+        assert response.status_code == 200, response.text
+        _ask(client, "Investigue o PN 0404-26", "quality-0404-26")
+        reply = _ask(client, "E o que aparece na Qualidade para esse PN?", "quality-0404-26")
+        assert "PN 0404-26" in reply["answer"]
+        assert "não há registro individual" in reply["answer"]
+        assert "AWAITING_VALIDATION" in reply["answer"]
+        assert "validações pendentes: 1" in reply["answer"]
+        assert reply["table"] is None
