@@ -16,7 +16,8 @@ DEICTIC_WORDS = {
 EXPLANATION_MARKERS = (
     "por que", "porque", "explique", "explica", "causa", "motivo", "impacto",
     "interfere", "influencia", "como funciona", "o que aconteceu", "o que mudou",
-    "mudou", "divergiu",
+    "mudou", "divergiu", "como voce chegou", "como chegou", "de onde veio",
+    "como foi obtido", "como obteve", "como se chegou", "qual a origem desse",
 )
 CODE_MARKERS = ("python", "codigo", "implementacao", "implementar", "funcao", "metodo", ".py")
 SMALLTALK_PREFIXES = (
@@ -179,6 +180,10 @@ def _context_entity(context: dict, entity_type: str) -> tuple[str, str] | None:
 
 
 def _current_subject(context: dict) -> tuple[str, str] | None:
+    # Uma resposta em tabela é UM resultado, não o último PN exibido.
+    # Mantém a resolução prévia de status/regra para perguntas individuais.
+    if context.get("subject_type") == "collection" and context.get("subject_key"):
+        return "collection", str(context["subject_key"])
     recent = _last_entity(context)
     if recent:
         return recent
@@ -204,6 +209,17 @@ def _context_reference(question: str, context: dict, intent: str) -> tuple[str, 
     if not (has_deictic or elliptical):
         return None
 
+    # "esse resultado", "essa tabela" e "esse total" retomam a resposta
+    # agregada, não a última entidade enumerada no rodapé da tabela.
+    result_reference = any(
+        _typed_deictic(normalized, noun)
+        for noun in ("resultado", "total", "numero", "numeros", "lista",
+                     "tabela", "contagem", "levantamento", "relatorio")
+    ) or bool(re.search(r"\b(?:esses|estas|estes|nesses|nessas)\s+"
+                        r"(?:numeros|resultados|materiais|dados|valores)\b", normalized))
+    if result_reference:
+        return _current_subject(context)
+
     if "status" in words and _typed_deictic(normalized, "status"):
         return _context_entity(context, "status")
 
@@ -219,6 +235,9 @@ def _context_reference(question: str, context: dict, intent: str) -> tuple[str, 
         return None
 
     if "material" in words and _typed_deictic(normalized, "material"):
+        # Uma lista de dezenas de materiais não aponta para um PN único.
+        if context.get("subject_type") == "collection":
+            return None
         return _context_entity(context, "material")
 
     if "modelo" in words and _typed_deictic(normalized, "modelo"):
