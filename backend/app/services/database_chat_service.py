@@ -133,7 +133,9 @@ def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[
             knowledge = status_result
             status_direct = True
         else:
-            investigation_result = answer_investigation_question(plan.resolved_question, previous_context)
+            investigation_result = answer_investigation_question(
+                plan.resolved_question, previous_context, original_question=plan.original_question
+            )
             if investigation_result is not None:
                 knowledge = investigation_result
                 structured_route = "dashboard-investigation"
