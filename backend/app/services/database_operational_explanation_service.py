@@ -45,7 +45,7 @@ MODULE_ALIASES: dict[str, tuple[str, ...]] = {
     "dashboard.scenario_comparison": (
         "orion x dpp final", "orion vs dpp final", "cenario vs dpp final",
         "cenario orion e dpp final", "cenario orion", "comparacao do cenario",
-        "comparacao orion", "dpp final e orion",
+        "comparacao orion", "dpp final e orion", "dpp final",
     ),
     "dashboard.planning": (
         "aderencia do planejamento", "gap pgd", "pgd x real",
@@ -125,7 +125,7 @@ NUMERIC_MARKERS = (
 # ou indicadores de risco do Cenário ORION a partir de colunas insuficientes.
 METRICS: dict[str, tuple[tuple[str, ...], str, str, str]] = {
     "kit_pgd_total": (
-        ("kit pgd total", "total de pgd", "pgd total", "kit disponivel pgd", "total do kit"),
+        ("kit pgd total", "total de kit pgd", "total de pgd", "pgd total", "kit disponivel pgd", "total do kit"),
         "KIT disponível PGD", "scenario", "kit_pgd_total",
     ),
     "real_total": (
@@ -141,7 +141,7 @@ METRICS: dict[str, tuple[tuple[str, ...], str, str, str]] = {
         "Modelos do cenário", "scenario", "models",
     ),
     "models_above_kit": (
-        ("modelos acima do kit", "modelos acima do pgd", "modelos acima do planejamento"),
+        ("modelos acima do kit", "modelos acima do pgd", "modelos acima do planejamento", "real acima do kit"),
         "Modelos com REAL acima do KIT", "scenario", "models_above_kit",
     ),
     "outside_scope_um": (
@@ -282,7 +282,11 @@ def _metric_answer(question: str, key: str) -> DatabaseKnowledgeAnswer:
     record = summaries[0] if summaries else None
     p = (record or {}).get("payload") or {}
     summary = p.get("summary") or {}
-    value = summary.get(column)
+    scoped_column = {
+        "materials": "total_materials", "models": "model_count",
+        "kit_pgd_total": "pgd_total",
+    }.get(column, column) if scope == "final" else column
+    value = summary.get(scoped_column)
     source = [record["source"]] if record else []
     items = [_runtime_chunk(record, f"Indicador {label} · {scope}")] if record else []
 
@@ -380,7 +384,7 @@ def answer_operational_explanation(
     metric_requested = any(_contains(q, marker) for marker in NUMERIC_MARKERS)
     # "por que cobertura material é diferente?" solicita a definição, não
     # um número causal não demonstrado.
-    if metric_requested:
+    if metric_requested or _is_explanation(question):
         matches = [
             (len(alias), key)
             for key, (aliases, _, _, _) in METRICS.items()
