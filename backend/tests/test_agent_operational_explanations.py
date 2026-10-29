@@ -187,3 +187,59 @@ def test_module_uses_same_help_as_module_info_service():
     assert module is not None
     assert module.purpose in answer["answer"]
     assert module.source in answer["answer"]
+
+
+def test_mathematical_why_of_negative_balance_is_not_operational_cause():
+    with TestClient(app) as client:
+        _sync(client)
+        reply = _ask(client, "Por que o SALDO do PN PN-A1 ficou negativo?", "why-pn-a1")
+        assert reply["model"] == "deterministic-material-causal-explanation"
+        assert "PN PN-A1" in reply["answer"]
+        assert "STK TTL 60" in reply["answer"]
+        assert "NEC 100" in reply["answer"]
+        assert "SALDO ORION -40" in reply["answer"]
+        assert "Conferência: 60 − 100 = -40" in reply["answer"]
+        assert "não prova sozinho falta física" in reply["answer"]
+        assert "REGRA-003" in reply["knowledge_sources"] or "regras-globais.md" in reply["knowledge_sources"]
+        assert reply["llm_used"] is False
+
+
+def test_material_cause_keeps_single_pn_across_followups():
+    with TestClient(app) as client:
+        _sync(client)
+        first = _ask(client, "Por que o PN PN-A1 tem déficit?", "why-selected-pn")
+        assert "PN PN-A1" in first["answer"]
+        second = _ask(client, "Como chegou nesse saldo?", "why-selected-pn")
+        assert second["model"] == "deterministic-material-causal-explanation"
+        assert "PN PN-A1" in second["answer"]
+
+
+def test_material_divergence_only_claims_observed_arithmetic():
+    payload = {
+        **WORKSPACE,
+        "final_dpp": {
+            **WORKSPACE["final_dpp"],
+            "material_details": [{
+                "material": "PN-A1", "description": "Parafuso",
+                "um": "UN", "nec": 90, "stock_total": 65,
+                "balance": -25, "critical": True,
+            }],
+        },
+    }
+    with TestClient(app) as client:
+        _sync(client, payload)
+        result = _ask(client, "Por que o SALDO do PN PN-A1 diverge do DPP Final?", "final-discrepancy")
+    assert "ΔSTK TTL 5" in result["answer"]
+    assert "ΔNEC -10" in result["answer"]
+    assert "Diferença Final − ORION: 15" in result["answer"]
+    assert "não prova qual evento operacional" in result["answer"]
+
+
+def test_specific_why_does_not_redirect_to_dashboard_module():
+    with TestClient(app) as client:
+        _sync(client)
+        reason = _ask(client, "Por que o PN PN-A1 está crítico na Qualidade?", "specific-why")
+        assert reason["model"] == "deterministic-material-causal-explanation"
+        assert "PN PN-A1" in reason["answer"]
+        assert "crítico" in reason["answer"]
+        assert reason["llm_used"] is False
