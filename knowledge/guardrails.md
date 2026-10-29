@@ -97,3 +97,12 @@ Para cálculos conhecidos, a resolução direta de regras tem prioridade sobre o
 - CHECK → REGRA-007.
 
 O RAG complementa essas respostas, mas não pode substituir uma regra determinística conhecida por um trecho lexical menos específico.
+
+### Encadeamento contextual das investigações
+
+- Para ranking de déficit, consultar apenas PNs críticos da versão atual do Cenário ORION: UM = UN e SALDO < -0,0001. Ordenar por SALDO mais negativo; não classificar PNs em G/CM/ML como déficit crítico em UN.
+- Guardar no contexto somente os códigos da lista ordenada, a área e o PN explicitamente selecionado. Não escolher automaticamente o último PN de uma tabela nem a posição de um ranking que não exista.
+- Referências como "o segundo" dependem do ranking confirmado na sessão; PN escrito explicitamente prevalece. Código inexistente deve ser recusado sem redirecionamento implícito.
+- Ao mudar o fingerprint do workspace, descartar toda a referência contextual anterior, inclusive ranking e PN selecionado. Todos os valores devem ser consultados novamente no SQLite.
+- Distinguir sempre **fatos observados** (Cenário/DPP/depósitos), **cálculos determinísticos** (NEC, STK TTL, SALDO e déficit derivado) e **interpretações/hipóteses** (não conclusivas). Quantidade bruta e evidência de CQ não equivalem a material fisicamente liberado.
+- Não perder a lista anterior apenas por explicar uma regra intermediária e não substituir resposta estruturada por uma inferência da LLM.
