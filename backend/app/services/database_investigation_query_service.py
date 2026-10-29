@@ -193,14 +193,124 @@ def _overview(question: str) -> DatabaseKnowledgeAnswer:
     return response
 
 
-def answer_investigation_question(question: str, context: dict | None = None) -> DatabaseKnowledgeAnswer | None:
-    area = _requested_area(question, context or {})
+def _specific_material_request(question: str, context: dict, records: list[dict]) -> tuple[str | None, bool]:
+    """Resolve PN explícito ou pronome singular sem usar uma lista como seleção.
+
+    A ausência do PN no relatório atual da área NÃO permite cair na listagem
+    da área; deve gerar uma resposta individual sobre a falta de evidência.
+    """
+    q = _normalize(question)
+    scenario = load_runtime_entities(entity_type="material", scope="scenario")
+    explicit = _material_key(question, scenario) or _material_key(question, records)
+    if explicit:
+        return explicit, True
+
+    if re.search(r"\b(?:quais|quantos|quantas|todos|todas|liste|lista|listagem)\b", q):
+        return None, False
+    if any(term in q for term in (
+        "encontrados em cq", "encontrados em estoque", "aguardando cq",
+        "aguardando almoxarifado", "resumo operacional",
+    )):
+        return None, False
+
+    # Detecta referências inequívocas a um único PN, sem inferir o último
+    # registro de tabelas agregadas nem o primeiro material do relatório.
+    singular_reference = bool(re.search(
+        r"\b(?:esse|essa|este|esta|desse|dessa|deste|desta|"
+        r"nesse|nessa|neste|nesta|aquele|daquele|dele)\s+"
+        r"(?:pn|material|item)\b|\b(?:esse|este|desse|deste|aquele)\s+pn\b",
+        q,
+    ))
+    # "E na Qualidade?" após selecionar um único PN também é contextual,
+    # mas nunca deve transformar uma pergunta plural em detalhe individual.
+    area_followup = bool(re.fullmatch(
+        r"(?:e )?(?:na|em|sobre a|no setor de) "
+        r"(?:qualidade|cq|estoque|almoxarifado)(?: para ele| desse pn)?",
+        q.strip(" ?.! "),
+    ))
+    if not singular_reference and not area_followup:
+        return None, False
+
+    chain = context.get("investigation_chain") or {}
+    selected = str(context.get("subject_key") or "").strip() if context.get("subject_type") == "material" else ""
+    if not selected and isinstance(chain, dict):
+        selected = str(chain.get("selected_pn") or "").strip()
+    if not selected:
+        return None, True
+    if not any(record["entity_key"].casefold() == selected.casefold() for record in scenario):
+        return None, True
+    return selected, True
+
+
+def _single_pn_unavailable(question: str, area: str, pn: str | None, summary: dict | None) -> DatabaseKnowledgeAnswer:
+    """Não confunde PN ausente em CQ com CQ não sincronizado ou com zero físico."""
+    label = "Análise de Qualidade (Q239/Q273)" if area == "quality" else "Divergência de Estoque (M221/P277)"
+    sources = [summary] if summary else []
+    if not pn:
+        answer = (
+            f"Não foi possível identificar um PN único para consultar {label}. "
+            "Informe o código do PN ou selecione um item do ranking anterior. "
+            "Não utilizei um material arbitrário da listagem."
+        )
+    elif not summary:
+        answer = (
+            f"A investigação de {label} não está sincronizada no cenário atual. "
+            f"Não é possível afirmar a situação do PN {pn} nesta área; ausência de relatório não significa zero."
+        )
+    else:
+        answer = (
+            f"No relatório atual de {label}, não há registro individual do PN {pn}. "
+            "Isso significa apenas que o PN não aparece nesta investigação sincronizada; "
+            "não comprova ausência física no depósito nem disponibilidade, liberação ou refugo."
+        )
+        # Quando o PN ainda aguarda análise de Estoque, não atribuir ao CQ
+        # uma conclusão que pertence à etapa anterior.
+        if area == "quality":
+            stock = load_runtime_entities(entity_type="investigation_material", entity_key=pn, scope="stock")
+            if stock:
+                sources.extend(stock)
+                item = stock[0]["payload"]
+                status = str(item.get("workflow_status") or "não informado")
+                pending = sum(not bool(c.get("validation")) for c in item.get("candidates") or [])
+                answer += (
+                    f" Na Divergência de Estoque, situação: {status}; "
+                    f"validações pendentes: {pending}. "
+                    "As evidências de Estoque não são registros de liberação no CQ."
+                )
+    response = _answer(
+        answer, sources, question, area=area,
+        category="material_unavailable", table=None,
+    )
+    if pn:
+        response.context.update({
+            "subject_type": "material", "subject_key": pn, "investigation_area": area,
+        })
+        response.entities = [pn]
+    return response
+
+
+def answer_investigation_question(
+    question: str,
+    context: dict | None = None,
+    *,
+    original_question: str | None = None,
+) -> DatabaseKnowledgeAnswer | None:
+    context = context or {}
+    raw_question = original_question or question
+    area = _requested_area(raw_question, context)
     if area is None:
         return None
     if area == "overview":
         return _overview(question)
 
+    records = _records(area)
+    explicit_material, individual_request = _specific_material_request(raw_question, context, records)
     summary = _summary(area)
+    if individual_request and (explicit_material is None or not any(
+        record["entity_key"].casefold() == explicit_material.casefold() for record in records
+    )):
+        return _single_pn_unavailable(question, area, explicit_material, summary)
+
     if summary is None:
         label = "Análise de Qualidade" if area == "quality" else "Divergência de Estoque"
         return _answer(
@@ -209,17 +319,12 @@ def answer_investigation_question(question: str, context: dict | None = None) ->
             [], question, area=area, category="unavailable",
         )
 
-    records = _records(area)
-    explicit_material = _material_key(question, records)
-    # Retoma um PN previamente selecionado, nunca um item arbitrário da tabela.
-    context = context or {}
-    previous_pn = str(context.get("subject_key") or "") if context.get("subject_type") == "material" else ""
-    normalized_question = _normalize(question)
-    plural_request = bool(re.search(r"\b(quais|todos|todas|lista|liste|quantos|quantas)\b", normalized_question))
-    explicit_other_pn = bool(re.search(r"\b(?:pn|material)\s+[a-z0-9]+(?:-[a-z0-9]+)+\b", normalized_question))
-    if not explicit_material and previous_pn and not plural_request and not explicit_other_pn and len(normalized_question.split()) <= 12:
-        if any(record["entity_key"].casefold() == previous_pn.casefold() for record in records):
-            explicit_material = next(record["entity_key"] for record in records if record["entity_key"].casefold() == previous_pn.casefold())
+    # Mantém correspondência exata com a chave armazenada no relatório.
+    if explicit_material:
+        explicit_material = next(
+            record["entity_key"] for record in records
+            if record["entity_key"].casefold() == explicit_material.casefold()
+        )
     if explicit_material:
         record = next(record for record in records if record["entity_key"] == explicit_material)
         item = record["payload"]
