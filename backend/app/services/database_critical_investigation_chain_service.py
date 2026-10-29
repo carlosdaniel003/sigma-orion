@@ -126,6 +126,8 @@ def _detail_requested(question: str, context: dict) -> tuple[bool, str | None, s
 
     chain = _chain(context)
     if not chain:
+        if _ordinal(question) is not None or re.search(r"\b(?:esse|essa|este|esta)\s+(?:pn|material|item)\b", q):
+            return True, None, "Não há seleção ativa nesta sessão. Informe o PN ou solicite primeiro um ranking de déficits."
         return False, None, None
 
     position = _ordinal(question)
