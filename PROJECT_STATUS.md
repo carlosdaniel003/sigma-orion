@@ -914,3 +914,10 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - A resposta separa explicitamente Fatos, Cálculo determinístico e Interpretação/pendências. Não extrapola uma divergência contábil em causa, perda física ou pedido de compra.
 - Consultas de CQ/Estoque logo após selecionar um PN retomam o PN explicitamente selecionado, mas consultas plurais continuam operando na categoria inteira.
 - Regressões de encadeamento e isolamento em `backend/tests/test_agent_critical_investigation_chain.py`.
+
+### Ajuste contextual de REGRA-004 e CQ por PN (2026-10-29)
+
+- Correção da rota **"Consulta os materiais do Cenário ORION conforme a REGRA-004"**: apresentação da lista atual de críticos e contexto de coleção, preservando a consulta literal da regra quando a pergunta pede sua definição.
+- A sequência **lista → "Explique essa contagem" → ranking → PN** passa pela consulta determinística à contagem atual, sem depender da síntese livre da LLM.
+- Em consulta singular de Qualidade para um PN selecionado, o roteador utiliza a pergunta original e o foco do contexto, não apenas o texto expandido pelo planejador. Se o PN estiver ausente do relatório de CQ, a resposta informa a ausência de registro *desse PN*, sem retornar os demais cinco encontrados. Relatório ausente e PN ausente são estados distintos.
+- Regressões em `backend/tests/test_agent_critical_investigation_chain.py`, incluindo o PN `0404-26` com estoque aguardando validação e sem registro individual em Qualidade.
