@@ -323,7 +323,25 @@ def _metric_answer(question: str, key: str) -> DatabaseKnowledgeAnswer:
             "Não representa percentual da quantidade produzível."
         )
     elif key == "risk_models":
-        msg += "\n\n**Definição:** modelos com restrição de material UN crítico; não comprova impossibilidade física absoluta de produzir."
+        msg += (
+            "\n\n**Definição:** no DPP Final, são modelos ativos (REAL maior que zero) "
+            "que utilizam pelo menos um material UN classificado como crítico. "
+            "Esse vínculo não comprova impossibilidade física absoluta de produzir."
+        )
+    elif key == "safe_models":
+        msg += "\n\n**Definição:** modelos ativos no DPP Final que não possuem material UN crítico vinculado na matriz de consumo."
+    elif key == "active_models":
+        msg += "\n\n**Definição:** modelos com REAL maior que zero no DPP Final."
+    elif key == "pgd_exposed":
+        msg += "\n\n**Definição:** soma do KIT disponível PGD dos modelos em risco identificados no DPP Final."
+    elif key == "outside_scope_um":
+        msg += "\n\n**Definição:** materiais cuja UM é diferente de UN; continuam calculados, mas não entram na REGRA-004 nesta etapa."
+    elif key == "negative_balance_all_units":
+        msg += "\n\n**Definição:** materiais com SALDO negativo independentemente da UM; não confundir com materiais críticos, que exigem UM = UN."
+    elif key == "models_above_kit":
+        msg += "\n\n**Definição:** modelos com REAL maior que KIT disponível PGD no Cenário ORION."
+    elif key == "opc_count":
+        msg += "\n\n**Definição:** quantidade de materiais com OPC preenchido no DPP Final, não número de substituições autorizadas."
     elif key in {"kit_pgd_total", "real_total"}:
         msg += "\n\n**Origem:** planejamento PGD mapeado e REAL calculado/ajustado no Cenário ORION, conforme a documentação do Dashboard."
     else:
