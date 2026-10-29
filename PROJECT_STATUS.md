@@ -904,3 +904,13 @@ O STK do cenário mensal novo registra fingerprint SHA-256; a investigação com
 - Perguntas independentes separadas por `?` e com intenção de definição/data podem receber respostas individuais em uma única mensagem, reunindo evidências; combinações matemáticas/causais seguem sob o planejador composto anterior.
 - O contrato `ChatResponse` mantém no máximo uma tabela; caso duas partes tenham tabelas, elas são representadas em um único conjunto combinado com a origem da consulta em cada linha.
 - Testes: `backend/tests/test_agent_domain_definitions.py`; teste de abstinência do RAG atualizado para fatos realmente fora do domínio.
+
+## Encadeamento de investigação por criticidade (2026-10-29)
+
+- Serviço `database_critical_investigation_chain_service.py` faz o ranking auditável dos PNs com UM = UN e SALDO < -0,0001 a partir do Cenário ORION sincronizado, sem recálculo da NEC/STK pelo LLM.
+- Perguntas sequenciais podem listar críticos, explicar a contagem e as REGRA-001/002/003/004, pedir os maiores déficits por valor absoluto de SALDO negativo e aprofundar o PN por código exato ou posição no ranking anterior.
+- A investigação do PN exibe NEC/STK TTL/SALDO, déficit inicial derivado e sinais disponíveis de M221/P277 e Q239/Q273, identificando relatórios ausentes como indisponíveis e quantidades brutas como não liberadas automaticamente. Q273 paralelo ao Q239 permanece informativo.
+- O contexto do SQLite armazena somente o escopo, os PNs ordenados e o PN selecionado, preservando a retenção de 24 horas; os valores são relidos do banco a cada consulta. Ao alterar o fingerprint do workspace, o contexto anterior é descartado.
+- A resposta separa explicitamente Fatos, Cálculo determinístico e Interpretação/pendências. Não extrapola uma divergência contábil em causa, perda física ou pedido de compra.
+- Consultas de CQ/Estoque logo após selecionar um PN retomam o PN explicitamente selecionado, mas consultas plurais continuam operando na categoria inteira.
+- Regressões de encadeamento e isolamento em `backend/tests/test_agent_critical_investigation_chain.py`.
