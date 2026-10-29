@@ -53,6 +53,11 @@ def _selected_pn(question: str, context: dict) -> str | None:
 
 def _matches(question: str) -> bool:
     q = _normalize(question)
+    # Explicação de status crítico possui rota canônica já auditada, que
+    # inclui status FORA_ESCOPO_UM/OK/INVESTIGAR e referência REGRA-004.
+    # Não substituir sua conclusão por uma síntese parcial de SALDO.
+    if re.search(r"\b(?:critico|critica|criticidade)\b", q):
+        return False
     reason = any(x in q for x in (
         "por que", "porque", "qual a causa", "qual foi a causa",
         "como chegou", "de onde veio", "como foi calcul",
