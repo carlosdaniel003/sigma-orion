@@ -106,3 +106,11 @@ O RAG complementa essas respostas, mas não pode substituir uma regra determiní
 - Ao mudar o fingerprint do workspace, descartar toda a referência contextual anterior, inclusive ranking e PN selecionado. Todos os valores devem ser consultados novamente no SQLite.
 - Distinguir sempre **fatos observados** (Cenário/DPP/depósitos), **cálculos determinísticos** (NEC, STK TTL, SALDO e déficit derivado) e **interpretações/hipóteses** (não conclusivas). Quantidade bruta e evidência de CQ não equivalem a material fisicamente liberado.
 - Não perder a lista anterior apenas por explicar uma regra intermediária e não substituir resposta estruturada por uma inferência da LLM.
+
+#### Consultas explícitas de REGRA-004 e referências a PNs sem CQ
+
+- Quando a pergunta solicita **consultar/listar materiais conforme REGRA-004**, executar a consulta dos materiais críticos do Cenário ORION e mostrar os PNs, não apenas a descrição textual da REGRA-004. Pedidos específicos para explicar o significado ou os critérios da regra continuam seguindo o registro de regras.
+- A pergunta seguinte sobre "essa contagem" deve explicar o total de materiais da coleção consultada e a cadeia REGRA-001/002/003/004, sem transferir a resposta para a LLM por falta de foco.
+- Uma pergunta singular sobre o **PN selecionado** em Estoque ou Qualidade deve manter exatamente o PN, mesmo se ele não tiver registro na área requisitada. Nessa situação, informar que o PN não consta no relatório da área; não retornar a lista de outros PNs encontrados.
+- A falta de registro de um PN em Q239/Q273 não comprova ausência física em CQ; distinguir essa condição da indisponibilidade do relatório de Qualidade inteiro. Preservar o status de validação do Estoque apenas quando houver evidência sincronizada do mesmo PN.
+- Uma pergunta sobre "esse PN" sem PN selecionado deve pedir identificação, nunca escolher automaticamente o primeiro ou último PN de uma lista. Pedidos plurais continuam consultando toda a categoria.
