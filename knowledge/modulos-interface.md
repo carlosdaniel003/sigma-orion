@@ -46,7 +46,7 @@
 
 **Origem:** Arquitetura operacional definida pela REGRA-012 e pelos guardrails: Python calcula, SQLite/FTS5/BM25 organiza e recupera fatos/conhecimento, a LLM interpreta quando necessário e o humano valida e decide.
 
-**Finalidade:** Deixar claro que o Agente ORION já é uma camada de apoio à investigação, não um substituto do cálculo determinístico. Ele consulta o workspace sincronizado e apresenta evidências; decisões e alterações continuam sob responsabilidade humana.
+**Finalidade:** Deixar claro que o Agente ORION já é uma camada de apoio à investigação, não um substituto do cálculo determinístico. As consultas da sessão podem encadear contagem de PNs críticos, ranking dos maiores déficits, seleção de um PN e aprofundamento no Estoque/CQ, sempre com evidência, regra e interpretação separadas. Ele consulta o workspace sincronizado e apresenta evidências; decisões e alterações continuam sob responsabilidade humana.
 
 ## dashboard.scenario_comparison — ORION × DPP Final
 
