@@ -190,3 +190,40 @@ def test_explicit_unrelated_critical_question_still_uses_original_count_logic():
         assert "REGRA-004" in response["answer"]
         assert "4 material(is)" in response["answer"]
         assert response["table"] is None
+
+
+def test_rank_survives_count_explanation_and_unknown_pn_never_uses_previous_selection():
+    with TestClient(app) as client:
+        _sync(client)
+        _ask(client, "Quais materiais estão críticos?", "rank-count-chain")
+        _ask(client, "Mostre os 3 maiores déficits", "rank-count-chain")
+        count = _ask(client, "Explique essa contagem", "rank-count-chain")
+        assert "REGRA-004" in count["answer"]
+        context = load_chat_context("rank-count-chain")
+        assert context["investigation_chain"]["ranking"] == ["MAT-B", "MAT-C", "MAT-A"]
+        detail = _ask(client, "Investigue o segundo item", "rank-count-chain")
+        assert detail["table"]["rows"][0]["material"] == "MAT-C"
+
+        unknown = _ask(client, "Investigue o PN MAT-INEXISTENTE", "rank-count-chain")
+        assert "não foi localizado" in unknown["answer"]
+        assert unknown["table"] is None
+        assert "PN MAT-C:" not in unknown["answer"]
+
+
+def test_quality_plural_query_does_not_inherit_last_selected_material():
+    with TestClient(app) as client:
+        _sync(client)
+        _ask(client, "Investigue o PN MAT-C", "plural-chain")
+        response = _ask(client, "Quais materiais estão encontrados em CQ?", "plural-chain")
+        assert response["model"] == "deterministic-dashboard-investigation"
+        assert response["table"]["total_rows"] == 1
+        assert response["table"]["rows"][0]["material"] == "MAT-C"
+        assert "Encontrados em CQ" in response["answer"]
+
+
+def test_unrelated_session_does_not_inherit_other_sessions_rankings():
+    with TestClient(app) as client:
+        _sync(client)
+        _ask(client, "Mostre os 3 maiores déficits", "session-owner")
+        response = _ask(client, "Investigue o segundo item", "different-session")
+        assert "Não há seleção ativa" in response["answer"]
