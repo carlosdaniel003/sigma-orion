@@ -92,7 +92,7 @@ function createInitialAgentMessage() {
   return {
     id: 'initial',
     role: 'orion',
-    text: 'Consulte materiais, PNs, modelos, Estoque, Qualidade, siglas, fórmulas, cálculos, fontes e divergências. Também posso informar a data e a hora. Para dados do mês, utilizo o Cenário ORION, o DPP Final e as investigações sincronizadas. Se uma definição ainda não foi validada no processo, informo essa limitação.',
+    text: 'Pergunte o que é, como funciona e por que acontece cada etapa do DPP e do Dashboard: materiais, modelos, indicadores, Estoque, Qualidade, fontes, regras e divergências. Consulto o Cenário ORION, o DPP Final e as investigações sincronizadas, mantendo fatos, cálculos e hipóteses separados. Se não houver evidência suficiente para uma causa, informo essa limitação.',
     evidence: [],
     sources: [],
     entities: [],
@@ -592,7 +592,7 @@ function AgentOrion({ apiUrl }) {
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={conversationReady ? 'Pergunte sobre materiais, modelos ou divergências...' : 'Restaurando conversa...'}
+                placeholder={conversationReady ? 'Pergunte sobre o DPP, Dashboard, indicadores ou investigações...' : 'Restaurando conversa...'}
                 disabled={asking || !conversationReady}
               />
               <button type="submit" disabled={!question.trim() || asking || !conversationReady}>{asking ? 'Consultando' : 'Enviar'}</button>
