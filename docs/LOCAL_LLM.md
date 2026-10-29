@@ -214,3 +214,8 @@ Comece com:
 ```
 
 Depois de validar CPU, é possível testar outro build do llama.cpp (por exemplo Vulkan) e aumentar `-GpuLayers`, sem alterar a integração do ORION.
+
+
+### Explicações de domínio sem depender da LLM
+
+Consultas de significado, finalidade, origem e funcionamento dos módulos do Dashboard e dos Testes são fundamentadas em `modulos-interface.md`. Indicadores disponíveis e justificativas matemáticas de NEC/STK TTL/SALDO por PN são lidos dos registros do workspace SQLite e das regras versionadas. O Qwen/llama.cpp não é necessário nessas rotas determinísticas; em perguntas causais não demonstradas, o agente deve informar explicitamente a ausência de evidência. Fontes e escopo (Cenário ORION ou DPP Final) permanecem rastreáveis.
