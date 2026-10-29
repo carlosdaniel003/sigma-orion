@@ -353,7 +353,8 @@ def _critical_materials_answer(question: str) -> DatabaseKnowledgeAnswer | None:
     wants_rule = _is_formula(question) or any(
         marker in normalized
         for marker in (
-            "como chegou", "como definiu", "como definir", "como e feito",
+            "como chegou", "como voce chegou", "de onde veio", "como foi obtido",
+            "como obteve", "por que", "porque", "como definiu", "como definir", "como e feito",
             "como identific", "qual criterio", "qual regra",
             "o que define", "o que determina", "o que e material critico",
             "o que significa material critico",

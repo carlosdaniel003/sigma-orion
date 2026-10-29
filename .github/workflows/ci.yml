@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feat/bootstrap-mvp]
   pull_request:
-    branches: [main]
+    branches: [main, feat/bootstrap-mvp]
 
 jobs:
   backend:

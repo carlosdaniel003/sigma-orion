@@ -188,4 +188,11 @@ def build_persisted_context(knowledge: DatabaseKnowledgeAnswer, response_entitie
         if item not in typed:
             typed.append(item)
 
+    if subject_type == "collection" and subject_key:
+        # Itens de uma tabela são linhas, não possíveis sujeitos implícitos.
+        # A consulta inteira é o sujeito que deverá sobreviver ao follow-up.
+        typed = [item for item in typed if item["type"] not in {"material", "model"}]
+        aggregate = {"type": "collection", "key": subject_key}
+        typed = [item for item in typed if item != aggregate]
+        typed.append(aggregate)
     return {**knowledge.context, "last_entities": typed[-12:]}
