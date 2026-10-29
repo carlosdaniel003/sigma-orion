@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any
 
+from app.services.investigation_runtime_service import investigation_document_content, investigation_records
 from app.services.knowledge_catalog_service import (
     _connect,
     _ensure_schema,
@@ -246,6 +247,17 @@ def _workspace_documents(workspace: dict | None) -> list[RuntimeDocument]:
     ]
     documents.extend(_scenario_documents(payload.get("scenario") or {}, month))
     documents.extend(_final_documents(payload.get("final_dpp") or {}, month))
+    for record in investigation_records(payload):
+        title = (
+            f"Resumo da investigação de {record['area']} · Dashboard DPP"
+            if record["kind"] == "summary"
+            else f"PN {record['key']} · investigação de {record['area']}"
+        )
+        documents.append(RuntimeDocument(
+            source=record["source"],
+            title=title,
+            content=investigation_document_content(record),
+        ))
     return documents
 
 
@@ -331,6 +343,14 @@ def _workspace_entities(workspace: dict | None) -> list[RuntimeEntity]:
                         f"{base}/comparison/column/{_token(name)}",
                         column,
                     ))
+    for record in investigation_records(payload):
+        entities.append(RuntimeEntity(
+            entity_type="investigation_summary" if record["kind"] == "summary" else "investigation_material",
+            entity_key=record["key"],
+            scope=record["area"],
+            source=record["source"],
+            payload=record["payload"],
+        ))
     return entities
 
 
@@ -350,6 +370,11 @@ def _fingerprint(workspace: dict | None) -> str:
         "scenario_models": models,
         "final_analysis_id": final_dpp.get("analysis_id"),
         "final_filename": final_dpp.get("filename"),
+        # Uma revisão de CQ/Almoxarifado muda os fatos mesmo se o cenário e o
+        # DPP Final permanecerem com os mesmos IDs.
+        "investigations_digest": sha256(
+            _json(payload.get("investigations") or {}).encode("utf-8")
+        ).hexdigest(),
     }
     return sha256(_json(identity).encode("utf-8")).hexdigest()
 
