@@ -6,6 +6,9 @@ import unicodedata
 from app.schemas.agent import ChatResponse
 from app.services.database_answer_service import DatabaseKnowledgeAnswer, answer_database_knowledge
 from app.services.database_chat_refinement_service import refine_database_answer
+from app.services.database_clock_service import answer_clock_question
+from app.services.database_domain_definition_service import answer_domain_definition
+from app.services.database_multi_question_service import split_independent_questions, combine_knowledge_answers
 from app.services.database_investigation_query_service import answer_investigation_question
 from app.services.database_conversation_grounding_service import (
     apply_deterministic_conclusions,
@@ -99,17 +102,21 @@ def _smalltalk_knowledge(previous_context: dict, question: str) -> DatabaseKnowl
     )
 
 
-def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
-    runtime = runtime_workspace_status()
-    previous_context = load_chat_context(session_id)
+def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[DatabaseKnowledgeAnswer, bool, str]:
+    """Resolve uma pergunta por fatos rastreáveis antes de qualquer síntese LLM."""
 
-    # O roteador é a fonte única da intenção. Executores estruturados recebem o plano
-    # já classificado e não reinterpretam keywords para escolher outra rota.
-    plan = plan_database_question(question, previous_context)
     status_direct = False
     structured_route = ""
 
-    if plan.smalltalk:
+    clock_result = answer_clock_question(plan.resolved_question)
+    definition_result = answer_domain_definition(plan.resolved_question) if clock_result is None else None
+    if clock_result is not None:
+        knowledge = clock_result
+        structured_route = "runtime-clock"
+    elif definition_result is not None:
+        knowledge = definition_result
+        structured_route = "glossary-definition"
+    elif plan.smalltalk:
         knowledge = _smalltalk_knowledge(previous_context, question)
     else:
         status_result = status_knowledge_answer(plan)
@@ -152,6 +159,28 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
 
         knowledge = apply_deterministic_conclusions(question, plan, knowledge)
 
+    return knowledge, status_direct, structured_route
+
+
+def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
+    runtime = runtime_workspace_status()
+    previous_context = load_chat_context(session_id)
+
+    # O roteador é a fonte única da intenção. Executores estruturados recebem o plano
+    # já classificado e não reinterpretam keywords para escolher outra rota.
+    plan = plan_database_question(question, previous_context)
+    questions = split_independent_questions(question)
+    if questions:
+        parts = [
+            _resolve_single_knowledge(plan_database_question(part, previous_context), previous_context)[0]
+            for part in questions
+        ]
+        knowledge = combine_knowledge_answers(questions, parts)
+        status_direct = False
+        structured_route = "multi-question"
+    else:
+        knowledge, status_direct, structured_route = _resolve_single_knowledge(plan, previous_context)
+
     deterministic_answer = knowledge.answer
     enhancement = enhance_grounded_answer(
         question=question,
@@ -193,6 +222,10 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         audit_provider = "deterministic-status-registry"
         response_provider = "local-router"
         response_model = "deterministic-status-registry"
+    elif structured_route in {"runtime-clock", "glossary-definition", "multi-question"}:
+        audit_provider = f"deterministic-{structured_route}"
+        response_provider = "local-rag"
+        response_model = f"deterministic-{structured_route}"
     elif structured_route == "rule-registry" and not enhancement.used:
         audit_provider = "deterministic-rule-registry"
         response_provider = "local-router"
