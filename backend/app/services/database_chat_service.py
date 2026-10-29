@@ -6,6 +6,10 @@ import unicodedata
 from app.schemas.agent import ChatResponse
 from app.services.database_answer_service import DatabaseKnowledgeAnswer, answer_database_knowledge
 from app.services.database_chat_refinement_service import refine_database_answer
+from app.services.database_critical_investigation_chain_service import (
+    answer_critical_investigation_chain,
+    carry_investigation_chain,
+)
 from app.services.database_clock_service import answer_clock_question
 from app.services.database_domain_definition_service import answer_domain_definition
 from app.services.database_multi_question_service import split_independent_questions, combine_knowledge_answers
@@ -110,10 +114,14 @@ def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[
     structured_route = ""
 
     clock_result = answer_clock_question(plan.resolved_question)
-    definition_result = answer_domain_definition(plan.resolved_question) if clock_result is None else None
+    chain_result = answer_critical_investigation_chain(question, previous_context) if clock_result is None else None
+    definition_result = answer_domain_definition(plan.resolved_question) if clock_result is None and chain_result is None else None
     if clock_result is not None:
         knowledge = clock_result
         structured_route = "runtime-clock"
+    elif chain_result is not None:
+        knowledge = chain_result
+        structured_route = "critical-investigation-chain"
     elif definition_result is not None:
         knowledge = definition_result
         structured_route = "glossary-definition"
@@ -166,6 +174,9 @@ def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[
 def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
     runtime = runtime_workspace_status()
     previous_context = load_chat_context(session_id)
+    # A memória da sessão não pode apontar para um ranking/PN de outro cenário.
+    if previous_context.get("workspace_fingerprint") != runtime["workspace_fingerprint"]:
+        previous_context = {}
 
     # O roteador é a fonte única da intenção. Executores estruturados recebem o plano
     # já classificado e não reinterpretam keywords para escolher outra rota.
@@ -207,6 +218,8 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         }
         for chunk in knowledge.chunks
     ]
+    carry_investigation_chain(question, previous_context, knowledge)
+    knowledge.context["workspace_fingerprint"] = runtime["workspace_fingerprint"]
     response_entities = _merge_entities(
         plan.concept_entities,
         plan.status_entities,
@@ -239,6 +252,10 @@ def answer_database_question(question: str, session_id: str = "") -> ChatRespons
         audit_provider = f"grounded-llm:{enhancement.provider or 'configured'}"
         response_provider = enhancement.provider or "local-llm"
         response_model = enhancement.model or "local-model"
+    elif structured_route == "critical-investigation-chain":
+        audit_provider = "deterministic-critical-investigation-chain"
+        response_provider = "local-rag"
+        response_model = "deterministic-critical-investigation-chain"
     elif structured_route == "dashboard-investigation":
         audit_provider = "deterministic-dashboard-investigation"
         response_provider = "local-rag"
