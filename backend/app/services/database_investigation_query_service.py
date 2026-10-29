@@ -27,12 +27,15 @@ def _summary(area: str) -> dict | None:
 
 def _requested_area(question: str, context: dict) -> str | None:
     q = _normalize(question)
+    if "resumo operacional" in q or ("investigac" in q and any(term in q for term in ("painel", "dashboard", "resumo"))):
+        return "overview"
+    if "encaminhad" in q and "qualidade" in q:
+        # Este é um indicador da etapa 4.1, não o grupo "recebidos" de CQ.
+        return "stock"
     if any(term in q for term in ("q239", "q273", "qualidade", "controle de qualidade", "encontrados em cq", "aguardando cq", "refugo")) or re.search(r"\bcq\b", q):
         return "quality"
     if any(term in q for term in ("m221", "p277", "almoxarifado", "divergencia de estoque", "encontrados em estoque", "depositos de estoque")):
         return "stock"
-    if "resumo operacional" in q or ("investigac" in q and any(term in q for term in ("painel", "dashboard", "resumo"))):
-        return "overview"
     if any(term in q for term in ("investigacao", "investigacoes", "deposito", "depositos", "encontrados", "pendentes")):
         subject = str(context.get("subject_key") or "")
         if subject.startswith("investigation:"):
@@ -217,9 +220,32 @@ def answer_investigation_question(question: str, context: dict | None = None) ->
             f"{c.get('depot')}/{c.get('center') or 'sem centro'}: "
             f"{_format_number(c.get('quantity'))} {item.get('unit') or ''}, "
             f"{'pendente' if not c.get('validation') else 'validado (' + str(c['validation'].get('decision')) + ')'}, "
+            f"quantidade confirmada {_format_number((c.get('validation') or {}).get('confirmed_quantity'))}, "
+            f"contabilização {(c.get('validation') or {}).get('accounting') or 'não informada'}, "
             f"linhas ORIGINAL {c.get('source_rows') or []}"
             for c in candidates
         ) or "Sem registros nos depósitos investigados"
+        if area == "stock":
+            values = (
+                ("Déficit original", "negative_balance"),
+                ("Disponibilidade confirmada fora do DPP, aplicada ao déficit", "recovered_quantity_applied"),
+                ("Indisponibilidade justificada, aplicada ao déficit", "justified_unavailable_applied"),
+                ("Gap físico projetado após Estoque", "projected_gap_remaining"),
+                ("Falta ainda sem explicação", "unexplained_quantity"),
+            )
+        else:
+            values = (
+                ("Falta recebida da etapa 4.1", "gap_from_41"),
+                ("Liberação CQ adicional, aplicada ao déficit", "quality_released_applied"),
+                ("Reprovação CQ justificada, aplicada ao déficit", "quality_rejected_applied"),
+                ("Refugo CQ comprovado, aplicado ao déficit", "quality_scrap_applied"),
+                ("Gap físico após Qualidade", "physical_gap_after_quality"),
+                ("Falta ainda sem explicação", "unexplained_after_quality"),
+            )
+        quantities = "; ".join(
+            f"{label}: {_format_number(item[key])} {item.get('unit') or ''}"
+            for label, key in values if item.get(key) is not None
+        )
         note = (
             f"Q273 paralelo é apenas informativo ({item.get('q273_records_skipped_due_q239') or 0} registro(s)); "
             if area == "quality" and item.get("active_depot") == "Q239" else ""
@@ -230,10 +256,14 @@ def answer_investigation_question(question: str, context: dict | None = None) ->
             f"Falta sem explicação: {rows[0]['gap']}; situação: {rows[0]['status']}; "
             f"validações pendentes: {rows[0]['pending']}. {note}"
             f"Registros: {details}. "
+            f"{quantities}. Próxima etapa: {item.get('next_step') or 'não informada'}. "
             "Quantidade encontrada não equivale a material liberado ou saldo disponível."
         )
-        return _answer(answer, [record], question, area=area, category="material",
-                       table=_table(f"Investigação do PN {explicit_material}", rows, total=1))
+        response = _answer(answer, [record], question, area=area, category="material",
+                           table=_table(f"Investigação do PN {explicit_material}", rows, total=1))
+        response.context.update({"subject_type": "material", "subject_key": explicit_material,
+                                 "investigation_area": area})
+        return response
 
     category = _category(area, question)
     selected = _members(area, category, records)
