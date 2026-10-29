@@ -53,6 +53,8 @@ O chat é DB-first. O frontend não possui respostas operacionais pré-definidas
 
 As investigações contextuais podem ser encadeadas na mesma sessão: listar críticos (REGRA-004) → explicar a contagem (REGRA-001 a REGRA-004) → ordenar os maiores déficits do SALDO ORION → selecionar por PN ou posição do ranking → consultar Estoque/CQ do PN. O ranking é recalculado a partir das entidades atuais do cenário e a seleção é invalidada quando muda o fingerprint do workspace. As respostas distinguem fatos sincronizados, cálculo determinístico e interpretação sem confirmação; depósito bruto não implica liberação nem compra. Definições curtas de domínio são resolvidas pelo glossário versionado, consultas de data/hora usam o relógio local configurado no backend (`ORION_TIMEZONE`, padrão `America/Manaus`) e perguntas independentes de definição podem ser respondidas na mesma mensagem, preservando evidências e tabela. Termos sem significado operacional homologado são explicitamente apresentados como pendentes, sem expansão fictícia de siglas.
 
+A consulta explícita de materiais segundo a REGRA-004 devolve a lista do Cenário ORION, não somente a descrição da regra. Uma referência singular a PN na Qualidade/Estoque é restrita ao PN selecionado, inclusive quando ele não consta da investigação da área: relatório sem registro do PN não equivale a CQ não sincronizado nem a inexistência física.
+
 ```text
 Pergunta
    ↓
