@@ -112,8 +112,8 @@ EXPLAIN_MARKERS = (
     "como e montado", "explique", "explica", "descreva", "detalhe",
     "qual o objetivo", "qual e o objetivo", "de onde vem", "de onde veio",
     "qual a origem", "o que acontece", "o que ocorre",
-    "como interpretar", "como ler", "qual a diferenca",
-    "como sao", "como se", "por qual motivo",
+    "como interpretar", "como ler", "qual a diferenca", "como chegou",
+    "como calculou", "como foi calculado", "como sao", "como se", "por qual motivo",
 )
 NUMERIC_MARKERS = (
     "quantos", "quantas", "quanto", "qual o valor", "qual e o valor",
