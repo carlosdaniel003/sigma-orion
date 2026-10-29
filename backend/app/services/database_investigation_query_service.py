@@ -211,6 +211,12 @@ def answer_investigation_question(question: str, context: dict | None = None) ->
 
     records = _records(area)
     explicit_material = _material_key(question, records)
+    # Retoma um PN previamente selecionado, nunca um item arbitrário da tabela.
+    context = context or {}
+    previous_pn = str(context.get("subject_key") or "") if context.get("subject_type") == "material" else ""
+    if not explicit_material and previous_pn and len(_normalize(question).split()) <= 12:
+        if any(record["entity_key"].casefold() == previous_pn.casefold() for record in records):
+            explicit_material = next(record["entity_key"] for record in records if record["entity_key"].casefold() == previous_pn.casefold())
     if explicit_material:
         record = next(record for record in records if record["entity_key"] == explicit_material)
         item = record["payload"]
