@@ -176,3 +176,19 @@ def test_stale_scenario_investigations_are_not_indexed(tmp_path, monkeypatch) ->
     answer = answer_investigation_question("Quais os itens encontrados em CQ?")
     assert "não está sincronizado" in answer.answer
     assert answer.table is None
+
+
+def test_forwarded_to_quality_uses_stock_investigation_and_material_quantities(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(catalog, "DATABASE_URL", f"sqlite:///{tmp_path / 'orion.db'}")
+    sync_runtime_workspace(_workspace())
+
+    forwarded = answer_investigation_question("Quais PNs encaminhados à Qualidade?")
+    assert forwarded is not None
+    assert forwarded.table["total_rows"] == 6
+    assert "Encaminhados à Qualidade" in forwarded.answer
+
+    detail = answer_investigation_question("Detalhe o PN MAT-101 na análise de qualidade")
+    assert detail is not None
+    assert "Liberação CQ adicional, aplicada ao déficit: 3 UN" in detail.answer
+    assert "quantidade confirmada 3" in detail.answer
+    assert detail.context["subject_key"] == "MAT-101"
