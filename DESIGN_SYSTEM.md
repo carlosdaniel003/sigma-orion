@@ -1,0 +1,1291 @@
+# SIGMA-S ORION — Design System
+
+> Documento normativo do frontend. Toda alteração visual deve consultar este arquivo antes da implementação. Se uma alteração introduzir uma regra visual nova e aprovada, este documento deve ser atualizado no mesmo trabalho/PR.
+
+## 1. Objetivo do produto
+
+O SIGMA-S ORION é um software industrial de análise e consolidação do DPP. A interface deve parecer um produto deliberadamente construído por uma equipe de produto, não uma landing page SaaS nem um dashboard genérico gerado por IA.
+
+A prioridade visual é:
+
+1. responder rapidamente às perguntas do analista;
+2. mostrar dados reais do DPP com contexto;
+3. deixar claro o que é cenário ORION e o que é DPP Final;
+4. evidenciar exceções, riscos e decisões;
+5. manter densidade adequada para uso contínuo em desktop;
+6. preservar desempenho e consistência.
+
+## 2. Regra principal
+
+Toda decisão visual precisa ter função.
+
+Antes de adicionar um card, perguntar se uma destas soluções resolve melhor:
+
+- seção;
+- tabela;
+- linha;
+- divisor;
+- agrupamento por proximidade;
+- mudança tipográfica;
+- coluna;
+- estado semântico.
+
+Não criar elementos apenas para preencher espaço ou deixar a tela “mais bonita”.
+
+## 3. Linguagem visual
+
+A interface deve ser:
+
+- industrial;
+- técnica;
+- desktop/web;
+- densa em nível médio-alto;
+- funcional;
+- sóbria;
+- orientada a dados;
+- coerente entre telas;
+- rápida de ler;
+- compatível com uso prolongado.
+
+A referência de maturidade é a densidade e disciplina de ferramentas profissionais de engenharia, IDEs e software corporativo moderno. A organização do ChatGPT é referência para a navegação lateral recolhível e a área de conversa. A marca, as cores semânticas e os fluxos operacionais continuam próprios do ORION.
+
+## 4. Padrões proibidos
+
+Evitar padrões típicos de “vibe code” e interfaces geradas por IA:
+
+- excesso de cards;
+- cards dentro de cards sem necessidade;
+- border-radius de 16–24 px aplicado indiscriminadamente;
+- pills, chips e badges usados automaticamente para qualquer status;
+- combinação de texto semântico + fundo pastel + borda da mesma cor + cápsula;
+- barras laterais coloridas, accent borders e status rails sem função operacional explícita;
+- `border-left` semântico usado apenas para dar destaque;
+- glow;
+- glassmorphism;
+- backdrop blur decorativo;
+- gradientes sem função operacional;
+- sombras grandes para criar hierarquia;
+- métricas gigantes sem contexto;
+- espaços vazios de landing page;
+- conteúdo centralizado sem motivo;
+- emojis;
+- ícones decorativos;
+- ícones em todo título, badge e ação;
+- ícones dentro de círculos coloridos sem função;
+- microcopy genérica de template;
+- animação contínua sem função;
+- cores de identidade aplicadas a tudo;
+- caixas com fundo pastel para cada indicador;
+- bordas coloridas acompanhando automaticamente a cor do texto;
+- pequenos elementos geométricos sem significado;
+- componentes criados apenas para ocupar layout.
+
+## 5. Hierarquia baseada no trabalho do usuário
+
+O layout deve nascer das perguntas do analista, nesta ordem conceitual:
+
+```text
+Qual cenário estou vendo?
+        ↓
+Quanto queremos produzir? (PGD)
+        ↓
+Quanto foi definido no REAL?
+        ↓
+O que mudou no DPP Final?
+        ↓
+Quais modelos estão restritos?
+        ↓
+Quais materiais causam a restrição?
+        ↓
+Qual evidência explica o problema?
+        ↓
+Qual ação precisa ser investigada/decidida?
+```
+
+A ordem dos componentes deve acompanhar esse fluxo sempre que os dados disponíveis permitirem.
+
+## 6. Tokens obrigatórios
+
+Nenhuma nova cor, radius, sombra ou espaçamento deve ser criada fora destes tokens sem justificativa explícita e atualização deste documento.
+
+### 6.1 Tema escuro — identidade ORION
+
+O tema escuro deve permanecer técnico e azul-marinho, mas não pode ser preto demais. A leitura precisa continuar confortável em uso prolongado.
+
+```css
+--orion-bg: #0D1826;
+--orion-surface: #142235;
+--orion-surface-elevated: #1B2D43;
+--orion-border: #2B4057;
+
+--orion-blue: #46D9FF;
+--orion-success: #27F29A;
+--orion-warning: #F5C451;
+--orion-danger: #FF5D6C;
+--orion-neutral: #7F93A8;
+
+--orion-text: #F4F8FC;
+--orion-text-secondary: #91A4B8;
+```
+
+### 6.2 Tema claro — Apple preto e branco
+
+```css
+--orion-bg: #F5F5F7;
+--orion-surface: #FFFFFF;
+--orion-surface-elevated: #F5F5F7;
+--orion-border: #D2D2D7;
+
+--orion-text: #1D1D1F;
+--orion-text-secondary: #6E6E73;
+```
+
+No tema claro, preto/cinza assumem ação e seleção. Verde, amarelo e vermelho continuam semânticos.
+
+### 6.3 Cores semânticas
+
+Os tokens semânticos continuam disponíveis para situações em que a cor representa **dados, telemetria ou uma ação real**, mas não são a linguagem padrão de status da interface.
+
+- Azul `#46D9FF`: identidade ORION, foco, seleção, ação e progresso medido.
+- Verde `#27F29A`, amarelo `#F5C451` e vermelho `#FF5D6C`: reservados a visualizações/telemetria em que a cor seja necessária para interpretar dados ou progresso.
+- Cinza e as cores de texto do tema: padrão para estados, resultados, divergências e mensagens operacionais.
+
+### Regra de neutralidade semântica
+
+**Status passivos não devem usar texto verde, amarelo, vermelho ou azul e não devem usar bolinhas coloridas.**
+
+Isso vale globalmente para:
+
+- Dashboard;
+- Testes do DPP;
+- Base de conhecimento;
+- Agente ORION;
+- listas de arquivos;
+- tabelas;
+- comparações ORION × DPP Final;
+- divergências;
+- estados OK / atenção / erro / pendente;
+- indicadores de origem e disponibilidade.
+
+A informação deve continuar explícita por palavras, números, hierarquia tipográfica, divisores e, quando necessário, uma diferença neutra de superfície.
+
+Cores continuam permitidas em controles realmente interativos, foco, seleção, marca, realce de pesquisa e progresso real do processamento.
+
+## 7. Radius
+
+```css
+--radius-xs: 0px;
+--radius-sm: 0px;
+--radius-md: 0px;
+--radius-lg: 0px;
+```
+
+Regras:
+
+- inputs e botões: cantos retos (`0px`);
+- tabelas, agrupamentos e seções: cantos retos (`0px`);
+- controles de ícone: área quadrada, com largura e altura iguais;
+- cápsula (`999px`, `9999px`, `50px`, `rounded-full`) não faz parte da linguagem padrão de informação ou status;
+- cápsulas são reservadas a controles interativos cuja própria interação justifique o formato, conforme a seção de status e badges;
+- não usar `16–24px` como padrão.
+
+## 8. Espaçamento
+
+```css
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 24px;
+--space-6: 32px;
+```
+
+Não criar espaçamento de landing page. A densidade padrão é média-alta.
+
+## 9. Tipografia
+
+Fonte de interface:
+
+```css
+Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+```
+
+Escala:
+
+```css
+--text-xs: 11px;
+--text-sm: 12px;
+--text-md: 14px;
+--text-lg: 16px;
+--title: 20px;
+--display: 28px;
+```
+
+Regras:
+
+- números importantes podem usar `28px`, mas precisam de contexto próximo;
+- não criar dezenas de tamanhos diferentes;
+- títulos de seção normalmente `16–20px`;
+- labels, colunas e metadados `11–12px`;
+- dados tabulares `12–14px`;
+- usar `font-variant-numeric: tabular-nums` para métricas e tabelas numéricas.
+
+## 10. Sombras e elevação
+
+Hierarquia deve vir de fundo, borda, espaçamento, alinhamento e tipografia.
+
+Padrão:
+
+```css
+--shadow-none: none;
+--shadow-control: 0 1px 2px rgba(0, 0, 0, 0.08);
+```
+
+Sombras são permitidas apenas para controles flutuantes, tooltips, menus e overlays quando a separação espacial realmente existir.
+
+Painéis e cards de conteúdo não devem usar sombras grandes.
+
+## 11. Cards e agrupamentos
+
+Cards não são a unidade padrão do sistema.
+
+Preferir:
+
+- seção com cabeçalho + conteúdo;
+- tabela;
+- lista dividida por linhas;
+- agrupamento com uma borda externa e divisores internos;
+- duas colunas separadas por divisor;
+- faixa de métricas com separadores.
+
+Quando um card for realmente necessário:
+
+- cantos retos;
+- sem sombra grande;
+- padding compacto;
+- conteúdo específico do domínio;
+- não aninhar outro card sem necessidade.
+
+### Princípio de contenção visual
+
+Não colocar uma forma geométrica ao redor de uma informação apenas para torná-la visualmente reconhecível.
+
+Primeiro resolver hierarquia utilizando:
+
+- posição;
+- alinhamento;
+- espaçamento;
+- tamanho;
+- peso tipográfico;
+- contraste;
+- divisores.
+
+Somente criar um container quando houver necessidade funcional de agrupamento, interação ou separação estrutural.
+
+Antes de criar um badge, card ou caixa, verificar se texto, marcador, alinhamento, espaço, divisor ou tipografia já resolvem o problema.
+
+### Exceção funcional aprovada: Dashboard operacional do DPP (2026-10-19)
+
+Na interface **web** das investigações de Estoque e Qualidade, o usuário solicitou substituir as tabelas extensas por **resumo de métricas, filas de confirmação e painéis expansíveis por PN encontrado**. Isso é uma exceção operacional deliberada à preferência geral por tabelas, não um padrão global para todas as telas.
+
+- Na primeira leitura, mostrar PNs negativos, encontrados, pendências de área e gaps por unidade de medida.
+- As filas mostram apenas PNs **efetivamente encontrados** em M221/P277 ou Q239/Q273, com quantidade e ação explícitas; PNs sem registros permanecem contabilizados no resumo e no Excel.
+- Cards/agrupamentos de PN devem ser contidos, sem badges decorativos, sombras, cápsulas ou cores de status passivos.
+- Notebook: priorizar uma coluna de PNs com espaço legível; em monitores amplos, aproveitar duas colunas. Métricas e ações reorganizam-se em larguras menores.
+- Comparações complementares do DPP Final ficam num painel recolhível e usam agrupamentos responsivos, não grade de planilha.
+- A exportação **Excel organiza as cinco abas por indicadores do painel acionado**: Estoque (`PNs Críticos`, `PNs Encontrados`, `Aguardando Almoxarifado`, `Sem Registros`, `Encaminhados à Qualidade`) ou Qualidade (`PNs Recebidos`, `Encontrados Q239`, `Encontrados Q273`, `Aguardando CQ`, `Sem Registros nesses depósitos`). Cada aba lista os respectivos PNs e preserva origem, decisões e histórico de revisões. Nenhuma mudança visual web autoriza alterar os cálculos ou o escopo das investigações.
+- Verificar foco por teclado, rótulos do formulário, ausência de overflow horizontal nas filas e desempenho com muitos PNs.
+- **Revisão visual aprovada em 2026-10-19:** priorizar hierarquia textual, proximidade, divisores e espaçamento da escala existente. O azul ORION é reservado a controles reais (hover, foco, seleção) e dados medidos quando uma visualização quantitativa realmente ajuda a análise. Não usar ícones SVG com caixas/bordas/fundos apenas para decorar títulos; não adicionar ícone a cabeçalhos que já possuem texto e informação `i`. Ícones funcionais pequenos são permitidos em atalhos de navegação, sem tile ou caixa adicional ao próprio controle. Evitar novas cores, sombras, gradientes, efeitos glow, badges, blocos de KPIs com bordas individuais e composições de card dentro de card. Uma faixa de métricas com divisores internos é preferível a múltiplas caixas iguais.
+- É permitido exibir barras **proporcionais reais** (PNs com registros sobre PNs investigados; quantidade bruta encontrada sobre déficit do PN), sempre rotuladas como **evidência ainda não validada**, nunca como recuperação/aprovação. Não adicionar animação contínua nem percentuais inventados. A exibição deve funcionar em tema claro e escuro.
+- O acesso a Estoque e Qualidade é feito por **atalhos funcionais com texto**, que podem conter ícones SVG pequenos sem moldura ornamental. Não renderizar uma trilha ilustrada de etapas quando ela repetir esses atalhos e não indicar progresso real.
+- Para reduzir a fadiga de leitura, consolidar explicações repetidas em uma nota curta e separar visualmente: resumo, achados quantitativos, ações pendentes, lista de PNs encontrados e detalhes opcionais, preservando a rastreabilidade em cada PN. Gráficos de proporção por PN não devem se repetir nos cards quando os números do PN já fornecem essa informação: prefira um gráfico agregado na visão geral.
+
+### Janela de confirmação de aplicação do gap
+
+- Diálogo nativo acessível com foco modal e cancelamento possível; botão final só habilitado após prévia válida, zero validações pendentes e autorização explícita.
+- Texto numérico e quantitativo separado por unidade de medida, com origem, PNs ainda sem explicação e quantidade não recuperada. Não usar cards ornamentais, badges coloridos, ícones encaixotados nem efeitos decorativos.
+- A interface de aprovação não apresenta falsa equivalência entre justificativa e estoque adicional.
+- Se houver pendências, mostrar razões e manter aplicação bloqueada; nunca esconder erro ou substituir a decisão do analista.
+
+## 12. Tabelas
+
+Tabelas são componentes de primeira classe no ORION.
+
+Regras:
+
+- cabeçalho compacto;
+- números alinhados à direita;
+- `tabular-nums`;
+- hover discreto;
+- estado por cor apenas quando necessário;
+- descrição secundária menor que o código/modelo;
+- sticky header quando a tabela for longa;
+- priorizar colunas que respondem às decisões do analista.
+
+## 13. Status, indicadores, labels e badges
+
+### Regra principal
+
+Não transformar informações, estados ou indicadores automaticamente em badges, chips, pills ou cápsulas.
+
+Os padrões conhecidos como **pill badge**, **status chip**, **soft badge**, **outlined badge** ou **capsule badge** não fazem parte da linguagem visual padrão do ORION.
+
+Evitar especialmente o padrão:
+
+- texto colorido em negrito;
+- fundo pastel da mesma cor;
+- borda colorida;
+- formato totalmente arredondado;
+- `border-radius: 9999px` ou equivalente;
+- combinação simultânea de fundo + borda + texto usando a mesma cor semântica.
+
+Esse padrão não deve ser usado como solução visual padrão para estados como:
+
+- Mantido;
+- Reduzido;
+- Acima do PGD;
+- Abaixo do PGD;
+- Divergência;
+- Pendente;
+- Concluído;
+- Ativo;
+- Inativo;
+- OK;
+- Atenção.
+
+**Status são informação, não ação. Portanto, não devem parecer botões.**
+
+### Tratamento padrão de status
+
+Preferir, nesta ordem:
+
+1. texto simples;
+2. texto principal + descrição secundária;
+3. mudança tipográfica moderada;
+4. alinhamento/coluna específica;
+5. divisor;
+6. mudança muito sutil de fundo neutro quando houver seleção, expansão ou necessidade real de agrupamento.
+
+Não utilizar bolinha colorida, ponto semântico, círculo, quadrado colorido ou barra lateral como tratamento padrão de status.
+
+Exemplos preferidos:
+
+```text
+Sem divergência
+Divergência · Δ total +16.872 un.
+Pendente · aguardando DPP Final
+Erro · não foi possível carregar a análise
+```
+
+Também é aceitável separar a informação em linhas:
+
+```text
+Resultado
+Divergência
+
+Δ total
++16.872 un.
+```
+
+Evitar:
+
+```text
+● Sem divergência
+● Atenção
+● Erro
+```
+
+e qualquer equivalente em verde, amarelo, vermelho ou azul.
+
+Em tabelas, status devem aparecer como texto neutro na própria célula. Se o estado precisar de maior destaque, usar peso tipográfico, uma segunda linha de contexto ou superfície neutra — não cor semântica decorativa.
+
+### Uma cor, um canal
+
+Quando a cor for realmente necessária em uma exceção funcional, não codificar o mesmo significado simultaneamente por texto, borda e preenchimento.
+
+Para **status passivos**, o padrão é ainda mais simples:
+
+```text
+texto neutro + contexto
+```
+
+Exemplo:
+
+```text
+Divergência
+Δ total +16.872 un.
+```
+
+Não utilizar ponto, ícone ou texto colorido apenas para sinalizar o estado.
+
+### Uso de cores semânticas
+
+Verde, amarelo e vermelho não são a linguagem padrão de status do ORION.
+
+Podem ser usados apenas quando a cor é parte necessária de:
+
+- telemetria;
+- progresso real;
+- visualização de dados;
+- gráfico com legenda;
+- situação excepcional em que a leitura perderia informação relevante sem cor.
+
+Mesmo nesses casos, a informação deve continuar compreensível por texto, valor, eixo, legenda ou estrutura.
+
+### Tipografia de status
+
+Não utilizar automaticamente `font-weight: 600`, `700` ou `800` em status.
+
+Estados secundários devem normalmente utilizar peso `400` ou `500`.
+
+Negrito deve indicar hierarquia ou importância real, e não servir apenas para compensar um componente pequeno.
+
+### Forma
+
+Cápsulas totalmente arredondadas não fazem parte da linguagem visual padrão do sistema para informação.
+
+Evitar em status, métricas, labels informativos e indicadores:
+
+```css
+border-radius: 9999px;
+border-radius: 999px;
+border-radius: 50px;
+```
+
+E, em Tailwind ou bibliotecas equivalentes:
+
+```text
+rounded-full
+```
+
+Para elementos retangulares, utilizar os raios discretos definidos nos tokens do sistema.
+
+### Exceções
+
+Pills/chips podem existir apenas quando a própria interação justificar esse formato, por exemplo:
+
+- filtros selecionáveis;
+- tags removíveis;
+- tokens;
+- seleção múltipla;
+- toggle segmentado;
+- categorias clicáveis.
+
+Mesmo nesses casos, devem ser tratados como **controles interativos**, não como decoração ou status.
+
+### Hierarquia de forma
+
+Um elemento só deve parecer botão quando for clicável.
+
+Um status não clicável não deve compartilhar a mesma linguagem visual dos botões.
+
+Uma informação textual não deve receber contorno apenas para parecer um componente.
+
+Antes de criar um badge, verificar se texto, ícone, marcador, alinhamento, espaço, divisor ou tipografia já resolvem o problema.
+
+### Restrição de implementação
+
+Não utilizar `rounded-full` em elementos de status, métricas ou informação.
+
+Antes de utilizar classes equivalentes a:
+
+- `rounded-full`;
+- `bg-green-50`;
+- `text-green-700`;
+- `border-green-200`;
+
+em conjunto, revisar o componente.
+
+A combinação abaixo é considerada **antipadrão deste projeto**:
+
+```text
+texto semântico + fundo semântico claro + borda semântica + cápsula
+```
+
+Exemplo proibido como padrão de status:
+
+```jsx
+<span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-sm font-semibold text-green-700">
+  Mantido
+</span>
+```
+
+A implementação deve preferir algo estruturalmente simples, por exemplo:
+
+```jsx
+<span className="status-text">
+  Mantido
+</span>
+```
+
+### Evitar estética genérica de dashboard SaaS/IA
+
+Não usar indiscriminadamente:
+
+- cards para toda informação;
+- pills para todo status;
+- gradientes decorativos;
+- ícones dentro de círculos coloridos;
+- caixas com fundo pastel para cada indicador;
+- bordas coloridas acompanhando a cor do texto;
+- excesso de cantos arredondados;
+- componentes visuais sem função operacional.
+
+A interface deve parecer uma ferramenta profissional construída deliberadamente, e não uma coleção de componentes genéricos de biblioteca UI.
+
+## 14. Barras laterais, accent borders e indicadores de seleção
+
+### Regra principal
+
+Não utilizar barras coloridas nas laterais de linhas, cards, itens de lista ou células apenas para criar destaque visual.
+
+Os padrões conhecidos como **accent border**, **left accent bar**, **status rail**, **colored stripe** ou `border-left` semântico não fazem parte da linguagem visual padrão do ORION quando não adicionam informação funcional.
+
+Evitar especialmente:
+
+- `border-left` colorido;
+- `border-inline-start` colorido;
+- pseudo-elementos `::before` posicionados na lateral para formar uma faixa;
+- barras verticais de `2px`, `3px` ou `4px` como decoração;
+- `box-shadow: inset ...` simulando barra lateral;
+- faixas coloridas acompanhando todas as linhas de uma tabela;
+- accent bars cuja cor não represente informação adicional necessária.
+
+Esse padrão é considerado decorativo quando a mesma informação já pode ser compreendida por texto, posição, seleção, fundo, estrutura da tabela ou hierarquia tipográfica.
+
+### Antipadrão
+
+Não usar automaticamente:
+
+```text
+| Modelo A
+| Modelo B
+| Modelo C
+```
+
+com uma barra colorida à esquerda apenas para dar personalidade visual ao componente.
+
+Também evitar como solução automática:
+
+```css
+border-left: 3px solid var(--accent);
+```
+
+ou equivalentes com pseudo-elementos:
+
+```text
+before:absolute
+before:left-0
+before:w-[3px]
+before:bg-accent
+```
+
+em linhas e itens que não precisam comunicar um estado adicional.
+
+### Tratamento padrão para linhas e itens
+
+Para diferenciar itens, preferir nesta ordem:
+
+1. alinhamento e espaçamento;
+2. divisores horizontais discretos;
+3. contraste tipográfico;
+4. mudança sutil de fundo em hover;
+5. mudança sutil de fundo para seleção;
+6. ícone funcional quando necessário.
+
+Não adicionar uma barra lateral apenas para indicar que o item existe ou pertence a determinada seção.
+
+Em uma tabela, a própria estrutura da coluna já comunica pertencimento. Não repetir essa informação com uma faixa colorida na lateral de cada linha.
+
+### Estado selecionado
+
+Um item selecionado deve ser indicado prioritariamente por:
+
+- fundo discretamente diferente;
+- texto com contraste maior;
+- peso tipográfico moderado;
+- ícone de seleção quando necessário.
+
+Evitar usar uma barra vertical colorida como indicador padrão de seleção.
+
+### Uso excepcional
+
+Uma barra lateral só pode ser utilizada quando houver significado funcional explícito, por exemplo:
+
+- classificação de severidade que precise ser escaneada rapidamente;
+- agrupamento hierárquico em que a posição lateral tenha significado;
+- estado operacional que precise de reconhecimento imediato e não esteja suficientemente claro por ponto, ícone, texto ou fundo;
+- comparação em que a própria posição lateral represente uma relação funcional.
+
+Mesmo nesses casos, verificar primeiro se ponto, ícone, texto ou fundo resolve melhor.
+
+A exceção deve ser justificável pela informação transmitida, não pela aparência.
+
+### Restrição de implementação para accent bars
+
+Não utilizar como padrão visual:
+
+- `border-l-*`;
+- `border-s-*`;
+- `before:w-[2px]`;
+- `before:w-[3px]`;
+- `before:w-1`;
+- `before:bg-*`;
+- `shadow-[inset_*]`;
+- `box-shadow: inset ...` para simular uma faixa lateral.
+
+Antes de utilizar qualquer uma dessas técnicas em linhas, cards, itens de menu, células ou listas, deve existir uma justificativa funcional explícita para a barra lateral.
+
+### Regra de composição de linhas
+
+Não adicionar elementos lineares decorativos apenas para “dar destaque”.
+
+Uma linha deve existir porque:
+
+- separa;
+- conecta;
+- indica continuidade;
+- representa relação;
+- comunica estado funcional necessário.
+
+Se não cumprir uma dessas funções, remover.
+
+### Proibição de ornamentação compensatória
+
+**Simplicidade não é ausência de design.**
+
+Não adicionar elementos visuais apenas para evitar que uma área pareça simples.
+
+Não compensar interfaces simples adicionando:
+
+- barras laterais coloridas;
+- badges;
+- pills;
+- fundos pastel;
+- círculos atrás de ícones;
+- linhas decorativas;
+- gradientes;
+- sombras sem função;
+- bordas de destaque;
+- pequenos elementos geométricos sem significado.
+
+Quando uma estrutura já é compreensível por hierarquia, tipografia, alinhamento, espaçamento e divisores, não adicionar ornamentação adicional.
+
+Um componente não precisa de um detalhe visual extra para parecer desenhado. Cada elemento visual deve justificar sua existência pela função que exerce.
+
+## 15. Ícones, informação contextual e marca
+
+Usar ícones apenas quando ajudam a reconhecer, executar ou compreender uma ação/informação.
+
+Permitidos:
+
+- navegação compacta;
+- tema claro/escuro;
+- ação cujo símbolo é universal;
+- informação contextual `i`;
+- marca ORION;
+- status excepcional quando texto sozinho não basta.
+
+Evitar ícone + título + subtítulo + badge + seta simultaneamente.
+
+### Informação contextual do Dashboard e dos Testes do DPP
+
+Cada **módulo analítico ou operacional principal** do Dashboard do DPP e dos Testes do DPP deve disponibilizar um `i` de informação junto ao título. O objetivo é explicar a lógica sem poluir permanentemente a tela.
+
+O tooltip deve responder sempre, e nesta ordem, a três perguntas:
+
+```text
+O que mostra
+Origem
+Finalidade
+```
+
+A **Finalidade** deve explicar também a relação do módulo com o restante do sistema: se alimenta outro módulo, se é apenas leitura, se serve para validação/regressão, se entra no workspace do Agente ORION ou se não é atualmente sincronizado com o Agente.
+
+#### Fonte única de verdade
+
+As descrições dos módulos ficam em:
+
+```text
+knowledge/modulos-interface.md
+```
+
+Esse arquivo é simultaneamente:
+
+1. fonte do endpoint `GET /api/knowledge/module-info`;
+2. fonte dos componentes `ModuleInfoHint` do frontend;
+3. documento indexado no SQLite/FTS5/BM25;
+4. conhecimento recuperável pelo Agente ORION.
+
+Não manter uma segunda cópia manual do mesmo texto dentro dos componentes React.
+
+As descrições de interface não criam regras determinísticas. Quando citarem cálculo, classificação ou tolerância, devem ser compatíveis com:
+
+```text
+knowledge/motor-deterministico.md
+knowledge/regras-globais.md
+implementação Python vigente
+```
+
+Em caso de conflito, o motor Python e as regras determinísticas prevalecem e `modulos-interface.md` deve ser corrigido.
+
+Regras visuais e de interação:
+
+- um `i` por módulo coerente; não colocar um ícone em cada célula, linha ou métrica individual;
+- a origem deve citar a fonte real: Cenário ORION/Python, DPP Final, DPP anterior, PGD, WIU, STK SAP, Explosão, workspace, resultado de teste etc.;
+- não afirmar que um dado vai para o Agente ORION quando ele não é sincronizado no workspace do RAG;
+- o botão `i` é **quadrado**, com largura e altura iguais e `border-radius: 0`;
+- o botão é neutro; azul ORION somente em hover/foco;
+- tooltip usa superfície elevada, borda e `--shadow-control`, pois existe elevação espacial real;
+- deve funcionar com mouse e teclado (`focus`/`focus-within`), não somente hover;
+- texto do tooltip usa a escala `11–12px` e microcopy do domínio;
+- não usar biblioteca de ícones para representar o `i`; o caractere simples é suficiente;
+- o CI deve falhar se um módulo obrigatório ficar sem título, O que mostra, Origem ou Finalidade, ou se a documentação citar um código `REGRA-xxx` inexistente.
+
+### Marca SIGMA-S ORION
+
+A marca principal deve ser simples e reconhecível em tamanho pequeno.
+
+Regra atual:
+
+```text
+SIGMA-S  ★RION
+         ↑
+   estrela substitui o O de ORION
+```
+
+- não usar símbolo de planeta/órbita como letra `O`;
+- usar uma estrela geométrica simples como o `O` de ORION;
+- o favicon e a marca compacta usam a mesma estrela;
+- a estrela usa o azul ORION;
+- o wordmark acompanha `--orion-text`;
+- não adicionar glow, órbitas ou detalhes decorativos à marca.
+
+## 16. Movimento
+
+Animação deve comunicar estado, progresso ou mudança espacial real da interface.
+
+Permitido:
+
+- constelação do ORION vinculada ao progresso real do backend;
+- transição curta de tema;
+- feedback de hover/focus;
+- entrada/saída funcional de overlay;
+- expansão/recolhimento da navegação lateral.
+
+### Movimento da navegação lateral
+
+A barra lateral pode usar uma transição curta e sóbria ao abrir/recolher para preservar continuidade espacial.
+
+Padrão atual:
+
+- duração aproximada de `180ms`;
+- easing sem bounce/spring;
+- largura da sidebar e deslocamento estrutural do conteúdo mudam juntos;
+- textos podem usar apenas `opacity` e pequena translação;
+- sem blur, glow, escala, parallax ou animação contínua;
+- não adicionar JavaScript por frame para animar a navegação;
+- respeitar `prefers-reduced-motion: reduce`, removendo a transição;
+- a animação deve ocorrer apenas em resposta direta à ação do usuário.
+
+O objetivo é fluidez funcional, não ornamentação.
+
+### Regra de progresso
+
+Quando a interface exibir um **percentual numérico**, esse valor deve vir de telemetria real do processamento no backend ou de uma contagem objetiva de trabalho concluído. Não interpolar, estimar ou animar uma porcentagem falsa apenas para transmitir sensação de avanço.
+
+- percentual disponível = barra determinada + número real;
+- apenas etapas conhecidas = usar checkpoints reais e documentar o que representam;
+- sem telemetria suficiente = usar progresso indeterminado, sem percentual inventado;
+- `100%` somente depois que o backend concluir de fato o artefato/operação correspondente.
+
+### Tela de carregamento
+
+A animação de progresso deve usar uma geometria simplificada da **constelação real de Órion**. A forma final precisa ser reconhecível por:
+
+- cabeça;
+- dois ombros;
+- as três estrelas do cinturão (Três Marias);
+- dois pés principais.
+
+Durante o processamento:
+
+- futuro = neutro;
+- etapa atual = azul ORION;
+- concluído = verde;
+- cada avanço deve continuar ligado a checkpoint real quando houver telemetria.
+
+Ao chegar a `100%`, todas as conexões devem se completar e a constelação de Órion deve permanecer visível brevemente antes do fechamento da tela.
+
+Evitar:
+
+- animações decorativas contínuas;
+- glow pulsante;
+- parallax;
+- transições longas.
+
+Sempre respeitar `prefers-reduced-motion`.
+
+## 17. Performance visual
+
+Preferir:
+
+- CSS simples;
+- SVG leve;
+- transform/opacity para movimento;
+- bordas e superfícies sólidas;
+- poucos níveis de DOM quando possível.
+
+Evitar:
+
+- `backdrop-filter` pesado;
+- blur decorativo;
+- filtros SVG complexos;
+- imagens grandes para elementos que podem ser vetor/CSS;
+- animação JS para efeitos puramente visuais.
+
+## 18. Conteúdo é parte do design
+
+Usar dados e terminologia reais do DPP:
+
+- KIT disponível PGD;
+- REAL;
+- NEC;
+- STK TTL;
+- SALDO;
+- OPC;
+- material;
+- modelo;
+- cenário ORION;
+- DPP Final.
+
+Evitar conteúdo genérico como “Revenue”, “Growth”, “Insights”, “Performance” sem relação direta com a operação.
+
+## 19. Regras específicas do Dashboard DPP
+
+- Nunca misturar Cenário ORION e DPP Final sem identificar claramente a origem.
+- Métrica precisa informar o que mede; não usar nomes que sugiram capacidade produtiva quando o cálculo mede proporção de modelos.
+- `Cobertura material` atual mede modelos ativos sem material UN negativo; comunicar isso explicitamente.
+- Comparações devem mostrar valor, origem e contexto.
+- O plano por modelo deve priorizar alterações no REAL e diferenças contra KIT disponível PGD.
+- Gargalos devem mostrar material, déficit, modelos afetados e OPC quando disponível.
+- Não repetir a mesma métrica em múltiplos componentes sem oferecer uma leitura adicional.
+- Status de tabelas devem seguir a regra de texto neutro + marcador semântico, evitando badges/pills não interativos.
+- Resumos de divergência como “6 indicadores com divergência” devem preferir hierarquia tipográfica ou marcador discreto, sem cápsula e sem accent bar decorativa.
+- Linhas de modelos, materiais ou resultados não devem receber `border-left` colorido apenas por estarem divergentes, selecionadas ou pertencerem a uma seção; primeiro usar texto, ponto, fundo sutil ou estrutura tabular.
+- Ações de exportação/download devem aparecer como controle contextual ou faixa operacional compacta, não como um card isolado. O texto deve deixar explícito qual cenário será exportado e qual arquivo/layout serve apenas como modelo visual.
+- Todo bloco principal visível do Dashboard deve possuir informação contextual `i` com **O que mostra / Origem / Finalidade**.
+
+## 20. Checklist obrigatório antes de alterar frontend
+
+Antes de implementar:
+
+- [ ] Li este `DESIGN_SYSTEM.md`.
+- [ ] Sei qual pergunta operacional o componente responde.
+- [ ] Verifiquei se a informação já existe em outro componente.
+- [ ] Avaliei seção/tabela/divisor antes de criar card.
+- [ ] Avaliei texto/marcador/divisor antes de criar badge, pill ou chip.
+- [ ] Não usei `rounded-full` para status, métrica ou informação.
+- [ ] Não codifiquei o mesmo estado simultaneamente por texto + fundo + borda semânticos.
+- [ ] Não usei `border-left`, pseudo-elemento ou `inset shadow` como ornamentação de linha/item.
+- [ ] Se existe accent bar, consigo explicar qual informação funcional adicional ela comunica.
+- [ ] Não adicionei detalhe visual apenas para compensar uma área simples.
+- [ ] Não criei cor nova sem necessidade.
+- [ ] Não criei radius novo.
+- [ ] Não criei sombra grande.
+- [ ] Mantive densidade média-alta.
+- [ ] Usei microcopy do domínio.
+- [ ] Mantive tema claro e escuro.
+- [ ] Mantive `prefers-reduced-motion`.
+- [ ] Evitei impacto desnecessário de renderização.
+- [ ] Se alterei/criei bloco do Dashboard, revisei seu tooltip e a origem dos dados.
+
+Depois de implementar:
+
+- [ ] O resultado continua legível sem cor.
+- [ ] A cor tem significado e usa preferencialmente um único canal visual.
+- [ ] Status não clicáveis não parecem botões.
+- [ ] Linhas e itens não possuem accent bars decorativas.
+- [ ] A interface não contém ornamentação criada apenas para “dar destaque”.
+- [ ] O componente não parece uma landing page nem um dashboard SaaS/IA genérico.
+- [ ] Não existe redundância de informação.
+- [ ] O estado ORION vs Final está explícito.
+- [ ] Tooltips não inventam cálculos nem fontes.
+- [ ] Se uma nova regra visual foi aprovada, atualizei este documento.
+
+## 21. Protocolo de manutenção
+
+Este documento é parte do código do produto.
+
+Para qualquer mudança visual futura:
+
+1. consultar `DESIGN_SYSTEM.md` antes de editar o frontend;
+2. reutilizar os tokens existentes;
+3. justificar qualquer exceção;
+4. atualizar este arquivo quando a linguagem visual evoluir;
+5. manter a implementação compatível com os dois temas;
+6. não reintroduzir estilos legados de 16–24 px, grandes sombras, glassmorphism, cards excessivos, pills/badges como padrão de status ou accent bars decorativas.
+
+A consistência do sistema tem prioridade sobre criatividade isolada em uma única tela.
+
+## 22. Layout industrial com navegação lateral
+
+Atualização visual solicitada em 2026-09-28:
+
+- lateral fixa, recolhível, com nomes das áreas e agrupamentos DPP / conhecimento;
+- estado selecionado por fundo neutro e `aria-current`, sem faixa decorativa;
+- cabeçalho compacto com título da área e busca contextual do conhecimento;
+- controles de ícone quadrados; campos, tabelas e áreas de texto mantêm proporções adequadas ao conteúdo e cantos retos;
+- conversa ocupa a área central; evidências e inspeção abrem por controle explícito, sem perda de rastreabilidade;
+- navegação compacta em telas pequenas, expansível com botão de fechamento;
+- temas claro/escuro, foco visível e rótulos acessíveis preservados;
+- `WorkspaceNavigation.jsx` concentra navegação e seus ícones; `App.jsx` mantém a seleção das áreas e a composição funcional;
+- `navigation.css` controla o frame; tokens geométricos continuam centralizados em `product-language.css`.
+
+A referência ao ChatGPT orienta a organização, sem acrescentar recursos fictícios de histórico ou nova conversa.
+
+
+## 23. Linguagem neutra global
+
+Atualização visual aprovada em **2026-09-28** e aplicável a todo o SIGMA-S ORION.
+
+Esta seção substitui qualquer orientação anterior que recomendasse ponto/bolinha semântica como tratamento padrão.
+
+### Regra
+
+O ORION deve se aproximar da sobriedade visual de ferramentas como o ChatGPT sem copiar sua identidade. A interface usa predominantemente:
+
+- texto branco/preto conforme o tema;
+- texto secundário cinza;
+- superfícies neutras;
+- divisores;
+- alinhamento;
+- tipografia;
+- tabelas compactas.
+
+Não usar como linguagem padrão:
+
+- números ou valores em azul/ciano apenas por serem do ORION;
+- texto verde para OK;
+- texto amarelo para atenção/divergência;
+- texto vermelho para erro/criticidade;
+- bolinhas verdes, amarelas ou vermelhas;
+- marcadores coloridos anexados a status;
+- fundos semânticos pastel;
+- bordas semânticas decorativas.
+
+### Exceções funcionais
+
+A cor pode permanecer quando representa uma interação ou telemetria real:
+
+- botão/ação primária;
+- foco de teclado;
+- item interativo selecionado quando necessário;
+- marca ORION;
+- destaque de busca;
+- progresso real;
+- constelação de carregamento ligada aos checkpoints reais do backend;
+- visualização de dados em que a cor seja indispensável e tenha legenda/contexto.
+
+Mesmo nas exceções, texto operacional deve permanecer predominantemente neutro.
+
+### Implementação
+
+A camada `frontend/src/industrial-neutral-language.css` é carregada por último e funciona como compliance global para neutralizar estilos semânticos legados. Novos componentes devem nascer neutros e não depender dessa camada para corrigir padrões antigos.
+
+
+## 24. Público-alvo e ponte Excel → automação
+
+O ORION foi pensado para usuários que hoje consomem diretamente planilhas de Excel e análises visuais próximas ao Power BI. O objetivo do produto não é romper abruptamente com esse repertório, mas transformar esse fluxo em um sistema automatizado, rastreável e assistido pelo Agente ORION.
+
+### Princípio de transição
+
+A interface deve funcionar como uma ponte:
+
+```text
+Excel / planilhas
+      ↓
+tabelas e indicadores familiares
+      ↓
+sistema ORION
+      ↓
+automação determinística
+      ↓
+Agente ORION / IA
+```
+
+O usuário precisa reconhecer rapidamente os dados que já conhece, entender de onde vieram e perceber o ganho da automação sem sentir que perdeu controle sobre a informação.
+
+### Três pilares
+
+A linguagem visual do ORION deve equilibrar permanentemente:
+
+1. **Industrial**
+   - aparência técnica;
+   - densidade adequada ao trabalho;
+   - superfícies sóbrias;
+   - organização previsível;
+   - informação acima de ornamentação.
+
+2. **Fluidez**
+   - reduzir cliques e trocas desnecessárias de contexto;
+   - manter navegação previsível;
+   - preservar filtros, seleção e contexto durante a análise;
+   - permitir ir do resumo ao detalhe sem interromper o raciocínio;
+   - o Agente ORION deve complementar o trabalho, não esconder os dados que sustentam a resposta.
+
+3. **Clareza visual**
+   - hierarquia evidente;
+   - nomes e unidades explícitos;
+   - origem do dado acessível;
+   - comparação direta;
+   - estados comunicados por texto e estrutura;
+   - evitar códigos visuais que o usuário precise aprender antes de entender a informação.
+
+### Familiaridade com Excel e Power BI
+
+Tabelas e gráficos não devem ser tratados como recursos secundários. Para este público eles são a linguagem de trabalho já conhecida.
+
+Priorizar:
+
+- tabelas compactas e legíveis;
+- cabeçalhos fixos em conjuntos longos;
+- alinhamento consistente de números;
+- unidades próximas ao valor;
+- filtros e busca fáceis de localizar;
+- ordenação compreensível;
+- totais, diferenças e comparações explícitas;
+- drill-down do agregado para o material/modelo que explica o resultado;
+- gráficos somente quando tornam uma relação, tendência ou comparação mais rápida de entender do que uma tabela.
+
+Evitar transformar dados naturalmente tabulares em cards apenas para modernizar a aparência.
+
+### Modernizar sem descaracterizar
+
+O ORION não deve reproduzir visualmente uma planilha do Excel, mas deve preservar seu modelo mental útil:
+
+- linhas representam registros;
+- colunas têm significado estável;
+- números podem ser comparados verticalmente;
+- filtros alteram um conjunto visível;
+- totais e diferenças possuem posição previsível;
+- a evidência detalhada permanece acessível.
+
+A modernização deve acrescentar:
+
+- automação;
+- validação;
+- persistência de contexto;
+- rastreabilidade;
+- explicação;
+- navegação;
+- IA assistiva.
+
+Não deve retirar a capacidade do analista de inspecionar os dados.
+
+### Agente ORION
+
+A IA representa uma nova camada para esse público. Por isso:
+
+- respostas devem se conectar aos dados e termos do DPP;
+- evidências devem permanecer acessíveis;
+- tabelas devem ser usadas quando a resposta envolver muitos materiais/modelos;
+- o agente não deve substituir uma comparação objetiva por texto longo;
+- quando um número vier do cenário, DPP Final, RAG ou cálculo determinístico, essa origem deve ser identificável;
+- a conversa deve reduzir trabalho manual e investigação repetitiva, não criar uma nova camada de complexidade.
+
+### Critério de decisão para novos componentes
+
+Antes de desenhar uma nova tela ou componente, perguntar:
+
+```text
+Um usuário acostumado com Excel/Power BI entende em poucos segundos:
+1. o que está vendo?
+2. de onde veio?
+3. como comparar?
+4. onde investigar?
+5. o que o ORION automatizou?
+```
+
+Se a resposta for não, simplificar a interface antes de acrescentar novos elementos visuais.
+
+
+### Revisão de navegação por indicadores e modais (2026-10-20)
+
+Esta regra atual **substitui, apenas na apresentação web**, a exceção anterior de filas paginadas e cards de PN expansíveis no corpo dos módulos de Estoque e Qualidade.
+
+- **Cenário inicial do DPP** é um componente com cabeçalho e quatro indicadores: PGD, REAL, gap PGD × REAL e materiais críticos.
+- **Resumo operacional** contém somente seis métricas: PNs negativos, encontrados em Estoque, aguardando Almoxarifado, encaminhados à Qualidade, encontrados em CQ e aguardando Qualidade.
+- **Divergência de Estoque** e **Análise de Qualidade** apresentam cada um **exatamente cinco controles quadrados clicáveis**, alinhados aos respectivos cinco indicadores/abas Excel. Não exibir filas, cards de PN, tabelas ou paginação fora dos modais.
+- Os modais de indicador apresentam todos os PNs da categoria (inclusive ausentes dos depósitos), a descrição, quantidades, unidade, evidências STK e ação humana quando existe candidato para validação. Permitir pesquisa local, sem paginação. Manter os formulários e histórico de revisão existentes; nunca disponibilizar botão de confirmação para PN sem evidência de depósito.
+- **Exceção cromática explícita para decisão humana:** somente nos modais de investigação, registros candidatos ainda **sem revisão humana** usam borda lateral amarela `var(--orion-warning)`; candidatos com **decisão registrada pelo humano** usam borda azul `var(--orion-blue)`. O estado é atribuído por `candidate.validation`, nunca por presença de saldo. PNs sem registros usam apenas borda neutra. Manter texto de estado explícito e legível em tema claro e escuro; não converter esses marcadores em badges decorativos ou fundos pastéis.
+- **Gap recalculado do DPP:** indicadores de materiais e pendências abrem modais de detalhamento por PN; a análise por unidade fica dentro do modal, não no corpo do painel. Preservar a confirmação final do DPP em seu diálogo separado.
+- **Pacote do mês** e **ORION × DPP Final** não sofrem alteração.
+- Usar `<dialog>` nativo para fechamento por Escape, contenção de foco e navegação por teclado; manter cantos retos, tokens existentes, sem glassmorphism, gradientes, glow ou elementos ilustrativos adicionais.
+- Os cálculos e persistência são independentes desta navegação. Exportações Excel permanecem organizadas em cinco abas por painel.
+
+
+### Consolidação visual do Dashboard e correção dos diálogos (2026-10-20)
+
+Esta decisão **substitui** a regra anterior de exibir o painel de Gap recalculado e a seção recolhível de indicadores complementares na interface principal. Não implica remoção de dados, cálculos ou documentação de conhecimento.
+
+- O **Cenário inicial do DPP** mantém só quatro métricas; o **Resumo operacional** mantém só seis.
+- **Divergência de Estoque** e **Análise de Qualidade** permanecem como cinco indicadores clicáveis cada. Os PNs e a confirmação manual ficam nos diálogos; não trazer de volta listas externas ou paginação.
+- Retirar da árvore visual do Dashboard os painéis **Ver indicadores complementares**, **Gap recalculado do DPP** e **Comparativo completo das colunas do DPP**. Preservar o **Plano consolidado por modelo ORION × DPP Final** e seus filtros/detalhes.
+- O **Pacote do mês** mantém tipografia e hierarquia industrial. Na visualização compacta, os arquivos devem ser exibidos **lado a lado**, em grade responsiva, com seus nomes completos acessíveis no título da linha, sem simular um novo tipo de card.
+- A distância entre as seções principais passa a usar `--space-3` (12 px), com `--space-2` em telas menores. Evitar somar margens internas e margens do contêiner; manter o recuo apenas para blocos realmente separados.
+- Dialogs operacionais usam `<dialog>` nativo em portal para `document.body`. Para impedir o fechamento involuntário em `React.StrictMode`, os efeitos de montagem e desmontagem podem chamar `showModal()/close()`, mas **somente ações explícitas de Fechar, Escape ou clique no backdrop** limpam a seleção do KPI. A simples limpeza do efeito nunca deve disparar `onClose` do componente.
+- Preservar acessibilidade de teclado, contenção de foco nativa, cantos retos, cores dos estados validados/pendentes estabelecidos anteriormente e os temas claro/escuro.
+
+
+### Sidebar cromática e estrela como acionador único (2026-10-20)
+
+Estas decisões substituem exclusivamente a paleta e os controles anteriores da navegação lateral, sem modificar o tema das páginas, cabeçalhos ou módulos do Dashboard.
+
+- No **tema claro**, a sidebar tem fundo preto `#000000`, textos/ícones primários brancos e informação secundária branca com transparência. A inversão não se propaga para a área de conteúdo.
+- No **tema escuro**, a sidebar usa o azul da estrela ORION, `#46D9FF`, como superfície. Itens secundários **permanecem cinzas**, em tom `#43556B` para legibilidade sobre azul; títulos e seleção usam `#08111F`. A própria estrela passa a usar `#08111F` **apenas neste fundo azul**, por contraste. Esses tons são exceções locais e não alteram `--orion-blue` nem outros tokens globais.
+- A **estrela do próprio logotipo**, substituta da letra O de ORION, é o único controle para abrir/recolher a navegação. Remover o botão do topo e o botão de fechamento móvel, sem criar um novo botão decorativo. `BrandLogo.jsx` fornece o botão com `aria-label`, `aria-expanded` e `aria-controls`; a sidebar mantém 64 px quando recolhida.
+- O wordmark completo continua visível com a sidebar expandida; quando recolhida, a estrela permanece centralizada e operável por teclado ou toque. Na navegação móvel o mesmo controle funciona em ambos os estados, mantendo os itens navegáveis.
+- A foto licenciada da Mondial fica em `frontend/public/assets/mondial-sidebar.jpg` (JPG 1159×640); a camada `::before` usa `background-size: cover`, escala de cinza e opacidade `0.12` no tema claro/`0.095` no escuro para manter contraste e permitir reconhecer a imagem discretamente. A foto é **opcional**, sem interferir na sidebar se ainda não tiver sido anexada.
+- As novas regras ficam isoladas em `frontend/src/sidebar-theme.css`, importado após as demais folhas para garantir especificidade, sem alterar o tema da aplicação.
+
+
+### Inversão azul do tema escuro, logotipo clicável e modais (2026-10-20)
+
+Estas regras **substituem** a antiga definição de tema escuro predominantemente azul-marinho (seção 6.1) e as regras anteriores da sidebar que limitavam o clique à estrela e mantinham cinza os rótulos secundários.
+
+- **Tema escuro global invertido:** azul ORION `#46D9FF` passa a preencher as superfícies que eram azul-marinho (fundo da aplicação e painéis). Sobre esse fundo, o texto que antes era branco passa a `#08111F` (azul-marinho), e o texto que antes era cinza passa a `#28546B` (azul-petróleo acinzentado mais escuro). Superfície elevada usa `#83E8FF`, linhas `#2A7894` e texto neutro `#315E76`; todos são exceções locais documentadas do tema invertido.
+- Para não perder contraste, **botões de ação principais, realce de foco e marcação de validação confirmada** usam azul-marinho `#08111F` quando a superfície é azul ORION. Cores semânticas de dados e as regras de confirmação humana continuam válidas; não usar ciano sobre ciano.
+- O **tema claro** mantém sua paleta original e sua sidebar preta; nenhuma alteração de tokens claros é permitida por esta regra.
+- Com a sidebar **aberta**, clicar em qualquer parte de `SIGMA-S ★RION` abre/recolhe (um único botão acessível cobrindo o wordmark completo). Com a sidebar **fechada**, somente a estrela fica visível e clicável. A estrela permanece parte do logotipo, sem segundo controle invisível sobreposto. Preservar `aria-controls`, `aria-expanded` e o rótulo de ação contextual.
+- A **scrollbar interna da sidebar** fica visualmente oculta em todos os navegadores suportados, sem desabilitar rolagem por mouse, touch ou teclado. A navegação permanece acessível em janelas baixas e no celular.
+- Os textos secundários da **sidebar no tema escuro** também passam a azul-marinho `#08111F`, tal como o nome SIGMA-S ★RION, substituindo o cinza da revisão anterior.
+- Nos modais de Estoque e Qualidade, o cabeçalho contendo **Fechar** fica `position: sticky; top: 0` com fundo opaco do tema e índice superior ao conteúdo, evitando que a ação desapareça com a rolagem dos PNs. Não prender os formulários nem desabilitar Escape ou busca.
+- Implementação centralizada em `orion-inverted-dark.css` (carregado por último no tema), `BrandLogo.jsx`, `brand.css`, `sidebar-theme.css` e `investigation-kpi-panel.css`. Não duplicar temas dentro dos módulos.
+
+
+### Revisão visual após inspeção de capturas reais — tema escuro (2026-10-20)
+
+Esta diretriz **revoga a inversão ciano de toda a superfície definida na seção “Inversão azul do tema escuro”**. A captura real demonstrou que aplicar `#46D9FF` simultaneamente ao fundo, painéis, tabelas e cards elimina a hierarquia visual e não produz um modo escuro adequado para uso industrial.
+
+- **Tema claro:** não alterar. Sidebar preta com imagem sutil da Mondial, conteúdo claro e métricas neutras.
+- **Sidebar do tema escuro:** manter o azul da estrela `#46D9FF`, o logotipo e textos azul-marinho, fotografia da Mondial, e acionamento pelo wordmark completo. A sidebar é a área identitária que contrasta com o restante do produto.
+- **Área principal do tema escuro:** restaurar os tokens técnicos normativos da seção 6.1: fundo `#0D1826`, painel `#142235`, elevado `#1B2D43`, borda `#2B4057`, texto principal `#F4F8FC`, secundário `#91A4B8`.
+- **Ciano como acento funcional:** `#46D9FF` representa marca, controles primários, foco e estados interativos; nunca preencher todos os cards e a página simultaneamente com ciano. Em ações ciano, o texto fica no tom do fundo azul-marinho, para contraste.
+- **Escopo:** os mesmos tokens funcionam em Dashboard, Agente, Testes do DPP, Base de Conhecimento e modais. Não criar versões divergentes por tela. Não alterar o comportamento de cálculo, exportações Excel, estrutura dos indicadores nem o CSS do tema claro.
+- **Implementação:** `frontend/src/orion-dark-refinement.css` concentra os ajustes finais de hierarquia. A antiga folha `orion-inverted-dark.css` foi eliminada, juntamente com overrides de inversão de formulários que não cabem em superfícies escuras. O arquivo `sidebar-theme.css` continua responsável exclusivamente pela sidebar.
+
+
+### Tema escuro Mondial — preto, grafite e branco com ciano pontual (2026-10-21)
+
+Esta seção **substitui todas as propostas cromáticas anteriores para o tema escuro**, incluindo (1) sidebar ciano, (2) inversão integral azul-clara, e (3) fundo/painéis azul-marinho. Foi aprovada a direção de marca **Mondial em branco e preto**, reservando o ciano da estrela ORION como detalhe funcional contido.
+
+**Tokens vigentes para `data-theme='dark'`:**
+```css
+/* Sidebar — mais escura que o conteúdo, imagem Mondial preservada */
+--sidebar-background: #090A0C; /* valor CSS efetivo da sidebar */
+--sidebar-ink: #F5F5F6;
+--sidebar-muted: #C3C6CB;
+--sidebar-star: #46D9FF;
+
+/* Conteúdo — luminância separada por função */
+--orion-bg: #191A1D;
+--orion-surface: #242529;
+--orion-surface-elevated: #2E3035;
+--orion-border: #404249;
+--orion-text: #F5F5F6;
+--orion-text-secondary: #BBC0C8;
+--orion-neutral: #9CA2AB;
+```
+
+- **Sidebar:** quase preta, mais escura que a área de trabalho; títulos e itens brancos, descrições cinzas legíveis, estrela ciano `#46D9FF`; a fotografia da Mondial continua discreta em escala de cinza. Não alterar largura, navegação pelo wordmark, recolhimento ou scrollbar oculta.
+- **Conteúdo:** fundo grafite `#191A1D`, painéis `#242529`, elementos elevados `#2E3035`. A hierarquia decorre da diferença de luminosidade, bordas moderadas e tipografia branca, e não de preenchimentos azuis.
+- **Ações principais:** botão branco, texto escuro; ações secundárias grafite claro com texto branco. Hover neutro. **Ciano apenas como acento** da estrela, foco, seleção controlada e sinalizadores que efetivamente representem a validação humana. Não criar estados coloridos decorativos.
+- **Tema claro:** permanece exatamente como a versão aprovada; sidebar preta com a mesma imagem, fundo branco/cinza de conteúdo.
+- **Escopo:** trocar tokens compartilhados do tema escuro em `orion-dark-refinement.css`, regras cromáticas da sidebar em `sidebar-theme.css`; preservar APIs, cálculos, estrutura, responsividade, modais, planilhas, Agente e comparação ORION × DPP Final. Manter uma única camada final, sem nova folha de CSS duplicada.
+- **Contraste mínimo:** 4,5:1 para textos auxiliares, preferindo 7:1 para títulos e valores numéricos sobre as superfícies grafite.
+
+Esta regra prevalece sobre a seção 6.1 e todas as revisões de tema escuro anteriores, que permanecem no documento apenas como histórico.
+
+
+### Dashboard operacional unificado, consulta automática e retomada segura (2026-10-21)
+
+Esta decisão **substitui** a regra que exibia “Cenário inicial do DPP” como painel de quatro indicadores no topo do Dashboard e substitui as disposições anteriores de consulta manual de Estoque/CQ.
+
+- **Primeiro painel:** “Resumo Operacional”, com somente os seis indicadores operacionais já existentes. O painel “Cenário inicial do DPP” deixa de ser montado no Dashboard; a geração determinística do Cenário ORION e suas fórmulas permanecem inalteradas.
+- **Geometria:** “Resumo Operacional”, “Divergência de Estoque” e “Análise de Qualidade” usam exatamente a mesma largura, borda externa, padding interno (16 px, 12 px no mobile), escala tipográfica de título e espaçamento de módulo que o “Pacote do mês”; nada de antigos separadores soltos sem borda ou recuos laterais divergentes.
+- **Ordem:** Resumo Operacional, Pacote do mês, Estoque, Qualidade, Plano Consolidado por Modelo ORION × DPP Final. Distância entre blocos de 12 px (8 px em telas menores).
+- **Automação determinística:** após completar o Pacote do mês, a geração mensal já é disparada sem intervenção. Assim que o cenário correspondente estiver válido no backend, a investigação de Estoque M221/P277 é disparada automaticamente; quando o resultado de Estoque encaminhar PNs, a análise CQ Q239/Q273 é disparada automaticamente. Os botões “Consultar novamente”, “Investigar depósitos” e “Consultar Qualidade” **não aparecem**. “Baixar Excel” e as decisões humanas ficam disponíveis onde aplicável. Falhas transitórias podem ser consultadas novamente ao retornar à aba; não criar loop agressivo de requisições.
+- **Retomada de sessão/standby:** arquivos e resultados do navegador não provam que seu `scenario_id` ainda existe no processo do backend. O servidor passa a persistir as até oito versões ativas com a mesma identidade e disponibiliza uma consulta read-only de disponibilidade; no frontend conferir no início, ao voltar à aba, periodicamente e **antes de abrir um modal**. Nunca abrir um modal de validação usando cenário inválido.
+- **Estado inválido:** não exibir como operacionais números de Estoque/Qualidade de um cenário que expirou, foi perdido ou pertence a outro pacote. Exibir mensagem imediata e a opção de recuperar o cenário; se ele não existir, permitir reprocessar o pacote já salvo no IndexedDB, sem pedir novo upload. **Não transportar validações humanas antigas automaticamente para um novo scenario_id**; informar essa limitação explicitamente.
+- **Paneis restantes, modalidades de validação, cores Mondial, imagem da sidebar e planilhas** permanecem conforme as regras vigentes. Não há recálculo silencioso por uma LLM.
+
+
+### Composição responsiva do Dashboard — Etapa 1 (2026-10-21)
+
+Esta atualização **substitui exclusivamente a geometria de largura igual e empilhamento obrigatório** da seção "Dashboard operacional unificado" acima. As regras de dados, categorias, validação, cores, modais, Excel, ordem de investigação automática e retomada de cenários continuam vigentes.
+
+- **Primeira linha em desktop amplo:** Resumo Operacional (37%) ao lado do Pacote do mês (63%), com largura calculada na área útil após a sidebar. Em notebooks e espaços menores, voltar para uma coluna para preservar a leitura.
+- **Resumo:** manter exatamente seis métricas, sem novos indicadores; a grade principal usa duas colunas e espaçamentos compactos. Em telas muito estreitas, usar linhas técnicas.
+- **Segunda linha nesta etapa:** Estoque e Qualidade dividem a largura em duas colunas, sem alterar o total de cinco indicadores acionáveis e cinco abas Excel de cada módulo. Os botões KPI ficam compactos, com categoria e quantidade; a descrição repetida de clique é substituída por nome acessível.
+- **Etapa futura:** ao introduzir a área operacional de Pendências à direita, reorganizar Estoque e Qualidade empilhados na coluna esquerda. Não incluir painel vazio, indicadores repetidos nem atalhos inertes nesta etapa.
+- **Comparação:** Plano Consolidado por Modelo ORION × DPP Final continua em largura total, sem reduzir a tabela ou modificar filtros e detalhes.
+- **Resiliência:** em cenário não disponível ou em versão já aprovada, o Pacote permanece visível isoladamente, sem métricas antigas aparentando validade. Preservar os caminhos de recuperação de cenário.
+- **Implementação:** um único CSS de composição `frontend/src/dashboard-hierarchy.css` e duas áreas explícitas no JSX, sem propriedades `order` que desalinhem a leitura visual da ordem de teclado. Reutilizar exclusivamente as superfícies, bordas e espaçamentos normativos.
+- **Fora do escopo:** travamento de rolagem/desfoque dos diálogos e painel funcional de Pendências requerem aprovação das etapas próprias.
+
+
+### Modais de investigação — Isolamento da rolagem (Etapa 2, 2026-10-21)
+
+Esta é uma **exceção funcional, exclusiva aos diálogos de PNs de Estoque e Qualidade**. Ela não autoriza glassmorphism nem filtros decorativos em painéis.
+
+- Ao abrir um dos modais de investigação, bloquear a rolagem da página com trava compartilhada e restaurar precisamente a posição e os estilos anteriores ao fechar. O bloqueio deve funcionar também em dispositivos móveis e resistir ao ciclo de montagem/desmontagem de `React.StrictMode`.
+- O `<dialog>` nativo continua responsável pelo foco modal e pelo Escape; preservar portal, clique fora, botão Fechar e a seleção de PN. Fechamentos internos de efeitos React não podem disparar `onClose` do usuário.
+- A **única área rolável do diálogo** é a lista de PNs, suas evidências e formulários, com contenção do overscroll. Título, botão Fechar e busca permanecem fora desse contêiner, visíveis mesmo em listas longas.
+- O backdrop recebe escurecimento neutro e `blur(3px)`, exclusivamente para indicar a interrupção da interação com o Dashboard; em `prefers-reduced-transparency`, usar escurecimento sem blur. Sem animações contínuas, glow, vidro translúcido ou novos tokens cromáticos.
+- A lista rolável continua acessível por teclado, touch e mouse; o modal respeita a altura disponível (`dvh`) e os temas claro/escuro. Não modificar as decisões humanas, os cálculos, o pacote, as fontes nem os cinco grupos Excel.
+
+
+### Pendências de validação — Etapa 3 (2026-10-21)
+
+A segunda faixa passa de duas investigações lado a lado para duas colunas: **Estoque e Qualidade empilhados à esquerda (62%)**, **Pendências à direita (38%)**. Em largura menor, o conjunto se empilha responsivamente. O Plano consolidado ORION × DPP Final continua em largura integral.
+
+- Pendência corresponde a PN único com ao menos um candidato ativo sem decisão humana (`!candidate.validation`) nas mesmas categorias `pending` dos cinco indicadores e dos relatórios Excel. Não interpretar depósitos diferentes como PNs diferentes nem somar contagens das áreas para inferir PNs únicos totais.
+- Exibir até cinco PNs por área e permitir abrir cada PN na categoria pendente do modal original, pré-filtrada; "Ver todos" abre a categoria integral. A identidade do cenário deve ser verificada antes de abrir, conforme regra vigente.
+- Ausência de relatório deve aparecer indisponível (—), e não zero; exceção apenas quando a investigação de Estoque comprovar nenhum encaminhamento ao CQ.
+- Usar superfícies e cores neutras, linhas técnicas e tipografia discreta; sem ícones decorativos, sem status coloridos nem novo fluxo de validação. O módulo tem botão contextual `i` com texto em `knowledge/modulos-interface.md`.
+- Manter todas as funções existentes de consulta automática, recuperação de cenário, modais, Excel, tema e motor determinístico. A revisão visual abrangente permanece na Etapa 4.
+
+
+### Revisão visual final do Dashboard — Etapa 4 (2026-10-21)
+
+A geometria e os dados das Etapas 1–3 são mantidos. Esta etapa consolida apenas a apresentação dos componentes efetivamente montados.
+
+- **Responsividade de contêiner:** as faixas superiores continuam usando a largura útil, com 37/63 para Resumo/Pacote e 62/38 para investigações/Pendências; ao estreitar, passam para uma coluna, sem ordenar visualmente elementos fora da ordem do DOM. A tabela do Plano Consolidado continua com rolagem horizontal **própria**, quando necessária.
+- **Métricas e divisores:** a grade do Resumo usa os divisores de 1 px existentes, sem bordas duplicadas herdadas das colunas antigas. Etiquetas longas de KPIs podem quebrar linha em vez de ultrapassar o contêiner. Nenhum novo card, badge, raio, cor ou sombra.
+- **Hierarquia:** Pendências usa o mesmo divisor de cabeçalho de Estoque/Qualidade e nomes de PNs longos não invadem a coluna lateral. Em telas pequenas, o bloco de fontes do Plano Consolidado não força largura mínima maior que sua coluna; nomes completos podem quebrar linha.
+- **Código residual:** a folha `dashboard-visual-rhythm.css` mantém somente os estilos ainda utilizados no Dashboard atual. As folhas `dashboard-kpi-polish.css`, `dashboard-table-polish.css`, `dashboard-operational-polish.css` e `dashboard-theme-runtime-fixes.css` foram retiradas do ponto de entrada por tratarem exclusivamente de painéis legados não montados. Mantêm-se a camada neutra de produto, as cores Mondial vigentes e os estilos de relatórios em uso.
+- **Validação:** testes de contrato da composição, temas e modais e build frontend, além da suíte Python. A verificação automatizada não substitui inspeção manual no navegador com os arquivos empresariais reais.
+
+
+### SVGs lineares dos quatro módulos operacionais (2026-10-21)
+
+Exceção aprovada para identificação visual de quatro cabeçalhos no Dashboard: Pacote compartilhado do DPP (somente versão compacta), Divergência de Estoque, Análise de Qualidade e Pendências de validação.
+
+- Componente reutilizável: `frontend/src/DashboardModuleIcon.jsx`; CSS: `frontend/src/dashboard-module-icons.css`.
+- Desenhos SVG de 20 × 20 px, traço 1,7 px, sem preenchimento, cor `var(--orion-text-secondary)` e espaçamento `var(--space-2)`, como a sidebar.
+- Não adicionar caixa ao redor, fundo de outra cor, borda, sombra, gradiente, animação ou cores semânticas aos pictogramas.
+- `aria-hidden` nos SVGs evita redundância com o texto do título. Preservar o botão contextual `i`, as ações, os temas e a responsividade.
+- Não adicionar ícones ao Resumo Operacional, ORION × DPP Final, KPIs, listas de PNs e nomes dos arquivos sem análise específica.
+
+
+### Acentos de identidade e interação no Dashboard escuro (2026-10-21)
+
+Extensão pontual da regra Mondial grafite/branco: usar o mesmo `--orion-blue` da estrela ORION apenas para reconhecimento de módulo e affordance de navegação/interação. O tema claro permanece inalterado.
+
+- Quatro SVGs lineares dos cabeçalhos operacionais usam o ciano em repouso; seus títulos, dimensões e espaçamentos não mudam.
+- Nos indicadores acionáveis de Estoque e Qualidade, somente o rótulo passa a ciano em `hover` e `focus-visible`; números e limites dos indicadores permanecem neutros.
+- Na fila Pendências, somente o código PN passa a ciano em `hover` e `focus-visible`. O link `Ver todos` fica em ciano como os links `Ver detalhes` do comparativo ORION × DPP Final.
+- A seleção de filtros e os links de ORION × DPP Final já têm linguagem própria aprovada e não recebem novas alterações.
+- Não pintar dados quantitativos, status passivos, nomes de arquivos, superfícies, bordas em repouso ou cabeçalhos de tabela. Não introduzir tiles, gradientes, sombras, animações, cores hexadecimais duplicadas ou novas dependências.
+- Implementar essas exceções somente em `frontend/src/dashboard-interaction-accents.css`, importado após o refinamento do tema escuro, com seletores restritos a `:root[data-theme='dark'] .dpp-dashboard-view`. Manter os estados de foco acessíveis e o tema claro intacto.

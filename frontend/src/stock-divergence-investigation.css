@@ -1,0 +1,70 @@
+.orion-stock-investigation {
+  margin-block: var(--space-5, 24px);
+  padding: var(--space-4, 16px);
+  background: var(--orion-surface);
+  color: var(--orion-text);
+  border: 1px solid var(--orion-border);
+}
+
+.orion-stock-investigation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-4, 16px);
+}
+
+.orion-stock-investigation-header h3 { margin: 0; }
+.orion-stock-investigation-header p { margin: 8px 0 4px; }
+.orion-stock-investigation-header small,
+.orion-stock-investigation-note { color: var(--orion-text-secondary); }
+
+.orion-stock-investigation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-block: 16px;
+  font-size: 12px;
+}
+
+.orion-stock-investigation-scroll { overflow-x: auto; margin-block: 12px; }
+.orion-stock-investigation table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.orion-stock-investigation th, .orion-stock-investigation td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--orion-border);
+  text-align: left;
+  vertical-align: top;
+}
+.orion-stock-investigation th { white-space: nowrap; font-weight: 600; }
+.orion-stock-investigation .orion-stock-number {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.orion-stock-investigation-note { font-size: 12px; margin-bottom: 0; }
+
+.orion-stock-review-form, .orion-stock-projection {
+  border-top: 1px solid var(--orion-border); margin-top: var(--space-4, 16px); padding-top: var(--space-4, 16px);
+}
+.orion-stock-review-heading { display: flex; justify-content: space-between; gap: var(--space-3, 12px); align-items: center; }
+.orion-stock-review-form p, .orion-stock-projection p { color: var(--orion-text-secondary); font-size: 12px; }
+.orion-stock-review-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-3, 12px); }
+.orion-stock-review-form label { display: grid; gap: var(--space-2, 8px); font-size: 12px; }
+.orion-stock-review-form input, .orion-stock-review-form select, .orion-stock-review-form textarea {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  background: var(--orion-surface); color: var(--orion-text); border: 1px solid var(--orion-border);
+  border-radius: 0; padding: var(--space-2, 8px); font: inherit;
+}
+.orion-stock-review-form details { margin-top: var(--space-3, 12px); font-size: 12px; }
+.orion-stock-review-form li { margin-block: var(--space-2, 8px); }
+.orion-stock-projection h4 { margin: 0; font-size: 14px; }
+
+.orion-stock-review-anchor { scroll-margin-top: 96px; }
+
+.orion-stock-review-justification {
+  margin-block: var(--space-3, 12px);
+}
+
+.orion-stock-projection td small { display: block; margin-top: var(--space-1, 4px); color: var(--orion-text-secondary); }
+
+.orion-investigation-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2, 8px); }

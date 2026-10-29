@@ -1,0 +1,322 @@
+from __future__ import annotations
+
+import re
+import unicodedata
+
+from app.schemas.agent import ChatResponse
+from app.services.database_answer_service import DatabaseKnowledgeAnswer, answer_database_knowledge
+from app.services.database_chat_refinement_service import refine_database_answer
+from app.services.database_critical_investigation_chain_service import (
+    answer_critical_investigation_chain,
+    carry_investigation_chain,
+)
+from app.services.database_clock_service import answer_clock_question
+from app.services.database_domain_definition_service import answer_domain_definition
+from app.services.database_operational_explanation_service import answer_operational_explanation
+from app.services.database_material_cause_service import answer_material_causes
+from app.services.database_multi_question_service import split_independent_questions, combine_knowledge_answers
+from app.services.database_investigation_query_service import answer_investigation_question
+from app.services.database_conversation_grounding_service import (
+    apply_deterministic_conclusions,
+    build_persisted_context,
+    semantic_coverage_missing,
+    status_knowledge_answer,
+)
+from app.services.database_query_planner_service import QueryPlan, plan_database_question, smalltalk_answer
+from app.services.database_structured_query_service import structured_knowledge_answer
+from app.services.dpp_status_registry import known_status_codes
+from app.services.llm_grounding_service import enhance_grounded_answer
+from app.services.rag_runtime_service import load_chat_context, record_chat_audit
+from app.services.rag_runtime_status_service import runtime_workspace_status
+
+
+def _normalize(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", str(text or "").lower())
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9_.-]+", " ", normalized).strip()
+
+
+def _only_incidental_python(question: str, sources: list[str]) -> bool:
+    if not sources or not all(source.startswith("python://") for source in sources):
+        return False
+    normalized = _normalize(question)
+    explicitly_code = (
+        "python" in normalized
+        or "codigo" in normalized
+        or ".py" in normalized
+        or bool(re.search(r"\b[a-z][a-z0-9]*_[a-z0-9_]+\b", normalized))
+    )
+    return not explicitly_code
+
+
+def _label_structured_field_answer(answer: str, context: dict) -> str:
+    topic = str(context.get("topic") or "")
+    labels = {
+        "balance": ("SALDO ORION:", "SALDO Final:"),
+        "nec": ("NEC ORION:", "NEC Final:"),
+        "stock_total": ("STK TTL ORION:", "STK TTL Final:"),
+        "stock_op": ("STK OP ORION:", "STK OP Final:"),
+    }
+    if topic not in labels:
+        return answer
+    scenario_label, final_label = labels[topic]
+    return answer.replace("Cenário ORION:", scenario_label).replace("DPP Final:", final_label)
+
+
+def _merge_entities(*groups: list[str]) -> list[str]:
+    result: list[str] = []
+    for group in groups:
+        for item in group:
+            text = str(item or "").strip()
+            if text and text not in result:
+                result.append(text)
+    return result
+
+
+def _traceable_knowledge_entities(plan: QueryPlan, knowledge: DatabaseKnowledgeAnswer) -> list[str]:
+    """Mantém somente entidades com origem ou formato de domínio demonstrável."""
+
+    recognized = {_normalize(item) for item in plan.concept_entities}
+    statuses = {item.upper() for item in known_status_codes()}
+    result: list[str] = []
+
+    for raw in knowledge.entities:
+        item = str(raw or "").strip()
+        if not item:
+            continue
+        normalized = _normalize(item)
+        is_recognized_concept = normalized in recognized
+        is_status = item.upper() in statuses
+        is_domain_identifier = bool(
+            re.fullmatch(r"[A-Z0-9_]+(?:-[A-Z0-9_]+)*", item)
+            and (len(item) >= 2)
+        )
+        if is_recognized_concept or is_status or is_domain_identifier:
+            result.append(item.upper() if is_status else item)
+
+    return result
+
+
+def _smalltalk_knowledge(previous_context: dict, question: str) -> DatabaseKnowledgeAnswer:
+    return DatabaseKnowledgeAnswer(
+        answer=smalltalk_answer(),
+        sources=[],
+        chunks=[],
+        entities=[],
+        resolved_question=question,
+        context=previous_context,
+    )
+
+
+def _resolve_single_knowledge(plan: QueryPlan, previous_context: dict) -> tuple[DatabaseKnowledgeAnswer, bool, str]:
+    """Resolve uma pergunta por fatos rastreáveis antes de qualquer síntese LLM."""
+
+    question = plan.original_question
+    status_direct = False
+    structured_route = ""
+
+    clock_result = answer_clock_question(plan.resolved_question)
+    chain_result = answer_critical_investigation_chain(question, previous_context) if clock_result is None else None
+    definition_result = answer_domain_definition(plan.resolved_question) if clock_result is None and chain_result is None else None
+    operational_result = (
+        answer_operational_explanation(question, previous_context)
+        if clock_result is None and chain_result is None and definition_result is None else None
+    )
+    material_cause = (
+        answer_material_causes(question, previous_context)
+        if clock_result is None and chain_result is None and definition_result is None and operational_result is None else None
+    )
+    if clock_result is not None:
+        knowledge = clock_result
+        structured_route = "runtime-clock"
+    elif chain_result is not None:
+        knowledge = chain_result
+        structured_route = "critical-investigation-chain"
+    elif definition_result is not None:
+        knowledge = definition_result
+        structured_route = "glossary-definition"
+    elif operational_result is not None:
+        knowledge = operational_result
+        structured_route = "operational-explanation"
+    elif material_cause is not None:
+        knowledge = material_cause
+        structured_route = "material-causal-explanation"
+    elif plan.smalltalk:
+        knowledge = _smalltalk_knowledge(previous_context, question)
+    else:
+        status_result = status_knowledge_answer(plan)
+        if status_result is not None and plan.intent in {"definition", "explanation", "fact"}:
+            knowledge = status_result
+            status_direct = True
+        else:
+            investigation_result = answer_investigation_question(
+                plan.resolved_question, previous_context, original_question=plan.original_question
+            )
+            if investigation_result is not None:
+                knowledge = investigation_result
+                structured_route = "dashboard-investigation"
+            else:
+                structured_result, structured_route = structured_knowledge_answer(plan, previous_context)
+                if structured_result is not None:
+                    knowledge = structured_result
+                else:
+                    knowledge = answer_database_knowledge(plan.retrieval_question, context=previous_context)
+                    knowledge = refine_database_answer(question, previous_context, knowledge)
+                    knowledge.answer = _label_structured_field_answer(knowledge.answer, knowledge.context)
+                    knowledge.resolved_question = plan.resolved_question
+
+                    if plan.concept_entities:
+                        subject_key = plan.concept_entities[0] if len(plan.concept_entities) == 1 else " + ".join(plan.concept_entities)
+                        if knowledge.context.get("subject_type") in {None, "", "knowledge", "concept"}:
+                            knowledge.context = {
+                                **knowledge.context,
+                                "subject_type": "concept",
+                                "subject_key": subject_key,
+                            }
+
+                    if _only_incidental_python(question, knowledge.sources):
+                        knowledge.answer = (
+                            "Não encontrei evidência suficiente no banco de conhecimento SQLite do ORION para responder essa pergunta. "
+                            "Nenhuma resposta externa ou pré-definida foi usada."
+                        )
+                        knowledge.sources = []
+                        knowledge.chunks = []
+                        knowledge.entities = []
+                        knowledge.table = None
+
+        knowledge = apply_deterministic_conclusions(question, plan, knowledge)
+
+    return knowledge, status_direct, structured_route
+
+
+def answer_database_question(question: str, session_id: str = "") -> ChatResponse:
+    runtime = runtime_workspace_status()
+    previous_context = load_chat_context(session_id)
+    # A memória da sessão não pode apontar para um ranking/PN de outro cenário.
+    if previous_context.get("workspace_fingerprint") != runtime["workspace_fingerprint"]:
+        previous_context = {}
+
+    # O roteador é a fonte única da intenção. Executores estruturados recebem o plano
+    # já classificado e não reinterpretam keywords para escolher outra rota.
+    plan = plan_database_question(question, previous_context)
+    questions = split_independent_questions(question)
+    if questions:
+        parts = [
+            _resolve_single_knowledge(plan_database_question(part, previous_context), previous_context)[0]
+            for part in questions
+        ]
+        knowledge = combine_knowledge_answers(questions, parts)
+        status_direct = False
+        structured_route = "multi-question"
+    else:
+        knowledge, status_direct, structured_route = _resolve_single_knowledge(plan, previous_context)
+
+    deterministic_answer = knowledge.answer
+    enhancement = enhance_grounded_answer(
+        question=question,
+        plan=plan,
+        context=previous_context,
+        knowledge=knowledge,
+    )
+
+    if enhancement.used and semantic_coverage_missing(enhancement.answer, knowledge.context):
+        enhancement.answer = deterministic_answer
+        enhancement.used = False
+        enhancement.fallback = True
+
+    knowledge.answer = enhancement.answer
+
+    sources = knowledge.sources
+    retrieval = [
+        {
+            "source": chunk.source,
+            "heading": chunk.heading,
+            "category": chunk.category,
+            "score": chunk.score,
+        }
+        for chunk in knowledge.chunks
+    ]
+    carry_investigation_chain(question, previous_context, knowledge)
+    knowledge.context["workspace_fingerprint"] = runtime["workspace_fingerprint"]
+    response_entities = _merge_entities(
+        plan.concept_entities,
+        plan.status_entities,
+        plan.rule_entities,
+        _traceable_knowledge_entities(plan, knowledge),
+    )
+    persisted_context = knowledge.context if plan.smalltalk else build_persisted_context(knowledge, response_entities)
+
+    if plan.smalltalk:
+        audit_provider = "deterministic-router"
+        response_provider = "local-router"
+        response_model = "deterministic-router"
+    elif status_direct and not enhancement.used:
+        audit_provider = "deterministic-status-registry"
+        response_provider = "local-router"
+        response_model = "deterministic-status-registry"
+    elif structured_route in {"runtime-clock", "glossary-definition", "operational-explanation", "material-causal-explanation", "multi-question"}:
+        audit_provider = f"deterministic-{structured_route}"
+        response_provider = "local-rag"
+        response_model = f"deterministic-{structured_route}"
+    elif structured_route == "rule-registry" and not enhancement.used:
+        audit_provider = "deterministic-rule-registry"
+        response_provider = "local-router"
+        response_model = "deterministic-rule-registry"
+    elif structured_route == "calculation-registry" and not enhancement.used:
+        audit_provider = "deterministic-calculation-registry"
+        response_provider = "local-rag"
+        response_model = "sqlite-fts5-bm25"
+    elif enhancement.used:
+        audit_provider = f"grounded-llm:{enhancement.provider or 'configured'}"
+        response_provider = enhancement.provider or "local-llm"
+        response_model = enhancement.model or "local-model"
+    elif structured_route == "critical-investigation-chain":
+        audit_provider = "deterministic-critical-investigation-chain"
+        response_provider = "local-rag"
+        response_model = "deterministic-critical-investigation-chain"
+    elif structured_route == "dashboard-investigation":
+        audit_provider = "deterministic-dashboard-investigation"
+        response_provider = "local-rag"
+        response_model = "deterministic-dashboard-investigation"
+    elif structured_route == "model-comparison":
+        suffix = ":llm-fallback" if enhancement.fallback else ""
+        audit_provider = f"deterministic-model-comparison{suffix}"
+        response_provider = "local-rag"
+        response_model = "deterministic-model-comparison"
+    elif enhancement.fallback:
+        audit_provider = "local-rag-db:llm-fallback"
+        response_provider = "local-rag"
+        response_model = "sqlite-fts5-bm25"
+    else:
+        audit_provider = "local-rag-db"
+        response_provider = "local-rag"
+        response_model = "sqlite-fts5-bm25"
+
+    audit_id = record_chat_audit(
+        question=question,
+        answer=knowledge.answer,
+        provider=audit_provider,
+        sources=sources,
+        workspace_fingerprint=runtime["workspace_fingerprint"],
+        session_id=session_id,
+        resolved_question=knowledge.resolved_question or plan.resolved_question,
+        context=persisted_context,
+        retrieval=retrieval,
+    )
+    return ChatResponse(
+        provider=response_provider,
+        model=response_model,
+        is_demo=False,
+        answer=knowledge.answer,
+        knowledge_sources=sources,
+        retrieval=retrieval,
+        entities=response_entities,
+        table=knowledge.table,
+        database=runtime.get("database", "orion.db"),
+        workspace_fingerprint=runtime["workspace_fingerprint"],
+        audit_id=audit_id,
+        resolved_question=knowledge.resolved_question or plan.resolved_question,
+        llm_used=enhancement.used,
+        llm_fallback=enhancement.fallback,
+        llm_provider=enhancement.provider,
+    )

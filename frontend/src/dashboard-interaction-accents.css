@@ -1,0 +1,27 @@
+/*
+ * Acentos funcionais do Dashboard DPP: mesmo ciano da estrela ORION.
+ * Somente no tema escuro. Nenhum status, dado, superfície ou borda em repouso
+ * muda de cor; o tema claro conserva seu comportamento anterior.
+ */
+
+/* Identificação discreta dos quatro módulos, sem caixa atrás do SVG. */
+:root[data-theme='dark'] .dpp-dashboard-view .orion-module-icon {
+  color: var(--orion-blue);
+}
+
+/* KPIs acionáveis: o rótulo indica hover/foco; o valor permanece neutro. */
+:root[data-theme='dark'] .dpp-dashboard-view .dashboard-investigation-pair
+.orion-kpi-tile:is(:hover, :focus-visible) > span {
+  color: var(--orion-blue);
+}
+
+/* Fila operacional: apenas o código do PN reage, nunca seus dados descritivos. */
+:root[data-theme='dark'] .dpp-dashboard-view
+.orion-pending-item:is(:hover, :focus-visible) > strong {
+  color: var(--orion-blue);
+}
+
+/* Ação de navegação contínua, coerente com "Ver detalhes" do DPP Final. */
+:root[data-theme='dark'] .dpp-dashboard-view .orion-pending-view-all {
+  color: var(--orion-blue);
+}

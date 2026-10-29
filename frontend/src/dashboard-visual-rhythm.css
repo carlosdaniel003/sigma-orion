@@ -1,0 +1,46 @@
+/*
+ * Regras de leitura para os componentes operacionais ainda montados no Dashboard.
+ * Geometria das duas faixas e responsividade: dashboard-hierarchy.css.
+ * As regras de painéis antigos (risco, evolução, cobertura, filas anteriores) foram removidas.
+ */
+.dpp-dashboard-view .dashboard-header {
+  margin-bottom: var(--space-5);
+}
+
+.dpp-dashboard-view .dashboard-header > div > p {
+  max-width: 740px;
+  line-height: 1.55;
+}
+
+.dpp-dashboard-view .orion-investigation-block-heading {
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Grade de seis métricas: linhas técnicas, sem bordas dobradas por nth-child. */
+.dpp-dashboard-view .orion-investigation-overview-metrics {
+  display: grid;
+  gap: 1px;
+  padding: 1px;
+  border: 0;
+  background: var(--orion-border);
+}
+
+.dpp-dashboard-view .orion-investigation-overview-metric {
+  min-width: 0;
+  background: var(--orion-surface);
+}
+
+.dpp-dashboard-view .orion-investigation-overview-metric dt {
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.dpp-dashboard-view .orion-investigation-overview-metric dd {
+  font-variant-numeric: tabular-nums;
+}
+
+.dpp-dashboard-view .orion-investigation-overview-metric small {
+  color: var(--orion-text-secondary);
+  line-height: 1.4;
+}

@@ -1,0 +1,105 @@
+.orion-current-stage > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1, 4px);
+}
+
+.orion-current-stage .orion-stage-label {
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs, 11px);
+  font-weight: 750;
+  letter-spacing: 0.07em;
+}
+
+.orion-stage-measures {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+}
+
+.orion-current-stage .orion-elapsed-time,
+.orion-current-stage .orion-progress-percent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 4px 7px;
+  border: 1px solid var(--orion-border);
+  border-radius: 999px;
+  background: var(--orion-surface);
+  color: var(--orion-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orion-current-stage .orion-progress-percent {
+  min-width: 52px;
+  color: var(--orion-text);
+  font-size: var(--text-sm, 12px);
+  font-weight: 750;
+  text-align: center;
+}
+
+.orion-current-stage .orion-elapsed-time {
+  min-width: 44px;
+}
+
+.orion-working-progress.measured span {
+  width: 0;
+  transform: none;
+  animation: none;
+  transition: width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.orion-working-progress.measured {
+  background: var(--orion-border);
+}
+
+.orion-inline-working {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  margin: var(--space-2, 8px) 0 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text);
+}
+
+.orion-inline-working > .orion-working-status-dot {
+  flex: 0 0 auto;
+}
+
+.orion-inline-working > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.orion-inline-working strong {
+  color: var(--orion-text);
+  font-size: var(--text-sm, 12px);
+  font-weight: 700;
+}
+
+.orion-inline-working small {
+  overflow: hidden;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs, 11px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .orion-stage-measures {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orion-working-progress.measured span {
+    transition: none;
+  }
+}

@@ -1,0 +1,65 @@
+/* Visual mais direto para a página DPP; não interfere nos Excels. */
+.dashboard-plan-overview { min-width:0; margin-bottom:var(--space-4,16px); }
+.dashboard-plan-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; }
+.dashboard-plan-metrics > div {
+  min-width:0; display:flex; flex-direction:column; gap:8px;
+  padding:12px 16px; border-right:1px solid var(--orion-border);
+}
+.dashboard-plan-metrics > div:last-child { border-right:0; }
+.dashboard-plan-metrics span,
+.dashboard-plan-metrics small { font-size:12px; color:var(--orion-text-secondary); }
+.dashboard-plan-metrics strong { font-size:clamp(18px,1.6vw,25px); line-height:1.2; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.dashboard-complementary-details { border:1px solid var(--orion-border); margin-bottom:var(--space-5,24px); background:var(--orion-surface); min-width:0; }
+.dashboard-complementary-details > summary {
+  cursor:pointer; padding:16px; font-size:13px; font-weight:600; color:var(--orion-text);
+  list-style:revert;
+}
+.dashboard-complementary-details > summary:focus-visible { outline:2px solid var(--orion-blue); outline-offset:2px; }
+.dashboard-complementary-content { padding:16px; border-top:1px solid var(--orion-border); display:grid; gap:var(--space-4,16px); }
+.dashboard-complementary-content > .panel,
+.dashboard-complementary-content > .dashboard-grid-main { margin:0; min-width:0; }
+.dashboard-comparison-cards.scenario-comparison-grid {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;
+  border:0; background:transparent; overflow:visible; border-radius:0;
+}
+.dashboard-comparison-cards .scenario-comparison-row {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  min-width:0; min-height:auto; border:1px solid var(--orion-border);
+  background:var(--orion-surface);
+}
+.dashboard-comparison-cards .scenario-comparison-row > div { min-width:0; border-right:0; padding:12px; }
+.dashboard-comparison-cards .scenario-comparison-label {
+  grid-column:1/-1; border-bottom:1px solid var(--orion-border);
+}
+.dashboard-comparison-cards .scenario-comparison-divergence {
+  grid-column:1/-1; border-top:1px solid var(--orion-border);
+}
+.dashboard-evolution-cards.dpp-evolution-list {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;
+  background:transparent; border:0; overflow:visible; border-radius:0;
+}
+.dashboard-evolution-cards .dpp-evolution-row {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px;
+  min-width:0; margin:0; padding:14px; border:1px solid var(--orion-border);
+  background:var(--orion-surface); align-items:start;
+}
+.dashboard-evolution-cards .dpp-evolution-row > strong { grid-column:1/-1; }
+.dashboard-evolution-cards .dpp-evolution-row > small { grid-column:1/-1; }
+@media (max-width:1100px) {
+  .dashboard-plan-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dashboard-plan-metrics > div:nth-child(2n) { border-right:0; }
+  .dashboard-plan-metrics > div:nth-child(-n+2) { border-bottom:1px solid var(--orion-border); }
+  .dashboard-comparison-cards.scenario-comparison-grid { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:700px) {
+  .dashboard-evolution-cards.dpp-evolution-list { grid-template-columns:minmax(0,1fr); }
+  .dashboard-plan-metrics > div { padding:10px 12px; }
+  .dashboard-complementary-content { padding:12px; }
+}
+
+.dashboard-plan-overview { container-type:inline-size; }
+@container (max-width:960px) {
+  .dashboard-plan-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dashboard-plan-metrics > div:nth-child(2n) { border-right:0; }
+  .dashboard-plan-metrics > div:nth-child(-n+2) { border-bottom:1px solid var(--orion-border); }
+}

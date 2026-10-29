@@ -1,0 +1,103 @@
+/*
+ * Dark Mondial palette — deliberate grayscale with sparse ORION cyan accents.
+ * Loaded after legacy theme layers, scoped to data-theme='dark' only.
+ * Sidebar colors are defined independently in sidebar-theme.css.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --orion-bg: #191A1D;
+  --orion-surface: #242529;
+  --orion-surface-elevated: #2E3035;
+  --orion-border: #404249;
+  --orion-border-soft: rgba(255, 255, 255, 0.11);
+  --orion-text: #F5F5F6;
+  --orion-text-secondary: #BBC0C8;
+  --orion-neutral: #9CA2AB;
+  --orion-blue-soft: rgba(70, 217, 255, 0.09);
+  --orion-success-soft: rgba(39, 242, 154, 0.10);
+  --orion-warning-soft: rgba(245, 196, 81, 0.10);
+  --orion-danger-soft: rgba(255, 93, 108, 0.10);
+  --orion-shadow: none;
+}
+:root[data-theme='dark'] :is(button, input, textarea, select) {
+  color-scheme: dark;
+}
+
+/* Separate page, operational panels and contained information by luminance. */
+:root[data-theme='dark'] :is(.shell-topbar, .orion-investigation-dialog) {
+  background: var(--orion-bg);
+  color: var(--orion-text);
+}
+:root[data-theme='dark'] :is(
+  .dashboard-plan-overview,
+  .orion-investigation-overview,
+  .orion-stock-investigation,
+  .orion-quality-investigation,
+  .bulk-file-picker,
+  .final-model-plan,
+  .orion-investigation-dialog-heading
+) {
+  background: var(--orion-surface);
+  color: var(--orion-text);
+}
+:root[data-theme='dark'] :is(.orion-kpi-tile, .dashboard-plan-metrics > div) {
+  background: var(--orion-surface) !important;
+  color: var(--orion-text);
+}
+:root[data-theme='dark'] .orion-kpi-tile:hover {
+  background: var(--orion-surface-elevated) !important;
+}
+
+/* Main actions are white/black Mondial; blue remains a small functional accent. */
+:root[data-theme='dark'] :is(
+  .primary-button,
+  .bulk-file-button,
+  .consolidation-tabs button.active,
+  .agent-composer button
+) {
+  background: var(--orion-text) !important;
+  color: var(--orion-bg) !important;
+  border-color: var(--orion-text) !important;
+}
+:root[data-theme='dark'] :is(
+  .secondary-button,
+  .bulk-file-clear,
+  .detail-close
+) {
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+  border-color: var(--orion-border) !important;
+}
+:root[data-theme='dark'] :is(
+  .primary-button,
+  .bulk-file-button,
+  .consolidation-tabs button.active,
+  .agent-composer button
+):hover:not(:disabled) {
+  background: #FFFFFF !important;
+}
+:root[data-theme='dark'] :is(button, a, input, textarea, select):focus-visible {
+  outline-color: var(--orion-blue) !important;
+}
+:root[data-theme='dark'] :is(input, textarea, select):focus {
+  border-color: var(--orion-blue) !important;
+}
+
+/* Statuses and tables use neutral text; only meaningful validated-state accents
+   and active controls retain the ORION blue defined by the design system. */
+:root[data-theme='dark'] .shell-sidebar .shell-nav-item[aria-current='page'] svg {
+  color: var(--orion-blue);
+}
+
+/* Override the old blue hover fill: interactive states stay charcoal/white. */
+:root[data-theme='dark'] .secondary-button:hover:not(:disabled),
+:root[data-theme='dark'] .bulk-file-clear:hover:not(:disabled),
+:root[data-theme='dark'] .detail-close:hover,
+:root[data-theme='dark'] .consolidation-tabs button:not(.active):hover {
+  background: #383B41 !important;
+  border-color: #6A6E76 !important;
+  color: var(--orion-text) !important;
+}
+:root[data-theme='dark'] :is(.upload-box, .source-file-control) {
+  color: var(--orion-text) !important;
+}

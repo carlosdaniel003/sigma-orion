@@ -1,0 +1,103 @@
+.agent-message[data-has-table='true'] {
+  max-width: 100%;
+}
+
+.agent-data-table-wrap {
+  width: 100%;
+  max-height: 320px;
+  margin-top: 10px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--orion-border);
+  background: var(--orion-bg);
+  scrollbar-gutter: stable;
+}
+
+.agent-data-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--orion-text);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.agent-data-table th,
+.agent-data-table td {
+  padding: 7px 9px;
+  border-right: 1px solid var(--orion-border-soft);
+  border-bottom: 1px solid var(--orion-border-soft);
+  background: var(--orion-surface);
+  vertical-align: top;
+}
+
+.agent-data-table th:last-child,
+.agent-data-table td:last-child {
+  border-right: 0;
+}
+
+.agent-data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.agent-data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.agent-data-table td[data-align='right'],
+.agent-data-table th[data-align='right'] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.agent-data-table td[data-kind='code'] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.agent-data-table td[data-kind='description'] {
+  min-width: 210px;
+  color: var(--orion-text-secondary);
+}
+
+.agent-data-table tbody tr:hover td {
+  background: var(--orion-surface-elevated);
+}
+
+.agent-data-table-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--orion-text-secondary);
+  font-size: 0.68rem;
+}
+
+.agent-data-table-caption strong {
+  color: var(--orion-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+@media (max-width: 820px) {
+  .agent-data-table-wrap {
+    max-height: 250px;
+  }
+
+  .agent-data-table {
+    min-width: 600px;
+  }
+}

@@ -1,0 +1,47 @@
+/* Dashboard operacional: apenas seis indicadores e atalhos. Detalhes usam InvestigationKpiPanel. */
+.orion-investigation-ui { min-width:0; scroll-margin-top:82px; container-type:inline-size; }
+.orion-investigation-ui h3,
+.orion-investigation-ui h4 { margin-top:0; }
+.orion-investigation-ui p { line-height:1.55; }
+.orion-investigation-block-heading {
+  display:flex; align-items:start; justify-content:space-between; flex-wrap:wrap;
+  gap:var(--space-4);
+}
+.orion-investigation-block-heading > div { min-width:0; flex:1 1 300px; }
+.orion-investigation-block-heading p { color:var(--orion-text-secondary); font-size:12px; }
+.orion-investigation-shortcuts { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+.orion-investigation-shortcuts a {
+  display:inline-flex; gap:var(--space-2); align-items:center;
+  padding:9px 12px; border:1px solid var(--orion-border);
+  border-radius:0; color:var(--orion-text); text-decoration:none;
+  background:var(--orion-surface);
+}
+.orion-investigation-shortcuts a:hover { background:var(--orion-surface-elevated); }
+.orion-investigation-shortcuts a:focus-visible { outline:2px solid var(--orion-blue); outline-offset:2px; }
+.orion-investigation-overview-metrics {
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+  margin:var(--space-5) 0 0; padding:0;
+  border:1px solid var(--orion-border);
+}
+.orion-investigation-overview-metric {
+  display:flex; flex-direction:column; gap:var(--space-2);
+  padding:var(--space-4); min-width:0;
+  border-right:1px solid var(--orion-border);
+  border-bottom:1px solid var(--orion-border);
+}
+.orion-investigation-overview-metric:nth-child(3n) { border-right:0; }
+.orion-investigation-overview-metric:nth-last-child(-n+3) { border-bottom:0; }
+.orion-investigation-overview-metric dt { font-size:12px; color:var(--orion-text-secondary); }
+.orion-investigation-overview-metric dd { margin:0; font-size:clamp(21px,2vw,30px); font-weight:650; font-variant-numeric:tabular-nums; }
+.orion-investigation-overview-metric small { font-size:11px; color:var(--orion-text-secondary); }
+@container (max-width:760px) {
+  .orion-investigation-overview-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .orion-investigation-overview-metric:nth-child(n) { border-right:1px solid var(--orion-border); border-bottom:1px solid var(--orion-border); }
+  .orion-investigation-overview-metric:nth-child(2n) { border-right:0; }
+  .orion-investigation-overview-metric:nth-last-child(-n+2) { border-bottom:0; }
+}
+@container (max-width:400px) {
+  .orion-investigation-overview-metrics { grid-template-columns:1fr; }
+  .orion-investigation-overview-metric:nth-child(n) { border-right:0; border-bottom:1px solid var(--orion-border); }
+  .orion-investigation-overview-metric:last-child { border-bottom:0; }
+}

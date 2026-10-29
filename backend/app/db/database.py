@@ -1,0 +1,23 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+from app.core.config import DATABASE_URL
+
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def init_db() -> None:
+    from app.models.analysis_history import AnalysisHistory  # noqa: F401
+    from app.models.analysis_run import AnalysisRun  # noqa: F401
+    from app.models.feedback import Feedback  # noqa: F401
+    from app.models.stock_depot_review import StockDepotReview  # noqa: F401
+    from app.models.quality_depot_review import QualityDepotReview  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)

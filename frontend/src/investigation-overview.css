@@ -1,0 +1,27 @@
+.orion-investigation-overview h3 { margin: 0; }
+.orion-investigation-overview p,
+.orion-investigation-overview > small { font-size: 12px; color: var(--orion-text-secondary); }
+.orion-investigation-overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: var(--space-3, 12px);
+  margin-block: var(--space-4, 16px);
+}
+.orion-investigation-overview-metric {
+  min-width: 0;
+  border-top: 1px solid var(--orion-border);
+  padding-top: var(--space-2, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+.orion-investigation-overview-metric span {
+  color: var(--orion-text-secondary);
+  font-size: 12px;
+}
+.orion-investigation-overview-metric strong {
+  color: var(--orion-text);
+  font-weight: 650;
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,674 @@
+:root {
+  color-scheme: dark;
+  --orion-bg: #08111F;
+  --orion-surface: #101C2C;
+  --orion-surface-elevated: #17263A;
+  --orion-blue: #46D9FF;
+  --orion-success: #27F29A;
+  --orion-warning: #F5C451;
+  --orion-danger: #FF5D6C;
+  --orion-neutral: #7F93A8;
+  --orion-text: #F4F8FC;
+  --orion-text-secondary: #91A4B8;
+  --orion-border: #24364A;
+  --orion-border-soft: rgba(145, 164, 184, 0.16);
+  --orion-blue-soft: rgba(70, 217, 255, 0.12);
+  --orion-success-soft: rgba(39, 242, 154, 0.10);
+  --orion-warning-soft: rgba(245, 196, 81, 0.10);
+  --orion-danger-soft: rgba(255, 93, 108, 0.10);
+  --orion-shadow: 0 18px 50px rgba(0, 0, 0, 0.20);
+  background: var(--orion-bg);
+  color: var(--orion-text);
+}
+
+html,
+body,
+#root,
+.app-shell {
+  background: var(--orion-bg) !important;
+  color: var(--orion-text) !important;
+}
+
+body {
+  accent-color: var(--orion-blue);
+}
+
+::selection {
+  background: rgba(70, 217, 255, 0.28);
+  color: var(--orion-text);
+}
+
+* {
+  scrollbar-color: var(--orion-border) var(--orion-bg);
+}
+
+/* Typography */
+.page-header h1,
+.page-header h2,
+.page-header h3,
+.panel h1,
+.panel h2,
+.panel h3,
+.panel h4,
+.bulk-file-picker h3,
+.source-card h3,
+.material-detail-panel h3,
+strong,
+th {
+  color: var(--orion-text);
+}
+
+.page-header p,
+.panel p,
+.panel small,
+.bulk-file-picker p,
+.source-card p,
+.material-detail-panel p,
+.detail-description,
+.columns,
+.sheet span,
+.sheet small,
+.model-card small,
+.model-card span,
+.open-entry-list article span,
+.open-entry-card span {
+  color: var(--orion-text-secondary) !important;
+}
+
+/* Navigation */
+.topbar {
+  border-bottom-color: var(--orion-border) !important;
+  background: var(--orion-bg) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+}
+
+.topbar-brand {
+  color: var(--orion-text) !important;
+}
+
+.topbar-brand:hover {
+  background: var(--orion-surface) !important;
+}
+
+.brand-mark {
+  background: var(--orion-blue) !important;
+  color: var(--orion-bg) !important;
+  box-shadow: none !important;
+}
+
+.topbar-nav,
+.workspace-dock {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18) !important;
+}
+
+.nav-icon-button,
+.workspace-button,
+.topbar-status {
+  color: var(--orion-text-secondary) !important;
+}
+
+.nav-icon-button:hover,
+.nav-icon-button:focus-visible,
+.nav-icon-button.nav-active,
+.workspace-button:hover,
+.workspace-button:focus-visible,
+.workspace-button.workspace-active {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-blue) !important;
+}
+
+.nav-icon-button.nav-active {
+  box-shadow: inset 0 0 0 1px rgba(70, 217, 255, 0.08) !important;
+}
+
+.nav-icon-button[data-tooltip]::after,
+.topbar-status[data-tooltip]::after,
+.workspace-button[data-tooltip]::after {
+  border: 1px solid var(--orion-border);
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+}
+
+/* Shared surfaces */
+.panel,
+.metric,
+.result-card,
+.risk-card,
+.recommendation,
+.source-card,
+.bulk-file-picker,
+.material-detail-panel,
+.model-card,
+.open-entry-list article,
+.open-entry-card,
+.dashboard-kpi,
+.dashboard-mini-kpi,
+.dashboard-fact,
+.dpp-state-card,
+.dashboard-kpi-comparison,
+.dashboard-comparison-card,
+.dashboard-planning-panel,
+.dashboard-health-panel {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  color: var(--orion-text) !important;
+  box-shadow: var(--orion-shadow) !important;
+}
+
+.panel,
+.bulk-file-picker,
+.dashboard-kpi-comparison,
+.dashboard-planning-panel,
+.dashboard-health-panel {
+  border-radius: 24px !important;
+}
+
+.metric,
+.result-card,
+.risk-card,
+.recommendation,
+.source-card,
+.dashboard-kpi,
+.dashboard-mini-kpi,
+.dashboard-fact,
+.dpp-state-card,
+.dashboard-comparison-card,
+.model-card {
+  border-radius: 16px !important;
+}
+
+.flow-step,
+.evidence,
+.chat-answer,
+.capability-list > div,
+.rule-box,
+.unit-warning,
+.source-result-list article,
+.detail-kpis > div,
+.dashboard-method-note,
+.dashboard-context-strip,
+.dpp-final-placeholder {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+}
+
+/* Controls */
+button,
+input,
+textarea,
+select {
+  color-scheme: dark;
+}
+
+input,
+textarea,
+select,
+.chat-form input,
+.monthly-controls input,
+.consolidation-filters input,
+.consolidation-filters select,
+.real-table input {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+  box-shadow: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--orion-neutral) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.chat-form input:focus {
+  border-color: var(--orion-blue) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(70, 217, 255, 0.12) !important;
+}
+
+.primary-button,
+.bulk-file-button,
+.consolidation-tabs button.active {
+  border-color: transparent !important;
+  background: var(--orion-blue) !important;
+  color: var(--orion-bg) !important;
+  box-shadow: none !important;
+}
+
+.primary-button:hover:not(:disabled),
+.bulk-file-button:hover:not(.disabled),
+.consolidation-tabs button.active:hover {
+  filter: brightness(1.06);
+}
+
+.secondary-button,
+.bulk-file-clear,
+.detail-close,
+.consolidation-tabs button {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+  box-shadow: none !important;
+}
+
+.secondary-button:hover:not(:disabled),
+.bulk-file-clear:hover:not(:disabled),
+.detail-close:hover,
+.consolidation-tabs button:hover {
+  border-color: rgba(70, 217, 255, 0.42) !important;
+  background: #1B2D44 !important;
+  color: var(--orion-blue) !important;
+}
+
+.upload-box,
+.source-file-control {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-blue) !important;
+}
+
+/* Generic chips and statuses */
+.eyebrow,
+.status,
+.source-state.optional,
+.unit-badge.neutral,
+.consolidation-status {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.status-dot,
+.readiness-marker,
+.pipeline-done .pipeline-marker {
+  background: var(--orion-success) !important;
+  box-shadow: 0 0 0 4px var(--orion-success-soft) !important;
+}
+
+.source-state.ready,
+.unit-badge.ok,
+.severity.low,
+.bulk-package-status.ready {
+  border-color: rgba(39, 242, 154, 0.30) !important;
+  background: var(--orion-success-soft) !important;
+  color: var(--orion-success) !important;
+}
+
+.source-state.required,
+.unit-badge.warning,
+.severity.medium,
+.bulk-package-status.missing,
+.unit-warning,
+.warning-box,
+.pending-list div,
+.row-warning td {
+  border-color: rgba(245, 196, 81, 0.30) !important;
+  background: var(--orion-warning-soft) !important;
+  color: var(--orion-warning) !important;
+}
+
+.unit-badge.error,
+.severity.high,
+.alert.error,
+.error {
+  border-color: rgba(255, 93, 108, 0.32) !important;
+  background: var(--orion-danger-soft) !important;
+  color: var(--orion-danger) !important;
+}
+
+.alert.demo {
+  border-color: rgba(245, 196, 81, 0.30) !important;
+  background: var(--orion-warning-soft) !important;
+  color: var(--orion-warning) !important;
+}
+
+/* Metrics */
+.metric span,
+.dashboard-kpi > span,
+.dashboard-mini-kpi > span,
+.dashboard-fact > span,
+.detail-kpis small,
+.detail-section small,
+.monthly-controls label span,
+.consolidation-filters label > span {
+  color: var(--orion-text-secondary) !important;
+}
+
+.metric.ok strong,
+.dashboard-kpi.good strong,
+.dashboard-mini-kpi.good strong,
+.capability-ready span {
+  color: var(--orion-success) !important;
+}
+
+.metric.attention strong,
+.dashboard-kpi.attention strong,
+.dashboard-mini-kpi.attention strong {
+  color: var(--orion-warning) !important;
+}
+
+.metric.critical strong,
+.dashboard-mini-kpi.critical strong,
+.dashboard-negative {
+  color: var(--orion-danger) !important;
+}
+
+/* Bulk package */
+.bulk-file-picker.compact,
+.bulk-file-picker.is-processing {
+  background: var(--orion-surface) !important;
+}
+
+.bulk-file-picker-head p,
+.bulk-file-check small,
+.bulk-file-note,
+.dpp-final-upload > span {
+  color: var(--orion-text-secondary) !important;
+}
+
+.bulk-file-check,
+.dpp-final-upload > span {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+}
+
+.bulk-file-check.found {
+  border-color: rgba(39, 242, 154, 0.26) !important;
+  background: var(--orion-success-soft) !important;
+}
+
+.bulk-file-check.missing {
+  border-color: rgba(245, 196, 81, 0.28) !important;
+  background: var(--orion-warning-soft) !important;
+}
+
+.bulk-check-icon {
+  background: var(--orion-border) !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.bulk-file-check.found .bulk-check-icon {
+  background: rgba(39, 242, 154, 0.16) !important;
+  color: var(--orion-success) !important;
+}
+
+.bulk-file-check.missing .bulk-check-icon {
+  background: rgba(245, 196, 81, 0.16) !important;
+  color: var(--orion-warning) !important;
+}
+
+/* DPP consolidation/test */
+.source-card.source-ready {
+  border-color: rgba(39, 242, 154, 0.35) !important;
+  box-shadow: inset 0 2px 0 var(--orion-success), var(--orion-shadow) !important;
+}
+
+.source-pending-text,
+.capability-list small,
+.open-entry-list article span,
+.open-entry-card span {
+  color: var(--orion-text-secondary) !important;
+}
+
+.pipeline-step,
+.detail-section {
+  border-color: var(--orion-border) !important;
+}
+
+.pipeline-marker,
+.pipeline-blocked .pipeline-marker {
+  background: var(--orion-neutral) !important;
+}
+
+.pipeline-waiting .pipeline-marker,
+.readiness-marker.pending {
+  background: var(--orion-warning) !important;
+  box-shadow: 0 0 0 4px var(--orion-warning-soft) !important;
+}
+
+.consolidation-tabs {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+}
+
+.material-detail-panel {
+  background: var(--orion-surface-elevated) !important;
+}
+
+.model-chip-list span,
+.pi-chip-list span {
+  background: var(--orion-border) !important;
+  color: var(--orion-text) !important;
+}
+
+/* Tables */
+.table-scroll,
+.dpp-table,
+table {
+  background: transparent !important;
+  color: var(--orion-text) !important;
+}
+
+.dpp-table thead,
+table thead {
+  background: var(--orion-surface-elevated) !important;
+}
+
+.dpp-table th,
+table th {
+  border-color: var(--orion-border) !important;
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-table td,
+table td {
+  border-color: var(--orion-border-soft) !important;
+  color: var(--orion-text) !important;
+  background: transparent;
+}
+
+.dpp-table tbody tr:hover td,
+table tbody tr:hover td {
+  background: rgba(70, 217, 255, 0.045) !important;
+}
+
+/* Dashboard context and comparison */
+.dashboard-context-strip {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+}
+
+.dashboard-context-label,
+.dashboard-comparison-eyebrow,
+.dashboard-comparison-label,
+.dashboard-comparison-values small,
+.dashboard-comparison-heading p,
+.dashboard-comparison-values p {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dashboard-comparison-heading h3,
+.dashboard-comparison-values strong {
+  color: var(--orion-text) !important;
+}
+
+.dashboard-comparison-values > .final-value {
+  border-left-color: var(--orion-border) !important;
+}
+
+.dashboard-comparison-values .final-value small,
+.dashboard-comparison-legend i.final {
+  color: var(--orion-success) !important;
+  background: var(--orion-success) !important;
+}
+
+.dashboard-comparison-legend i.orion {
+  background: var(--orion-blue) !important;
+}
+
+/* PGD x REAL and material support */
+.dpp-dashboard-view .dashboard-planning-panel,
+.dpp-dashboard-view .dashboard-health-panel {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  box-shadow: var(--orion-shadow) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header h3,
+.dpp-dashboard-view .dashboard-health-panel .panel-header h3,
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row > div:first-child span,
+.dpp-dashboard-view .dashboard-health-panel .health-score strong,
+.dpp-dashboard-view .dashboard-health-panel .health-split strong {
+  color: var(--orion-text) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .panel-header p,
+.dpp-dashboard-view .dashboard-health-panel .panel-header p,
+.dpp-dashboard-view .dashboard-health-panel .health-score span,
+.dpp-dashboard-view .dashboard-health-panel .health-split span,
+.dpp-dashboard-view .dashboard-health-panel .dashboard-method-note {
+  color: var(--orion-text-secondary) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-row,
+.dpp-dashboard-view .dashboard-health-panel .health-score,
+.dpp-dashboard-view .dashboard-planning-panel .dashboard-explanation-row > div,
+.dpp-dashboard-view .dashboard-health-panel .health-split > div {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-track,
+.dpp-dashboard-view .dashboard-health-panel .health-progress {
+  background: var(--orion-border) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-fill {
+  background: var(--orion-neutral) !important;
+}
+
+.dpp-dashboard-view .dashboard-planning-panel .planning-bar-fill.real {
+  background: var(--orion-blue) !important;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-progress > span,
+.dpp-dashboard-view .dashboard-health-panel .health-safe::before {
+  background: var(--orion-success) !important;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .health-risk::before {
+  background: var(--orion-warning) !important;
+}
+
+.dpp-dashboard-view .dashboard-health-panel .dashboard-method-note {
+  border-top-color: var(--orion-border) !important;
+  background: transparent !important;
+}
+
+/* ORION loading */
+.orion-working-overlay {
+  background: rgba(3, 8, 16, 0.86) !important;
+}
+
+.orion-working {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface) !important;
+  color: var(--orion-text) !important;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34) !important;
+}
+
+.orion-working h3,
+.orion-current-stage span,
+.orion-progress-percent {
+  color: var(--orion-text) !important;
+}
+
+.orion-working-subtitle,
+.orion-working-footer,
+.orion-stage-label,
+.orion-elapsed-time {
+  color: var(--orion-text-secondary) !important;
+}
+
+.orion-current-stage,
+.orion-current-stage .orion-elapsed-time,
+.orion-current-stage .orion-progress-percent {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+}
+
+.orion-working-progress,
+.orion-working-progress.measured {
+  background: var(--orion-border) !important;
+}
+
+.orion-working-progress span {
+  background: var(--orion-blue) !important;
+}
+
+.orion-constellation-structure line,
+.orion-constellation-segment.future {
+  stroke: var(--orion-border) !important;
+}
+
+.orion-constellation-segment.done,
+.orion-constellation-node.done .node-dot {
+  stroke: var(--orion-success) !important;
+  fill: var(--orion-success) !important;
+}
+
+.orion-constellation-segment.active {
+  stroke: var(--orion-blue) !important;
+}
+
+.orion-constellation-node.active .node-dot,
+.orion-constellation-core .orion-core-point {
+  fill: var(--orion-blue) !important;
+}
+
+.orion-constellation-node.future .node-dot {
+  fill: var(--orion-neutral) !important;
+}
+
+.orion-constellation-core .orion-core-disc {
+  fill: var(--orion-surface-elevated) !important;
+  stroke: var(--orion-border) !important;
+}
+
+.orion-constellation-core .orion-core-mark {
+  stroke: var(--orion-text) !important;
+}
+
+.orion-inline-working {
+  border-color: var(--orion-border) !important;
+  background: var(--orion-surface-elevated) !important;
+  color: var(--orion-text) !important;
+}
+
+/* Keep the Apple-like feel through restrained motion and cheap paint operations. */
+@media (prefers-reduced-motion: no-preference) {
+  .primary-button,
+  .secondary-button,
+  .bulk-file-button,
+  .bulk-file-clear,
+  .nav-icon-button,
+  .workspace-button,
+  .consolidation-tabs button {
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

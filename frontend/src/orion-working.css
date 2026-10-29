@@ -1,0 +1,338 @@
+.orion-working-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5, 24px);
+  overflow: auto;
+  background: var(--orion-bg);
+  color: var(--orion-text);
+  cursor: wait;
+  overscroll-behavior: contain;
+  animation: orion-overlay-in 160ms ease-out both;
+}
+
+.orion-working-overlay.closing {
+  pointer-events: none;
+  animation: orion-overlay-out 240ms ease-in both;
+}
+
+.orion-working {
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto;
+  padding: var(--space-5, 24px);
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--orion-text);
+  text-align: center;
+  animation: orion-card-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.orion-working.panel-closing {
+  animation: orion-card-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.orion-working.compact {
+  width: min(560px, 100%);
+  padding: var(--space-4, 16px);
+}
+
+.orion-working-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid var(--orion-border);
+  border-radius: 999px;
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text);
+  font-size: var(--text-xs, 11px);
+  font-weight: 750;
+  letter-spacing: 0.07em;
+}
+
+.orion-working-status small {
+  color: var(--orion-text-secondary);
+  font-size: inherit;
+  font-weight: 650;
+}
+
+.orion-working-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--orion-success);
+  box-shadow: none;
+  animation: orion-status-pulse 1.8s ease-in-out infinite;
+}
+
+.orion-constellation {
+  width: min(390px, 92%);
+  margin: 0 auto var(--space-2, 8px);
+  transform-origin: center center;
+}
+
+.orion-working.constellation-closing .orion-constellation {
+  animation: orion-constellation-close 460ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.orion-constellation svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.orion-constellation-structure line {
+  stroke: var(--orion-border);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  opacity: 0.72;
+}
+
+.orion-constellation-segment {
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  transition: stroke 260ms ease, opacity 260ms ease;
+}
+
+.orion-constellation-segment.future {
+  stroke: var(--orion-border);
+  opacity: 0.28;
+}
+
+.orion-constellation-segment.done {
+  stroke: var(--orion-success);
+  opacity: 0.92;
+}
+
+.orion-constellation-segment.active {
+  stroke: var(--orion-blue);
+  stroke-dasharray: 5 7;
+  opacity: 1;
+  animation: orion-data-flow 1.2s linear infinite;
+}
+
+.orion-constellation-node .node-halo,
+.orion-constellation-node .node-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: fill 240ms ease, opacity 240ms ease, transform 240ms ease;
+}
+
+.orion-constellation-node .node-halo {
+  fill: transparent;
+}
+
+.orion-constellation-node.future .node-dot {
+  fill: var(--orion-neutral);
+  opacity: 0.42;
+}
+
+.orion-constellation-node.done .node-dot {
+  fill: var(--orion-success);
+  opacity: 1;
+}
+
+.orion-constellation-node.done .node-halo {
+  fill: var(--orion-success-soft);
+}
+
+.orion-constellation-node.active .node-dot {
+  fill: var(--orion-blue);
+  transform: scale(1.16);
+  animation: orion-node-pulse 1.4s ease-in-out infinite;
+}
+
+.orion-constellation-node.active .node-halo {
+  fill: var(--orion-blue-soft);
+  animation: orion-node-halo 1.4s ease-in-out infinite;
+}
+
+.orion-working.complete .orion-constellation-segment,
+.orion-working.constellation-closing .orion-constellation-segment {
+  stroke: var(--orion-success);
+}
+
+.orion-working-copy {
+  width: min(520px, 100%);
+}
+
+.orion-working h3 {
+  margin: 0;
+  color: var(--orion-text);
+  font-size: var(--title, 20px);
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.orion-working-subtitle {
+  max-width: 470px;
+  margin: var(--space-2, 8px) auto var(--space-4, 16px);
+  color: var(--orion-text-secondary);
+  font-size: var(--text-sm, 12px);
+  line-height: 1.5;
+}
+
+.orion-current-stage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  padding: 11px 12px;
+  border: 1px solid var(--orion-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--orion-surface-elevated);
+  color: var(--orion-text);
+  text-align: left;
+}
+
+.orion-current-stage span {
+  min-width: 0;
+  color: var(--orion-text);
+  font-size: var(--text-sm, 12px);
+  font-weight: 650;
+}
+
+.orion-current-stage small {
+  flex: 0 0 auto;
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs, 11px);
+  font-weight: 650;
+}
+
+.orion-working-progress {
+  position: relative;
+  height: 4px;
+  margin-top: var(--space-3, 12px);
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--orion-border);
+}
+
+.orion-working-progress span {
+  display: block;
+  width: 30%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--orion-blue);
+  animation: orion-progress 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+.orion-working.complete .orion-working-progress span,
+.orion-working.constellation-closing .orion-working-progress span {
+  background: var(--orion-success);
+}
+
+.orion-working-footer {
+  margin-top: var(--space-3, 12px);
+  color: var(--orion-text-secondary);
+  font-size: var(--text-xs, 11px);
+  line-height: 1.4;
+}
+
+@keyframes orion-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes orion-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes orion-card-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes orion-card-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(4px); }
+}
+
+@keyframes orion-constellation-close {
+  0% { opacity: 1; transform: scale(1); }
+  28% { opacity: 1; transform: scale(1.015); }
+  100% { opacity: 0; transform: scale(0.78); }
+}
+
+@keyframes orion-status-pulse {
+  0%, 100% { opacity: 0.62; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes orion-data-flow {
+  to { stroke-dashoffset: -24; }
+}
+
+@keyframes orion-node-pulse {
+  0%, 100% { opacity: 0.82; transform: scale(1.02); }
+  50% { opacity: 1; transform: scale(1.22); }
+}
+
+@keyframes orion-node-halo {
+  0%, 100% { opacity: 0.34; transform: scale(0.8); }
+  50% { opacity: 0.9; transform: scale(1.08); }
+}
+
+@keyframes orion-progress {
+  0% { transform: translateX(-125%); }
+  55% { transform: translateX(120%); }
+  100% { transform: translateX(340%); }
+}
+
+@media (max-width: 720px) {
+  .orion-working-overlay {
+    align-items: start;
+    padding: var(--space-4, 16px);
+  }
+
+  .orion-working,
+  .orion-working.compact {
+    width: min(520px, 100%);
+    padding: var(--space-4, 16px);
+  }
+
+  .orion-constellation {
+    width: min(340px, 96%);
+    margin-top: 0;
+  }
+
+  .orion-current-stage {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2, 8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orion-working-overlay,
+  .orion-working,
+  .orion-working-status-dot,
+  .orion-constellation-segment.active,
+  .orion-constellation-node.active .node-dot,
+  .orion-constellation-node.active .node-halo,
+  .orion-working-progress span,
+  .orion-working.constellation-closing .orion-constellation {
+    animation: none;
+  }
+
+  .orion-working-progress span {
+    width: 100%;
+    opacity: 0.35;
+  }
+
+  .orion-working.constellation-closing .orion-constellation {
+    opacity: 0;
+  }
+}

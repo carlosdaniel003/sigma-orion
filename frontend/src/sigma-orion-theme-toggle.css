@@ -1,0 +1,185 @@
+:root[data-theme='light'] {
+  color-scheme: light;
+  --orion-bg: #f5f5f7;
+  --orion-surface: #ffffff;
+  --orion-surface-elevated: #f5f5f7;
+  --orion-blue: #1d1d1f;
+  --orion-success: #1d7046;
+  --orion-warning: #8a5d17;
+  --orion-danger: #b4232f;
+  --orion-neutral: #8e8e93;
+  --orion-text: #1d1d1f;
+  --orion-text-secondary: #6e6e73;
+  --orion-border: #d2d2d7;
+  --orion-border-soft: rgba(60, 60, 67, 0.12);
+  --orion-blue-soft: rgba(29, 29, 31, 0.07);
+  --orion-success-soft: rgba(29, 112, 70, 0.08);
+  --orion-warning-soft: rgba(138, 93, 23, 0.08);
+  --orion-danger-soft: rgba(180, 35, 47, 0.07);
+  --orion-shadow: none;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] button,
+:root[data-theme='light'] input,
+:root[data-theme='light'] textarea,
+:root[data-theme='light'] select {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] button,
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] select {
+  color-scheme: dark;
+}
+
+.workspace-dock-separator {
+  width: 22px;
+  height: 1px;
+  margin: 1px 0;
+  border-radius: 999px;
+  background: var(--orion-border);
+  opacity: 0.9;
+}
+
+.theme-toggle-button {
+  color: var(--orion-text-secondary) !important;
+}
+
+.theme-toggle-button:hover,
+.theme-toggle-button:focus-visible {
+  color: var(--orion-blue) !important;
+}
+
+:root[data-theme='dark'] .theme-toggle-button {
+  color: var(--orion-blue) !important;
+}
+
+:root[data-theme='light'] .topbar {
+  background: rgba(245, 245, 247, 0.98) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.045) !important;
+}
+
+:root[data-theme='light'] .topbar-nav,
+:root[data-theme='light'] .workspace-dock {
+  background: #ffffff !important;
+  box-shadow: var(--shadow-control, 0 1px 2px rgba(0, 0, 0, 0.08)) !important;
+}
+
+:root[data-theme='light'] .nav-icon-button:hover,
+:root[data-theme='light'] .nav-icon-button:focus-visible,
+:root[data-theme='light'] .nav-icon-button.nav-active,
+:root[data-theme='light'] .workspace-button:hover,
+:root[data-theme='light'] .workspace-button:focus-visible,
+:root[data-theme='light'] .workspace-button.workspace-active {
+  border-color: #dedfe2 !important;
+  background: #f0f0f3 !important;
+  color: #1d1d1f !important;
+}
+
+:root[data-theme='light'] .nav-icon-button.nav-active {
+  box-shadow: inset 0 0 0 1px rgba(29, 29, 31, 0.035) !important;
+}
+
+:root[data-theme='light'] .nav-icon-button[data-tooltip]::after,
+:root[data-theme='light'] .topbar-status[data-tooltip]::after,
+:root[data-theme='light'] .workspace-button[data-tooltip]::after {
+  border-color: #1d1d1f !important;
+  background: #1d1d1f !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14) !important;
+}
+
+:root[data-theme='light'] .primary-button,
+:root[data-theme='light'] .bulk-file-button,
+:root[data-theme='light'] .consolidation-tabs button.active {
+  background: #1d1d1f !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme='light'] .secondary-button:hover:not(:disabled),
+:root[data-theme='light'] .bulk-file-clear:hover:not(:disabled),
+:root[data-theme='light'] .detail-close:hover,
+:root[data-theme='light'] .consolidation-tabs button:hover {
+  border-color: #c7c7cc !important;
+  background: #ececef !important;
+  color: #1d1d1f !important;
+}
+
+:root[data-theme='light'] input:focus,
+:root[data-theme='light'] textarea:focus,
+:root[data-theme='light'] select:focus,
+:root[data-theme='light'] .chat-form input:focus {
+  border-color: #1d1d1f !important;
+  box-shadow: 0 0 0 3px rgba(29, 29, 31, 0.08) !important;
+}
+
+:root[data-theme='light'] .dpp-table tbody tr:hover td,
+:root[data-theme='light'] table tbody tr:hover td {
+  background: rgba(29, 29, 31, 0.035) !important;
+}
+
+:root[data-theme='light'] .dashboard-comparison-legend i.orion,
+:root[data-theme='light'] .dpp-dashboard-view .dashboard-planning-panel .planning-bar-fill.real,
+:root[data-theme='light'] .orion-working-progress span {
+  background: #1d1d1f !important;
+}
+
+:root[data-theme='light'] .orion-constellation-segment.active {
+  stroke: #1d1d1f !important;
+}
+
+:root[data-theme='light'] .orion-constellation-node.active .node-dot {
+  fill: #1d1d1f !important;
+}
+
+:root[data-theme='light'] .orion-working-overlay {
+  background: var(--orion-bg) !important;
+}
+
+:root[data-theme='light'] ::selection {
+  background: rgba(29, 29, 31, 0.16);
+  color: #1d1d1f;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html,
+  body,
+  #root,
+  .app-shell,
+  .topbar,
+  .workspace-dock,
+  .topbar-nav,
+  .panel,
+  .bulk-file-picker,
+  .dashboard-kpi,
+  .dashboard-mini-kpi,
+  .dashboard-fact,
+  .dpp-state-card,
+  .dashboard-comparison-card {
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body,
+  #root,
+  .app-shell,
+  .topbar,
+  .workspace-dock,
+  .topbar-nav,
+  .panel,
+  .bulk-file-picker,
+  .dashboard-kpi,
+  .dashboard-mini-kpi,
+  .dashboard-fact,
+  .dpp-state-card,
+  .dashboard-comparison-card {
+    transition: none !important;
+  }
+}
