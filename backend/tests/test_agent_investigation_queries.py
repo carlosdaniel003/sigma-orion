@@ -2,12 +2,21 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import knowledge_catalog_service as catalog
 from app.services.database_investigation_query_service import answer_investigation_question
 from app.services.rag_runtime_service import load_runtime_entities, sync_runtime_workspace
+
+
+
+@pytest.fixture(autouse=True)
+def isolated_knowledge_index(monkeypatch) -> None:
+    # O índice tem cache global de fingerprint: cada teste usa outro arquivo
+    # SQLite e não pode deixar o cache apontando para um banco já descartado.
+    monkeypatch.setattr(catalog, "_LAST_FINGERPRINT", None)
 
 
 def _candidate(pn: str, depot: str, *, reviewed: bool = False) -> dict:
