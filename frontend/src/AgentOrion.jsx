@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDppWorkspace } from './DppWorkspaceContext'
+import { currentInvestigationReports } from './current-investigation-reports'
 import {
   AGENT_CONVERSATION_TTL_MS,
   readAgentConversation,
@@ -47,7 +48,24 @@ function databaseStatusText(status) {
   return 'Verificando SQLite/RAG'
 }
 
-function buildWorkspaceVersion({ month, scenario, finalDpp, packageState, scenarioState, finalState }) {
+function investigationVersion(report) {
+  if (!report) return 'indisponível'
+  return JSON.stringify({
+    scenarioId: report.scenario_id,
+    summary: report.summary,
+    materials: (report.materials || []).map(item => [
+      item.material, item.workflow_status, item.active_depot,
+      item.unexplained_quantity, item.unexplained_after_quality,
+      (item.candidates || []).map(candidate => [
+        candidate.candidate_id, candidate.validation?.id,
+        candidate.validation?.decision, candidate.validation?.confirmed_quantity,
+      ]),
+    ]),
+    unmatched: (report.unmatched_materials || []).map(item => item.material),
+  })
+}
+
+function buildWorkspaceVersion({ month, scenario, finalDpp, packageState, scenarioState, finalState, stockReport, qualityReport }) {
   const modelState = (scenario?.models || [])
     .map((model) => `${model?.name || ''}:${Number(model?.real) || 0}:${Number(model?.kit_pgd) || 0}`)
     .join('|')
@@ -60,6 +78,8 @@ function buildWorkspaceVersion({ month, scenario, finalDpp, packageState, scenar
     packageState || '',
     scenarioState || '',
     finalState || '',
+    investigationVersion(stockReport),
+    investigationVersion(qualityReport),
   ].join('::')
 }
 
@@ -142,6 +162,8 @@ function AgentOrion({ apiUrl }) {
   const {
     generatedScenario,
     finalDppAnalysis,
+    stockInvestigation,
+    qualityInvestigation,
     referenceMonth,
     workspaceReady,
     dppState,
@@ -176,6 +198,18 @@ function AgentOrion({ apiUrl }) {
   const scenarioState = dppState?.scenario?.state || (scenarioReady ? 'current' : 'missing')
   const finalState = dppState?.finalDpp?.state || (finalReady ? 'current' : 'missing-file')
 
+  const { stock: stockReport, quality: qualityReport } = useMemo(
+    () => currentInvestigationReports({
+      dppState,
+      workspaceReady,
+      stockFile: dppState?.bundle?.stock,
+      scenario: scenarioForDatabase,
+      stockInvestigation,
+      qualityInvestigation,
+    }),
+    [dppState, workspaceReady, scenarioForDatabase, stockInvestigation, qualityInvestigation],
+  )
+
   const workspacePayload = useMemo(() => ({
     month,
     state: {
@@ -185,7 +219,11 @@ function AgentOrion({ apiUrl }) {
     },
     scenario: scenarioForDatabase,
     final_dpp: finalForDatabase,
-  }), [month, packageState, scenarioState, finalState, scenarioForDatabase, finalForDatabase])
+    investigations: {
+      stock: stockReport,
+      quality: qualityReport,
+    },
+  }), [month, packageState, scenarioState, finalState, scenarioForDatabase, finalForDatabase, stockReport, qualityReport])
 
   const workspaceVersion = useMemo(() => buildWorkspaceVersion({
     month,
@@ -194,7 +232,9 @@ function AgentOrion({ apiUrl }) {
     packageState,
     scenarioState,
     finalState,
-  }), [month, scenarioForDatabase, finalDppAnalysis, finalState, packageState, scenarioState, scenarioForDatabase, finalDppAnalysis])
+    stockReport,
+    qualityReport,
+  }), [month, scenarioForDatabase, finalForDatabase, finalState, packageState, scenarioState, stockReport, qualityReport])
 
   const currentAnswer = [...messages].reverse().find((message) => message.role === 'orion') || messages[0]
   const materials = scenarioForDatabase?.materials?.length || 0
