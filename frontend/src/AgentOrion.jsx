@@ -92,7 +92,7 @@ function createInitialAgentMessage() {
   return {
     id: 'initial',
     role: 'orion',
-    text: 'Pergunte livremente sobre materiais, modelos, regras, fórmulas, cálculos, fontes, divergências e qualquer conhecimento indexado no ORION. Quando a pergunta envolver dados do mês, respondo a partir do Cenário ORION e do DPP Final sincronizados.',
+    text: 'Consulte materiais, PNs, modelos, Estoque, Qualidade, siglas, fórmulas, cálculos, fontes e divergências. Também posso informar a data e a hora. Para dados do mês, utilizo o Cenário ORION, o DPP Final e as investigações sincronizadas. Se uma definição ainda não foi validada no processo, informo essa limitação.',
     evidence: [],
     sources: [],
     entities: [],
@@ -114,7 +114,7 @@ function createFreshConversation(now = Date.now()) {
 
 function responseType(payload) {
   if (payload.model === 'deterministic-router') return 'Conversacional'
-  if (['deterministic-status-registry', 'deterministic-rule-registry', 'deterministic-calculation-registry'].includes(payload.model)) return 'Determinística'
+  if (['deterministic-status-registry', 'deterministic-rule-registry', 'deterministic-calculation-registry', 'deterministic-dashboard-investigation', 'deterministic-glossary-definition', 'deterministic-runtime-clock', 'deterministic-multi-question'].includes(payload.model)) return 'Determinística'
   if (payload.llm_used) return `SQLite/RAG + ${payload.llm_provider || 'LLM local'}`
   if (payload.knowledge_sources?.length) return 'Fundamentada no SQLite/RAG'
   return 'Sem evidência suficiente'
